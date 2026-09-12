@@ -317,6 +317,10 @@ flowchart TD
     <h2>Share the core, fork two thin adapters</h2>
     <p class="sub">The real design decision: how much of guitar and singing is one system? Answer — nearly all of it. Both are <em>mic → analyze → compare to reference → color the score → record</em>. Only <strong>what</strong> the analyzer hears and <strong>how</strong> the notation draws actually differ. So we build one instrument-agnostic core and plug in a small adapter per instrument.</p>
 
+    <div class="answer" style="margin-bottom:26px">
+      <p style="margin:0"><strong>Verdict:</strong> One PWA, one shared core — <strong>not two apps, not one tangled app.</strong> Guitar and singing run on the same infrastructure; each instrument supplies only a <em>note detector</em> and a <em>notation view</em> (≈15% of the code) behind fixed contracts. Everything else is written once.</p>
+    </div>
+
     <div class="split">
       <div class="ledger shared">
         <h3><span class="tag">Build once</span> Shared core</h3>
