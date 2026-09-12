@@ -124,6 +124,24 @@
     padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); margin: 8px 6px 0 0; }
   .chip.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
 
+  /* ---- shared/fork ledger ---- */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .ledger { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .ledger h3 { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+  .ledger .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px; }
+  .ledger.shared { border-top: 3px solid var(--teal); }
+  .ledger.shared .tag { background: color-mix(in srgb, var(--teal) 16%, var(--card)); color: var(--teal-2); }
+  .ledger.fork { border-top: 3px solid var(--coral); }
+  .ledger.fork .tag { background: color-mix(in srgb, var(--coral) 16%, var(--card)); color: var(--coral); }
+  .ledger .why { font-size: 12.5px; color: var(--muted); margin: 2px 0 12px; }
+  .ledger ul { margin: 0; padding-left: 0; list-style: none; }
+  .ledger li { font-size: 13.5px; padding: 8px 0; border-top: 1px solid var(--line); color: var(--text); }
+  .ledger li:first-child { border-top: none; }
+  .ledger li b { font-weight: 600; color: var(--ink); }
+  .ledger li small { color: var(--muted); display: block; font-size: 11.5px; margin-top: 1px; }
+  @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+
   /* ---- roadmap ---- */
   .road { display: grid; gap: 0; }
   .phase { display: grid; grid-template-columns: 92px 1fr; gap: 20px; padding: 18px 0; border-top: 1px solid var(--line); }
@@ -295,34 +313,63 @@ flowchart TD
 
 <section>
   <div class="wrap">
-    <p class="kicker"><b>05</b> Core flow · Live feedback</p>
-    <h2>The signature interaction, as a pipeline</h2>
-    <p class="sub">“Live feedback” is the feature that justifies building this at all — and it’s pure browser audio. This is the diagram your engineers will ask for first.</p>
-    <div class="diagram">
+    <p class="kicker"><b>05</b> The abstraction · Guitar &amp; Singing</p>
+    <h2>Share the core, fork two thin adapters</h2>
+    <p class="sub">The real design decision: how much of guitar and singing is one system? Answer — nearly all of it. Both are <em>mic → analyze → compare to reference → color the score → record</em>. Only <strong>what</strong> the analyzer hears and <strong>how</strong> the notation draws actually differ. So we build one instrument-agnostic core and plug in a small adapter per instrument.</p>
+
+    <div class="split">
+      <div class="ledger shared">
+        <h3><span class="tag">Build once</span> Shared core</h3>
+        <p class="why">Instrument-agnostic. Neither guitar nor voice code touches this — it talks only to the contracts below.</p>
+        <ul>
+          <li><b>Audio capture</b><small>getUserMedia → AudioContext → AudioWorklet frames</small></li>
+          <li><b>Session state machine</b><small>count-in · play · pause · scroll · end — identical for both</small></li>
+          <li><b>Scorer</b><small>compare(detected, expected) → feedback events + accuracy %, config-tuned per instrument</small></li>
+          <li><b>Recording &amp; storage</b><small>MediaRecorder → IndexedDB (recordings, scores, annotations)</small></li>
+          <li><b>Library, search, Progress, PWA shell</b><small>one data model: a session → score + event log over time</small></li>
+        </ul>
+      </div>
+      <div class="ledger fork">
+        <h3><span class="tag">Per instrument</span> Adapters</h3>
+        <p class="why">Two small modules each, implementing a shared interface. This is the only code that knows “guitar” or “voice.”</p>
+        <ul>
+          <li><b>Analyzer</b> — <code style="font-family:var(--mono)">detect(frame) → events</code><small>Voice: monophonic pitch (YIN). Guitar: onset + polyphonic / chord detection</small></li>
+          <li><b>Notation renderer</b><small>Voice: scrolling stave. Guitar: scrolling tablature</small></li>
+          <li><b>Feedback vocabulary</b> <small>Voice: flat/sharp in cents, breath. Guitar: wrong note/chord, rushing — same event shape, different labels</small></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="diagram" style="margin-top:20px">
       <figure>
         <pre class="mermaid">
 %%{init: {'theme':'base','themeVariables':{
-  'primaryColor':'#dc6a4422','primaryBorderColor':'#dc6a44','primaryTextColor':'#24242c',
-  'lineColor':'#9a98a4','fontFamily':'ui-monospace, monospace','fontSize':'13px'}}}%%
+  'primaryColor':'#12878922','primaryBorderColor':'#128789','primaryTextColor':'#24242c',
+  'lineColor':'#9a98a4','fontFamily':'ui-monospace, monospace','fontSize':'12px'}}}%%
 flowchart LR
-  MIC[🎤 getUserMedia] --> WA[Web Audio API<br/>AudioWorklet]
-  WA --> PITCH[Pitch / onset<br/>detection]
-  REF[(Song reference:<br/>notes + timing)] --> CMP{Compare}
-  PITCH --> CMP
-  CMP -->|match| GOOD[Green: in tune / on time]
-  CMP -->|off| BAD[Red: flat·sharp·late]
-  GOOD --> UI[Scrolling score overlay]
-  BAD --> UI
-  WA --> REC[MediaRecorder] --> IDB[(IndexedDB<br/>saved session)]
-  UI --> SCORE[Accuracy score] --> IDB
+  MIC[🎤 getUserMedia] --> WA[AudioWorklet<br/>capture · SHARED]
+  WA --> AN{{Analyzer PORT}}
+  AN -.voice.-> VDET[Monophonic pitch<br/>YIN]
+  AN -.guitar.-> GDET[Onset + poly<br/>chord detect]
+  VDET --> EV[DetectedEvent:<br/>note · cents · onset · conf]
+  GDET --> EV
+  REF{{Reference PORT<br/>melody / tab}} --> SC
+  EV --> SC{Scorer<br/>SHARED}
+  SC -->|match / off| FB[FeedbackEvent]
+  FB --> REN{{Notation PORT}}
+  REN -.voice.-> STAVE[Scrolling stave]
+  REN -.guitar.-> TAB[Scrolling tab]
+  WA --> REC[MediaRecorder<br/>SHARED] --> IDB[(IndexedDB<br/>SHARED)]
+  SC --> IDB
 </pre>
-        <figcaption>fig. 5 — mic → analysis → compare-to-reference → colored overlay, recorded in parallel.</figcaption>
+        <figcaption>fig. 5 — {{ports}} = shared contracts · dotted = the only instrument-specific branches · plain boxes = build-once core.</figcaption>
       </figure>
     </div>
+
     <div class="grid2" style="margin-top:22px">
-      <div class="card"><span class="num">A</span><h3>Runs on-device</h3><p>Pitch detection in an AudioWorklet means feedback is instant and works offline — no round-trip to a server.</p></div>
-      <div class="card"><span class="num">B</span><h3>One engine, two instruments</h3><p>Guitar (polyphonic onset) and voice (monophonic pitch) share the same compare-to-reference contract.</p></div>
-      <div class="card"><span class="num">C</span><h3>Record ≠ Score</h3><p>MediaRecorder captures audio; the scorer captures accuracy events. Both land in IndexedDB and surface under Progress.</p></div>
+      <div class="card"><span class="num">A</span><h3>~85% shared</h3><p>Everything but the analyzer and renderer is written once. Adding a third instrument later = two new adapters, not a new app.</p></div>
+      <div class="card"><span class="num">B</span><h3>Not fully merged</h3><p>No <code style="font-family:var(--mono)">if (guitar)</code> branches scattered through the core — instrument logic is quarantined behind the ports, so the two can evolve independently.</p></div>
+      <div class="card"><span class="num">C</span><h3>Not fully separate</h3><p>Two codebases would duplicate recording, storage, scoring, offline &amp; progress — and drift apart. One core keeps them in lockstep.</p></div>
     </div>
   </div>
 </section>
