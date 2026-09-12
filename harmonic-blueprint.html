@@ -1,0 +1,432 @@
+<title>Harmonic — PWA Design Blueprint</title>
+<style>
+  :root {
+    /* palette — derived from the story-map's teal/amber/coral, tuned into a system */
+    --teal:   #128789;
+    --teal-2: #1AA6A8;
+    --amber:  #D9922E;
+    --amber-2:#E8A13A;
+    --coral:  #DC6A44;
+    --coral-2:#E8734A;
+    --ink:    #191C24;
+    --paper:  #F5F4F0;
+    --card:   #FFFFFF;
+    --line:   #E2DFD8;
+    --muted:  #6C6A72;
+    --text:   #24242C;
+    --good:   #3E9B57;
+    --bad:    #CF4B36;
+    --accent: var(--teal);
+    --shadow: 0 1px 2px rgba(25,28,36,.05), 0 8px 24px -12px rgba(25,28,36,.18);
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, monospace;
+    --sans: -apple-system, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
+    --maxw: 940px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #14161C; --card: #1E212A; --line: #2E323D;
+      --muted: #9A98A4; --text: #E7E6EC; --ink: #F3F2F6;
+      --teal: #2CBDBE; --teal-2:#3ED0D1; --amber:#E8A13A; --amber-2:#F2B457;
+      --coral:#E8734A; --coral-2:#F08A63; --accent: #2CBDBE;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper:#F5F4F0; --card:#FFFFFF; --line:#E2DFD8; --muted:#6C6A72; --text:#24242C; --ink:#191C24;
+    --teal:#128789; --teal-2:#1AA6A8; --amber:#D9922E; --coral:#DC6A44; --accent:#128789;
+  }
+  :root[data-theme="dark"] {
+    --paper:#14161C; --card:#1E212A; --line:#2E323D; --muted:#9A98A4; --text:#E7E6EC; --ink:#F3F2F6;
+    --teal:#2CBDBE; --teal-2:#3ED0D1; --amber:#E8A13A; --coral:#E8734A; --accent:#2CBDBE;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--text);
+    font-family: var(--sans); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* ---- header ---- */
+  header.hero { padding: 72px 0 40px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 18px; }
+  h1 { font-family: var(--serif); font-weight: 600; letter-spacing: -.02em;
+    font-size: clamp(38px, 6vw, 62px); line-height: 1.02; margin: 0; text-wrap: balance; color: var(--ink); }
+  h1 em { font-style: italic; color: var(--accent); }
+  .lede { font-size: 19px; color: var(--muted); max-width: 60ch; margin: 20px 0 0; }
+  .waveform { display: flex; align-items: flex-end; gap: 3px; height: 40px; margin-top: 32px; }
+  .waveform span { width: 4px; border-radius: 2px; background: var(--accent); opacity: .85; }
+
+  /* ---- sections ---- */
+  section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+  .kicker { font-family: var(--mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 10px; display: flex; align-items: center; gap: 10px; }
+  .kicker b { color: var(--accent); font-weight: 600; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(26px, 4vw, 34px);
+    letter-spacing: -.01em; margin: 0 0 8px; color: var(--ink); text-wrap: balance; }
+  h3 { font-size: 17px; margin: 0 0 6px; color: var(--ink); letter-spacing: -.01em; }
+  p { margin: 0 0 14px; max-width: 68ch; }
+  .sub { color: var(--muted); max-width: 66ch; margin-bottom: 28px; }
+  a { color: var(--accent); }
+
+  /* ---- answer callout ---- */
+  .answer { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 22px 24px; box-shadow: var(--shadow); }
+  .answer p:last-child { margin-bottom: 0; }
+  .answer strong { color: var(--ink); }
+
+  /* ---- three-tier map (echoes their sticky notes) ---- */
+  .map { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; overflow-x: auto; }
+  .col { display: flex; flex-direction: column; gap: 10px; min-width: 150px; }
+  .tile { border-radius: 10px; padding: 12px 13px; font-size: 13.5px; line-height: 1.35;
+    border: 1px solid transparent; box-shadow: var(--shadow); }
+  .tile .t { display: block; font-weight: 600; margin-bottom: 2px; }
+  .tile .m { font-size: 11.5px; opacity: .82; }
+  .goal   { background: color-mix(in srgb, var(--teal) 16%, var(--card)); border-color: color-mix(in srgb, var(--teal) 32%, var(--line)); }
+  .goal .t{ color: var(--teal-2); }
+  .action { background: color-mix(in srgb, var(--amber) 15%, var(--card)); border-color: color-mix(in srgb, var(--amber) 30%, var(--line)); }
+  .action .t{ color: var(--amber); }
+  .feat   { background: color-mix(in srgb, var(--coral) 14%, var(--card)); border-color: color-mix(in srgb, var(--coral) 28%, var(--line)); }
+  .feat .t{ color: var(--coral); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 22px; font-size: 12.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  /* ---- diagrams ---- */
+  .diagram { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px; box-shadow: var(--shadow); overflow-x: auto; }
+  .diagram pre.mermaid { margin: 0; text-align: center; min-width: 520px; }
+  figcaption { font-size: 12.5px; color: var(--muted); margin-top: 12px; font-family: var(--mono); letter-spacing: .02em; }
+  figure { margin: 0; }
+
+  /* ---- phone wireframe ---- */
+  .screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; }
+  .phone { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 14px;
+    box-shadow: var(--shadow); }
+  .phone .bar { height: 5px; width: 42px; background: var(--line); border-radius: 3px; margin: 2px auto 12px; }
+  .screen-title { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0 0 3px; }
+  .screen-role { font-family: var(--mono); font-size: 10.5px; color: var(--accent); letter-spacing: .08em;
+    text-transform: uppercase; margin: 0 0 12px; }
+  .stub { border-radius: 8px; padding: 9px 10px; font-size: 12px; margin-bottom: 8px;
+    background: color-mix(in srgb, var(--muted) 8%, var(--card)); border: 1px solid var(--line); color: var(--text); }
+  .stub.hi { background: color-mix(in srgb, var(--teal) 14%, var(--card)); border-color: color-mix(in srgb, var(--teal) 30%, var(--line)); color: var(--teal-2); font-weight: 600; }
+  .stub.warm { background: color-mix(in srgb, var(--coral) 13%, var(--card)); border-color: color-mix(in srgb, var(--coral) 26%, var(--line)); color: var(--coral); }
+  .tabbar { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid var(--line); font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .tabbar b { color: var(--accent); font-weight: 600; }
+
+  /* ---- feature grid / cards ---- */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .card .num { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .1em; }
+  .card p { font-size: 14px; color: var(--muted); margin: 6px 0 0; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
+    padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); margin: 8px 6px 0 0; }
+  .chip.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+
+  /* ---- roadmap ---- */
+  .road { display: grid; gap: 0; }
+  .phase { display: grid; grid-template-columns: 92px 1fr; gap: 20px; padding: 18px 0; border-top: 1px solid var(--line); }
+  .phase:first-child { border-top: none; }
+  .phase .p { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 600; }
+  .phase .goal2 { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .phase ul { margin: 4px 0 0; padding-left: 18px; }
+  .phase li { font-size: 14px; margin-bottom: 4px; }
+
+  footer { padding: 40px 0 72px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 640px) {
+    .map { grid-template-columns: 1fr; }
+    .phase { grid-template-columns: 1fr; gap: 6px; }
+  }
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Product Design Blueprint · Progressive Web App</p>
+    <h1>Harmonic — a practice room that <em>listens back</em></h1>
+    <p class="lede">Translating the Harmonic user-story map into the diagrams you actually build a PWA from: an information architecture, the core interaction flows, and the offline-first system that powers live feedback.</p>
+    <div class="waveform" aria-hidden="true">
+      <span style="height:22%"></span><span style="height:55%"></span><span style="height:38%"></span>
+      <span style="height:80%"></span><span style="height:100%"></span><span style="height:62%"></span>
+      <span style="height:90%"></span><span style="height:45%"></span><span style="height:70%"></span>
+      <span style="height:30%"></span><span style="height:58%"></span><span style="height:85%"></span>
+      <span style="height:40%"></span><span style="height:66%"></span><span style="height:25%"></span>
+      <span style="height:52%"></span><span style="height:78%"></span><span style="height:34%"></span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>01</b> The question, answered</p>
+    <h2>Which diagram should we follow?</h2>
+    <p class="sub">A story map tells you <em>what</em> to build. It is not a design you can build a screen from. For a PWA you need three companion diagrams, in this order.</p>
+    <div class="answer">
+      <p><strong>1 · Information Architecture (sitemap).</strong> Turns your four user goals into a navigation model — the screens and how a person moves between them. This is your primary blueprint.</p>
+      <p><strong>2 · User-flow diagrams.</strong> One per critical journey (e.g. <em>choose song → view tabs → play with live feedback → review score</em>). These validate that every story-map card has a home.</p>
+      <p><strong>3 · System / PWA architecture.</strong> The technical diagram unique to a PWA: app shell, service worker, offline cache, and the real-time audio pipeline behind “live feedback.”</p>
+      <p>The sections below deliver all three, plus screen blueprints and a build roadmap.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>02</b> Reading your story map</p>
+    <h2>Four goals, two instruments, one loop</h2>
+    <p class="sub">Your map collapses into a single repeating loop — <strong>Practice</strong> then <strong>Review</strong> — mirrored across guitar and voice. That symmetry is a gift: one set of components serves both instruments.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--teal)"></i> Goal</span>
+      <span><i class="dot" style="background:var(--amber)"></i> User action</span>
+      <span><i class="dot" style="background:var(--coral)"></i> Feature</span>
+    </div>
+    <div class="map">
+      <div class="col">
+        <div class="tile goal"><span class="t">Practice Guitar</span></div>
+        <div class="tile action"><span class="t">Choose Song</span><span class="m">Keyword search</span></div>
+        <div class="tile action"><span class="t">View Tabs</span><span class="m">Basic lesson · 3 checks · try on guitar</span></div>
+        <div class="tile action"><span class="t">Play w/ Live Feedback</span><span class="m">Record · scroll · pause</span></div>
+      </div>
+      <div class="col">
+        <div class="tile goal"><span class="t">Practice Vocals</span></div>
+        <div class="tile action"><span class="t">Choose Song</span><span class="m">Keyword search</span></div>
+        <div class="tile action"><span class="t">View Sheet Music</span><span class="m">Listen · annotate</span></div>
+        <div class="tile action"><span class="t">Sing w/ Live Feedback</span><span class="m">Record · scroll · pause</span></div>
+      </div>
+      <div class="col">
+        <div class="tile goal"><span class="t">Review Guitar Progress</span></div>
+        <div class="tile action"><span class="t">View Score</span><span class="m">Session accuracy over time</span></div>
+        <div class="tile action"><span class="t">View Feedback</span><span class="m">Notes missed · timing drift</span></div>
+        <div class="tile feat"><span class="t">Recorded sessions</span><span class="m">Playback library</span></div>
+      </div>
+      <div class="col">
+        <div class="tile goal"><span class="t">Review Vocal Progress</span></div>
+        <div class="tile action"><span class="t">View Score</span><span class="m">Pitch accuracy over time</span></div>
+        <div class="tile action"><span class="t">View Feedback</span><span class="m">Flat/sharp map · breath</span></div>
+        <div class="tile feat"><span class="t">Recorded sessions</span><span class="m">Playback library</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>03</b> Primary diagram · Information architecture</p>
+    <h2>The navigation map</h2>
+    <p class="sub">Mobile-first PWA convention: a persistent bottom tab bar of 3–5 destinations, each a shallow stack. Your four goals fold into <strong>Practice</strong> and <strong>Progress</strong>, with a shared <strong>Library</strong> feeding both.</p>
+    <div class="diagram">
+      <figure>
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#12878922','primaryBorderColor':'#128789','primaryTextColor':'#24242c',
+  'lineColor':'#9a98a4','fontFamily':'ui-monospace, monospace','fontSize':'13px'}}}%%
+flowchart TD
+  APP([Harmonic App Shell])
+  APP --> LIB[Library tab]
+  APP --> PRAC[Practice tab]
+  APP --> PROG[Progress tab]
+  APP --> PROF[Profile tab]
+
+  LIB --> SRCH[Keyword search]
+  LIB --> SONG[Song detail]
+  SONG --> TABS[Tabs / Sheet music]
+  SONG --> LESSON[Basic lesson + 3 checks]
+
+  PRAC --> LIVE[Live session:<br/>record · scroll · pause]
+  LIVE --> RESULT[Session result + score]
+
+  PROG --> GHIST[Guitar progress]
+  PROG --> VHIST[Vocal progress]
+  GHIST --> FB[Feedback detail + playback]
+  VHIST --> FB
+
+  SONG -.start.-> LIVE
+  RESULT -.saved to.-> PROG
+</pre>
+        <figcaption>fig. 3 — screens (boxes) and navigation (arrows). Dotted = cross-flow jumps.</figcaption>
+      </figure>
+    </div>
+    <p style="margin-top:22px" class="sub"><strong>Why not one tab per goal?</strong> Four goal-tabs would duplicate “choose a song” and “view a score” twice each. Grouping by <em>verb</em> (find → practice → review) instead of by <em>instrument</em> keeps the nav to four items and lets guitar and voice share every screen.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>04</b> Screen blueprints</p>
+    <h2>Three screens carry the app</h2>
+    <p class="sub">Low-fidelity structure for the load-bearing screens. Instrument is a mode toggle, not a separate screen — the same layouts render tabs or a stave.</p>
+    <div class="screens">
+      <div class="phone">
+        <div class="bar"></div>
+        <p class="screen-title">Song Library</p>
+        <p class="screen-role">Find · Choose Song</p>
+        <div class="stub">🔎 Keyword search</div>
+        <div class="stub">Guitar ⇄ Vocals toggle</div>
+        <div class="stub">Song · difficulty · length</div>
+        <div class="stub">Song · difficulty · length</div>
+        <div class="stub warm">▶ Recently practiced</div>
+        <div class="tabbar"><span>Library•</span><span>Practice</span><span>Progress</span><span>You</span></div>
+      </div>
+      <div class="phone">
+        <div class="bar"></div>
+        <p class="screen-title">Live Session</p>
+        <p class="screen-role">Play / Sing w/ Feedback</p>
+        <div class="stub hi">♪ Scrolling tabs / stave</div>
+        <div class="stub hi">◉ Live pitch &amp; timing meter</div>
+        <div class="stub">⏸ Pause · ⏺ Recording</div>
+        <div class="stub">Tempo · capo · count-in</div>
+        <div class="stub warm">■ End &amp; score session</div>
+        <div class="tabbar"><span>Library</span><span><b>Practice•</b></span><span>Progress</span><span>You</span></div>
+      </div>
+      <div class="phone">
+        <div class="bar"></div>
+        <p class="screen-title">Progress</p>
+        <p class="screen-role">Review · Score + Feedback</p>
+        <div class="stub">Guitar ⇄ Vocals toggle</div>
+        <div class="stub hi">📈 Accuracy trend</div>
+        <div class="stub">Latest score · streak</div>
+        <div class="stub">Feedback: notes missed, drift</div>
+        <div class="stub warm">▶ Replay recorded session</div>
+        <div class="tabbar"><span>Library</span><span>Practice</span><span><b>Progress•</b></span><span>You</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>05</b> Core flow · Live feedback</p>
+    <h2>The signature interaction, as a pipeline</h2>
+    <p class="sub">“Live feedback” is the feature that justifies building this at all — and it’s pure browser audio. This is the diagram your engineers will ask for first.</p>
+    <div class="diagram">
+      <figure>
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#dc6a4422','primaryBorderColor':'#dc6a44','primaryTextColor':'#24242c',
+  'lineColor':'#9a98a4','fontFamily':'ui-monospace, monospace','fontSize':'13px'}}}%%
+flowchart LR
+  MIC[🎤 getUserMedia] --> WA[Web Audio API<br/>AudioWorklet]
+  WA --> PITCH[Pitch / onset<br/>detection]
+  REF[(Song reference:<br/>notes + timing)] --> CMP{Compare}
+  PITCH --> CMP
+  CMP -->|match| GOOD[Green: in tune / on time]
+  CMP -->|off| BAD[Red: flat·sharp·late]
+  GOOD --> UI[Scrolling score overlay]
+  BAD --> UI
+  WA --> REC[MediaRecorder] --> IDB[(IndexedDB<br/>saved session)]
+  UI --> SCORE[Accuracy score] --> IDB
+</pre>
+        <figcaption>fig. 5 — mic → analysis → compare-to-reference → colored overlay, recorded in parallel.</figcaption>
+      </figure>
+    </div>
+    <div class="grid2" style="margin-top:22px">
+      <div class="card"><span class="num">A</span><h3>Runs on-device</h3><p>Pitch detection in an AudioWorklet means feedback is instant and works offline — no round-trip to a server.</p></div>
+      <div class="card"><span class="num">B</span><h3>One engine, two instruments</h3><p>Guitar (polyphonic onset) and voice (monophonic pitch) share the same compare-to-reference contract.</p></div>
+      <div class="card"><span class="num">C</span><h3>Record ≠ Score</h3><p>MediaRecorder captures audio; the scorer captures accuracy events. Both land in IndexedDB and surface under Progress.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>06</b> System diagram · PWA architecture</p>
+    <h2>Offline-first, installable</h2>
+    <p class="sub">What makes it a <em>PWA</em> and not just a site: an installable app shell, a service worker caching strategy, and local storage so a practice session never depends on the network.</p>
+    <div class="diagram">
+      <figure>
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#12878922','primaryBorderColor':'#128789','primaryTextColor':'#24242c',
+  'lineColor':'#9a98a4','fontFamily':'ui-monospace, monospace','fontSize':'13px'}}}%%
+flowchart TB
+  subgraph Device[On device]
+    SHELL[App Shell<br/>HTML/CSS/JS · manifest.json]
+    SW{{Service Worker}}
+    CACHE[(Cache Storage<br/>shell + song assets)]
+    IDB[(IndexedDB<br/>recordings · scores · annotations)]
+    AUDIO[Web Audio engine]
+    SHELL --- SW
+    SW --- CACHE
+    SHELL --- IDB
+    SHELL --- AUDIO
+  end
+  subgraph Cloud[Network · optional]
+    API[Song catalog API]
+    SYNC[Progress sync]
+  end
+  SW -.stale-while-revalidate.-> API
+  IDB -.background sync.-> SYNC
+</pre>
+        <figcaption>fig. 6 — everything inside “On device” works offline; the cloud is an enhancement, not a dependency.</figcaption>
+      </figure>
+    </div>
+    <div class="grid2" style="margin-top:22px">
+      <div class="card"><h3>Installable</h3><p>Web app manifest + icons → “Add to Home Screen,” full-screen, no browser chrome.</p><span class="chip on">manifest.json</span><span class="chip on">app shell</span></div>
+      <div class="card"><h3>Reliable offline</h3><p>Service worker precaches the shell and cached songs; stale-while-revalidate for the catalog.</p><span class="chip on">service worker</span><span class="chip on">Cache Storage</span></div>
+      <div class="card"><h3>Local-first data</h3><p>Recordings and scores live in IndexedDB, syncing to the cloud opportunistically via Background Sync.</p><span class="chip on">IndexedDB</span><span class="chip">Background Sync</span></div>
+      <div class="card"><h3>Native-feeling</h3><p>Screen Wake Lock during practice, media-session controls, haptics on beat — the PWA polish that sells it.</p><span class="chip">Wake Lock</span><span class="chip">Media Session</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>07</b> Build roadmap</p>
+    <h2>Sequence the diagrams into shippable slices</h2>
+    <p class="sub">Each phase is a vertical slice that’s demoable on its own — the fastest path to feeling the core loop.</p>
+    <div class="road">
+      <div class="phase">
+        <div><span class="p">P0</span><div class="goal2">Skeleton</div></div>
+        <div><ul>
+          <li>App shell + manifest + service worker → installable, offline-loading.</li>
+          <li>Four-tab navigation from the IA map (fig. 3).</li>
+          <li>Static song library with keyword search.</li>
+        </ul></div>
+      </div>
+      <div class="phase">
+        <div><span class="p">P1</span><div class="goal2">Practice loop</div></div>
+        <div><ul>
+          <li>Song detail → scrolling tabs / sheet music with pause &amp; tempo.</li>
+          <li>Web Audio capture + MediaRecorder; sessions saved to IndexedDB.</li>
+          <li>Live pitch/timing meter (voice first — monophonic is simpler).</li>
+        </ul></div>
+      </div>
+      <div class="phase">
+        <div><span class="p">P2</span><div class="goal2">Review loop</div></div>
+        <div><ul>
+          <li>Session scoring + accuracy trend on the Progress tab.</li>
+          <li>Feedback detail (notes missed, pitch drift) with session playback.</li>
+          <li>Guitar mode: polyphonic onset detection.</li>
+        </ul></div>
+      </div>
+      <div class="phase">
+        <div><span class="p">P3</span><div class="goal2">Polish &amp; sync</div></div>
+        <div><ul>
+          <li>Basic lessons + “3 checks” onboarding; vocal annotations.</li>
+          <li>Wake Lock, media-session, haptics, install prompt.</li>
+          <li>Optional cloud sync via Background Sync.</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker"><b>08</b> Design system starter</p>
+    <h2>Tokens, carried from your sticky notes</h2>
+    <p class="sub">The teal / amber / coral of your map become a real palette: teal for identity &amp; “in-progress,” amber for actions, coral for record/live — with green &amp; red reserved strictly for pitch feedback.</p>
+    <div class="grid2">
+      <div class="card"><h3>Color</h3><p>Teal <code style="font-family:var(--mono)">#128789</code> primary · Amber <code style="font-family:var(--mono)">#D9922E</code> action · Coral <code style="font-family:var(--mono)">#DC6A44</code> live/record · In-tune <code style="font-family:var(--mono)">#3E9B57</code> · Off-pitch <code style="font-family:var(--mono)">#CF4B36</code>. Both light &amp; dark themes.</p></div>
+      <div class="card"><h3>Type</h3><p>Serif display for headings (warmth, musicality), system sans for body, <span style="font-family:var(--mono)">monospace</span> for tablature &amp; data — where character alignment matters.</p></div>
+      <div class="card"><h3>Layout</h3><p>Single-column, thumb-reachable, bottom-tab nav. 8px spacing grid. Large touch targets — people tap mid-practice, sometimes with a pick in hand.</p></div>
+      <div class="card"><h3>Motion</h3><p>Reserve animation for the scoring overlay &amp; the scrolling score. Everything else stays still — a metronome-steady interface. Respects <span style="font-family:var(--mono)">reduced-motion</span>.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Harmonic PWA design blueprint · derived from the “Harmonic User Stories” map · Practice → Review, mirrored across guitar &amp; voice.
+  </div>
+</footer>
