@@ -1,0 +1,26 @@
+.midi-uploader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #128789;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.midi-uploader--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.midi-uploader input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}

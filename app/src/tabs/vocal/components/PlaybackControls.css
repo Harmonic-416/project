@@ -1,0 +1,40 @@
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px 0;
+}
+
+.playback-controls__button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.playback-controls__button--secondary {
+  background: #e2dfd8;
+  color: #24242c;
+}
+
+.playback-controls__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.playback-controls__seek {
+  flex: 1;
+  accent-color: #128789;
+}
+
+.playback-controls__time {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: #6c6a72;
+  min-width: 84px;
+  text-align: right;
+}
