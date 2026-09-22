@@ -30,7 +30,7 @@ const backendLib = fileURLToPath(new URL('../src/lib', import.meta.url))
 export default defineConfig({
   resolve: {
     alias: { '@backend': backendLib },
-    dedupe: ['@supabase/supabase-js'],
+    dedupe: ['@supabase/supabase-js', '@tonejs/midi'],
   },
   define: {
     __SONG_FILES__: JSON.stringify(listSongFiles()),
