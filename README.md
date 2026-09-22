@@ -54,6 +54,16 @@ npm run test:backend  # just the Supabase integration suite
 - Frontend hosting (Vercel/Netlify/Pages) comes later with the
   `add-devops-infrastructure` change.
 
+## Capacity and scaling
+
+`docs/scaling-plan.md` holds the load model, the service-level targets, the
+measured baseline, the plan limits that matter, the triggers for moving up a
+tier or off Supabase, and the migration runbook. Re-measure with
+
+```
+node tests/load/supabase-baseline.mjs   # ~1.5k requests, one throwaway user, cleans up after itself
+```
+
 ## Architecture rules (non-negotiable)
 
 - All real-time audio analysis is **client-side**; live mic audio never
