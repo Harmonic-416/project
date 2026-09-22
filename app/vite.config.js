@@ -21,8 +21,9 @@ function listSongFiles() {
 
 // The Supabase layer (auth / songs / progress) lives at the repo root in
 // src/lib and is shared with the backend test-suite; the app imports it as
-// `@backend/<module>`. dedupe keeps a single supabase-js instance even
-// though both package.json files list it.
+// `@backend/<module>`. dedupe makes the packages that layer imports resolve
+// from app/node_modules — one supabase-js instance, and a build that works
+// when only the app's dependencies are installed (CI's app job).
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const backendLib = fileURLToPath(new URL('../src/lib', import.meta.url))
 
