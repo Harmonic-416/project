@@ -8,9 +8,9 @@ import { extractScoreModel } from '../notation/scoreModel.js'
  * (next/reset/show/hide) so playback code can drive highlighting without
  * knowing anything about SVG rendering.
  *
- * `content` is a MusicXML string or, for .mxl, a binary string (see
- * notation/loadNotation.js). Once rendered, `onReady` receives the score
- * model derived from what is on screen (notation/scoreModel.js).
+ * `content` is a MusicXML string (see notation/loadNotation.js). Once
+ * rendered, `onReady` receives the score model derived from what is on
+ * screen (notation/scoreModel.js).
  */
 const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady, onError }, ref) {
   const containerRef = useRef(null)

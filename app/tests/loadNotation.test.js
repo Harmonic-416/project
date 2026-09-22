@@ -42,10 +42,16 @@ describe('loadNotation', () => {
     expect(loaded.content).toContain('<work-title>Ode to Joy</work-title>')
   })
 
-  it('hands compressed MXL to OSMD as a binary string', async () => {
+  it('unzips compressed MXL into MusicXML text', async () => {
     const loaded = await loadNotation(fixture('musicxml/ode-to-joy.mxl'), 'ode-to-joy.mxl')
     expect(loaded.format).toBe('mxl')
-    expect(loaded.content.startsWith('PK')).toBe(true)
+    expect(loaded.content).toContain('<work-title>Ode to Joy</work-title>')
+    expect(loaded.content.startsWith('PK')).toBe(false)
+  })
+
+  it('accepts a title override (cloud songs carry their own titles)', async () => {
+    const loaded = await loadNotation(fixture('musicxml/ode-to-joy.musicxml'), 'x.musicxml', { title: 'From the cloud' })
+    expect(loaded.title).toBe('From the cloud')
   })
 
   it('rejects text that is not MusicXML', async () => {

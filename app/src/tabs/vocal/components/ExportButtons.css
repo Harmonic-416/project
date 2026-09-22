@@ -1,7 +1,7 @@
 .export-buttons {
   display: flex;
   gap: 6px;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .export-buttons button {

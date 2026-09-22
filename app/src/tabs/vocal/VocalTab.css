@@ -63,3 +63,32 @@
 .vocal-tab__status--error {
   color: #cf4b36;
 }
+
+.vocal-tab__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.vocal-tab__save {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vocal-tab__save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vocal-tab__save--done {
+  background: #e2dfd8;
+  color: #24242c;
+}

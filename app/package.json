@@ -11,7 +11,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
     "@tonejs/midi": "^2.0.28",
+    "jszip": "^3.10.2",
     "opensheetmusicdisplay": "^2.1.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

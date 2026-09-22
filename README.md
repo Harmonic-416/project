@@ -1,23 +1,45 @@
 # Harmonic
 
 Music-learning PWA (CSE 416) — "Learn the instrument and the language at the
-same time." This repo currently holds the **backend layer** (Supabase: auth,
-song storage + recordings, progress) from the OpenSpec change
-`add-backend-services`. Specs live in the main repo under `openspec/`.
+same time." This repo holds the **frontend** (`app/`, React + Vite PWA) and
+the **backend layer** (Supabase: auth, song storage + recordings, progress)
+from the OpenSpec change `add-backend-services`. Specs live under `openspec/`.
 
 Supabase project: [`mxfclxntqbeznbubfmwa`](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa)
 
 ## Layout
 
 ```
+app/              React + Vite PWA (Guitar / Vocal tabs); imports the backend
+                  layer as `@backend/<module>` (alias to ../src/lib)
 src/lib/          Supabase client + auth / progress / songs modules
 supabase/
-  migrations/     schema, RLS policies, storage buckets, seed songs
+  migrations/     schema, RLS policies, storage buckets, seed songs (catalog)
+  seed/notation/  MusicXML for the catalog songs (uploaded to the bucket)
 tests/
   backend/        integration tests against a Supabase project (vitest)
+  fixtures/       MIDI + MusicXML corpus shared by backend and app tests
   audio/          client-side audio spikes (pitch detection, enunciation)
-.github/workflows/ci.yml   CI (typecheck + tests) and CD (db push on main)
+.github/workflows/ci.yml   CI (backend typecheck+tests, app lint+test+build),
+                           CD (db push on main)
 ```
+
+## Frontend (app/)
+
+```
+cd app
+cp .env.example .env.local     # optional: enables sign-in + cloud library
+npm install
+npm run dev                    # http://localhost:5173
+npm test                       # converter / import / export unit tests
+```
+
+The Vocal tab opens MIDI, MusicXML and MXL files (built-in list from
+`app/public/midi-files/`, or upload), renders them with OpenSheetMusicDisplay,
+plays them with Tone.js in sync with the cursor, exports MusicXML/MIDI, and —
+when signed in — shows the shared song catalog, lets you copy catalog songs
+or save your own files to your cloud library (stored as MusicXML in the
+private `notation` bucket).
 
 ## Setup
 
@@ -33,8 +55,15 @@ tests/
 4. For the integration tests to pass: in
    [Auth → Sign In / Up](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa/auth/providers),
    turn **Confirm email OFF** (dev/test convenience; revisit before launch).
-5. Upload the 3 seed MusicXML files to the `notation` bucket under `seed/`
-   (paths listed in `0002_seed_songs.sql`).
+5. Upload the catalog notation files to the `notation` bucket under `seed/`
+   (paths listed in `0002_seed_songs.sql` / `0003_seed_catalog.sql`):
+   ```
+   for f in supabase/seed/notation/*.musicxml; do
+     supabase storage cp "$f" "ss:///notation/seed/$(basename "$f")" --experimental
+   done
+   ```
+   `house-of-the-rising-sun.musicxml` has no source file yet; the app lists
+   that seed song as "notation missing" until one is uploaded.
 
 ## Test
 

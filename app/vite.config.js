@@ -1,4 +1,5 @@
 import { readdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -18,8 +19,19 @@ function listSongFiles() {
   }
 }
 
+// The Supabase layer (auth / songs / progress) lives at the repo root in
+// src/lib and is shared with the backend test-suite; the app imports it as
+// `@backend/<module>`. dedupe keeps a single supabase-js instance even
+// though both package.json files list it.
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+const backendLib = fileURLToPath(new URL('../src/lib', import.meta.url))
+
 // https://vite.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: { '@backend': backendLib },
+    dedupe: ['@supabase/supabase-js'],
+  },
   define: {
     __SONG_FILES__: JSON.stringify(listSongFiles()),
   },
@@ -27,6 +39,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // OSMD + Tone + supabase-js exceed workbox's 2 MiB precache default.
+      workbox: { maximumFileSizeToCacheInBytes: 4 * 1024 * 1024 },
       manifest: {
         name: 'Harmonic',
         short_name: 'Harmonic',
@@ -47,6 +61,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    allowedHosts: ['america-joined-fifteen-enabled.trycloudflare.com']
-  }
+    allowedHosts: ['america-joined-fifteen-enabled.trycloudflare.com'],
+    fs: { allow: [repoRoot] },
+  },
 })

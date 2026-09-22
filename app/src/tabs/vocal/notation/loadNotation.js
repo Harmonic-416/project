@@ -1,15 +1,16 @@
+import JSZip from 'jszip'
 import { parseMidiFile } from '../midi/parseMidi.js'
 import { midiToMusicXml } from '../midi/midiToMusicXml.js'
 
 /**
  * Notation import. Everything the Vocal tab can open goes through here and
  * comes out as `{ format, title, content, sourceBytes }`, where `content` is
- * what SheetMusicViewer hands to OSMD: a MusicXML string, or — for compressed
- * .mxl — a binary string that OSMD unzips itself.
+ * always a MusicXML string — what SheetMusicViewer hands to OSMD and what
+ * the cloud library stores.
  *
  *   MIDI      → midiToMusicXml (our converter)  → MusicXML string
  *   MusicXML  → validated text                  → MusicXML string
- *   MXL       → raw zip bytes                   → binary string
+ *   MXL       → unzipped, root file located     → MusicXML string
  */
 
 export const NOTATION_EXTENSIONS = ['mid', 'midi', 'musicxml', 'xml', 'mxl']
@@ -39,35 +40,47 @@ export function detectNotationFormat(filename, bytes) {
   return 'musicxml'
 }
 
-function toBinaryString(bytes) {
-  const u8 = new Uint8Array(bytes)
-  let out = ''
-  for (let i = 0; i < u8.length; i += 0x8000) {
-    out += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000))
-  }
-  return out
+/** MXL = zip; META-INF/container.xml names the root score file. */
+export async function unzipMxl(arrayBuffer) {
+  const zip = await JSZip.loadAsync(arrayBuffer)
+  const container = zip.file('META-INF/container.xml')
+  const rootPath = container
+    ? (await container.async('string')).match(/<rootfile[^>]*full-path="([^"]+)"/)?.[1]
+    : null
+  const entry =
+    (rootPath && zip.file(rootPath)) ||
+    Object.values(zip.files).find(
+      (file) => !file.dir && !file.name.startsWith('META-INF/') && /\.(musicxml|xml)$/i.test(file.name),
+    )
+  if (!entry) throw new Error('This MXL archive has no MusicXML file inside.')
+  return entry.async('string')
 }
 
-export async function loadNotation(arrayBuffer, filename) {
-  const format = detectNotationFormat(filename, arrayBuffer)
-  const title = titleFromFilename(filename)
-
-  if (format === 'midi') {
-    const midi = await parseMidiFile(arrayBuffer)
-    const { musicXml } = midiToMusicXml(midi)
-    return { format, title, content: musicXml, sourceBytes: arrayBuffer }
-  }
-
-  if (format === 'mxl') {
-    return { format, title, content: toBinaryString(arrayBuffer), sourceBytes: arrayBuffer }
-  }
-
-  const text = new TextDecoder().decode(arrayBuffer)
+function validateMusicXml(text) {
   if (/<score-timewise[\s>]/.test(text)) {
     throw new Error('Timewise MusicXML is not supported yet — export the file as partwise.')
   }
   if (!/<score-partwise[\s>]/.test(text)) {
     throw new Error('This file is not MusicXML (no <score-partwise> root).')
   }
-  return { format: 'musicxml', title, content: text, sourceBytes: arrayBuffer }
+  return text
+}
+
+export async function loadNotation(arrayBuffer, filename, { title } = {}) {
+  const format = detectNotationFormat(filename, arrayBuffer)
+  const resolvedTitle = title ?? titleFromFilename(filename)
+
+  if (format === 'midi') {
+    const midi = await parseMidiFile(arrayBuffer)
+    const { musicXml } = midiToMusicXml(midi)
+    return { format, title: resolvedTitle, content: musicXml, sourceBytes: arrayBuffer }
+  }
+
+  if (format === 'mxl') {
+    const content = validateMusicXml(await unzipMxl(arrayBuffer))
+    return { format, title: resolvedTitle, content, sourceBytes: arrayBuffer }
+  }
+
+  const content = validateMusicXml(new TextDecoder().decode(arrayBuffer))
+  return { format: 'musicxml', title: resolvedTitle, content, sourceBytes: arrayBuffer }
 }
