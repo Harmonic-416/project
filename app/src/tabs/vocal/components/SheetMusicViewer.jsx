@@ -1,13 +1,18 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 import './SheetMusicViewer.css'
+import { extractScoreModel } from '../notation/scoreModel.js'
 
 /**
- * Renders MusicXML via OSMD and exposes a small imperative cursor API
+ * Renders notation via OSMD and exposes a small imperative cursor API
  * (next/reset/show/hide) so playback code can drive highlighting without
  * knowing anything about SVG rendering.
+ *
+ * `content` is a MusicXML string or, for .mxl, a binary string (see
+ * notation/loadNotation.js). Once rendered, `onReady` receives the score
+ * model derived from what is on screen (notation/scoreModel.js).
  */
-const SheetMusicViewer = forwardRef(function SheetMusicViewer({ musicXml, onReady }, ref) {
+const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady, onError }, ref) {
   const containerRef = useRef(null)
   const osmdRef = useRef(null)
 
@@ -18,12 +23,13 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ musicXml, onRead
       reset: () => osmdRef.current?.cursor?.reset(),
       show: () => osmdRef.current?.cursor?.show(),
       hide: () => osmdRef.current?.cursor?.hide(),
+      getOsmd: () => osmdRef.current,
     }),
     [],
   )
 
   useEffect(() => {
-    if (!containerRef.current || !musicXml) return undefined
+    if (!containerRef.current || !content) return undefined
     let cancelled = false
 
     async function render() {
@@ -34,18 +40,24 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ musicXml, onRead
           followCursor: true,
         })
       }
-      await osmdRef.current.load(musicXml)
+      const osmd = osmdRef.current
+      await osmd.load(content)
       if (cancelled) return
-      osmdRef.current.render()
-      osmdRef.current.cursor.show()
-      onReady?.()
+      osmd.render()
+      const model = extractScoreModel(osmd)
+      osmd.cursor.show()
+      onReady?.(model)
     }
 
-    render()
+    render().catch((err) => {
+      if (cancelled) return
+      console.error(err)
+      onError?.(err)
+    })
     return () => {
       cancelled = true
     }
-  }, [musicXml, onReady])
+  }, [content, onReady, onError])
 
   useEffect(
     () => () => {

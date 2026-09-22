@@ -5,13 +5,13 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // Song library file list, discovered from public/midi-files/ at config-load
 // time (dev server start / build) and baked into the app via `define` below.
-// Drop a .mid/.midi file in there and restart the dev server (or rebuild) to
-// pick it up — public/ is copied through verbatim, so no separate asset
-// pipeline step is needed to serve the files themselves.
-function listMidiSongFiles() {
+// Drop a .mid/.midi/.musicxml/.xml/.mxl file in there and restart the dev
+// server (or rebuild) to pick it up — public/ is copied through verbatim, so
+// no separate asset pipeline step is needed to serve the files themselves.
+function listSongFiles() {
   try {
     return readdirSync(new URL('./public/midi-files/', import.meta.url))
-      .filter((name) => /\.(mid|midi)$/i.test(name))
+      .filter((name) => /\.(mid|midi|musicxml|xml|mxl)$/i.test(name))
       .sort()
   } catch {
     return []
@@ -21,7 +21,7 @@ function listMidiSongFiles() {
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    __MIDI_SONG_FILES__: JSON.stringify(listMidiSongFiles()),
+    __SONG_FILES__: JSON.stringify(listSongFiles()),
   },
   plugins: [
     react(),
