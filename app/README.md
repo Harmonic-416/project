@@ -1,16 +1,20 @@
-# React + Vite
+# Harmonic — app
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The React + Vite PWA. See the [root README](../README.md) for the full
+picture and [`docs/architecture.md`](../docs/architecture.md) for how the
+pieces fit.
 
-Currently, two official plugins are available:
+```
+npm ci
+npm run dev      # http://localhost:5173 — works with no keys (local files only)
+npm test         # unit tests (vitest)
+npm run lint     # oxlint
+npm run build    # production build → dist/ (PWA with Workbox precache)
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Optional cloud features (sign-in, song catalog, save to cloud): copy
+`.env.example` to `.env.local` and paste the Supabase anon key.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The backend layer is imported from the repo root as `@backend/<module>`
+(Vite alias to `../src/lib`), so this package has no copy of the Supabase
+code of its own.

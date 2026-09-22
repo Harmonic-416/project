@@ -1,4 +1,5 @@
 .vocal-tab {
+  box-sizing: border-box;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -19,8 +20,9 @@
 
 .vocal-tab__toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
 }
 
 .vocal-tab__back {
@@ -34,11 +36,23 @@
 }
 
 .vocal-tab__song-title {
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   font-size: 0.95rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.vocal-tab__format {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e2dfd8;
+  color: #24242c;
 }
 
 .vocal-tab__status {
@@ -48,4 +62,33 @@
 
 .vocal-tab__status--error {
   color: #cf4b36;
+}
+
+.vocal-tab__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.vocal-tab__save {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vocal-tab__save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vocal-tab__save--done {
+  background: #e2dfd8;
+  color: #24242c;
 }

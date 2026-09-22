@@ -1,79 +1,132 @@
 import { useCallback, useRef, useState } from 'react'
 import './VocalTab.css'
 import SongLibrary from './components/SongLibrary.jsx'
-import MidiUploader from './components/MidiUploader.jsx'
+import CloudLibrary from './components/CloudLibrary.jsx'
+import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
 import PlaybackControls from './components/PlaybackControls.jsx'
-import { parseMidiFile } from './midi/parseMidi.js'
-import { midiToMusicXml } from './midi/midiToMusicXml.js'
+import ExportButtons from './components/ExportButtons.jsx'
+import RecordPanel from './components/RecordPanel.jsx'
+import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
 import { songLibrary } from './songs/songLibrary.js'
+import { fetchCloudNotation, saveNotationToCloud } from './songs/cloudLibrary.js'
+import { useSession } from '../../auth/useSession.js'
+import { supabase } from '../../lib/supabaseClient.js'
 
-// This tab currently only covers MIDI -> sheet music -> synced playback.
-// Recording + live pitch detection are meant to slot in later as siblings
-// of midi/ and playback/ (e.g. audio/, pitch/) without touching this file's
-// existing wiring.
+const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
+const NO_SCHEDULE = []
+const NO_TIMESTAMPS = []
+
+// This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
+// playback, export, and the cloud library (Supabase, via the shared backend
+// layer). Recording + live pitch detection are meant to slot in later as
+// siblings of notation/ and playback/ (e.g. audio/, pitch/) without touching
+// this file's existing wiring.
 function VocalTab() {
+  const auth = useSession()
   const [view, setView] = useState('library') // library | detail
   const [status, setStatus] = useState('idle') // idle | loading | ready | error
   const [error, setError] = useState(null)
-  const [songTitle, setSongTitle] = useState(null)
-  const [musicXml, setMusicXml] = useState(null)
-  const [playbackData, setPlaybackData] = useState(null)
-  const [sheetReady, setSheetReady] = useState(false)
+  const [notation, setNotation] = useState(null) // { format, title, content, sourceBytes, cloudSongId, isSeed }
+  const [scoreModel, setScoreModel] = useState(null) // derived from the rendered score
+  const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
+  const [saveError, setSaveError] = useState(null)
   const sheetMusicRef = useRef(null)
 
-  const loadFromArrayBuffer = useCallback(async (arrayBuffer, title) => {
+  const beginLoad = useCallback(() => {
+    setView('detail')
     setStatus('loading')
     setError(null)
-    setSheetReady(false)
-    setMusicXml(null)
-    setPlaybackData(null)
-    setSongTitle(title)
-    try {
-      const midi = await parseMidiFile(arrayBuffer)
-      const { musicXml: xml, playbackSchedule, cursorTimestamps } = midiToMusicXml(midi)
-      setMusicXml(xml)
-      setPlaybackData({ playbackSchedule, cursorTimestamps })
-      setStatus('ready')
-    } catch (err) {
-      console.error(err)
-      setError(err.message || 'Could not read that MIDI file.')
-      setStatus('error')
-    }
+    setNotation(null)
+    setScoreModel(null)
+    setSaveState('idle')
+    setSaveError(null)
   }, [])
+
+  const fail = useCallback((err, fallback) => {
+    console.error(err)
+    setError(err?.message || fallback)
+    setStatus('error')
+  }, [])
+
+  const loadFromArrayBuffer = useCallback(
+    async (arrayBuffer, filename, { title, cloudSongId = null, isSeed = false } = {}) => {
+      beginLoad()
+      try {
+        const loaded = await loadNotation(arrayBuffer, filename, { title })
+        setNotation({ ...loaded, cloudSongId, isSeed })
+        setStatus('ready')
+      } catch (err) {
+        fail(err, 'Could not read that file.')
+      }
+    },
+    [beginLoad, fail],
+  )
 
   const handleSongSelected = useCallback(
     async (song) => {
-      setView('detail')
-      setStatus('loading')
-      setSongTitle(song.title)
+      beginLoad()
       try {
         const response = await fetch(song.url)
-        const arrayBuffer = await response.arrayBuffer()
-        await loadFromArrayBuffer(arrayBuffer, song.title)
+        if (!response.ok) throw new Error(`Could not load that song (HTTP ${response.status}).`)
+        await loadFromArrayBuffer(await response.arrayBuffer(), song.filename)
       } catch (err) {
-        console.error(err)
-        setError('Could not load that song.')
-        setStatus('error')
+        fail(err, 'Could not load that song.')
       }
     },
-    [loadFromArrayBuffer],
+    [beginLoad, fail, loadFromArrayBuffer],
+  )
+
+  const handleCloudSongSelected = useCallback(
+    async (item) => {
+      beginLoad()
+      try {
+        const bytes = await fetchCloudNotation(supabase, item.song)
+        await loadFromArrayBuffer(bytes, `${item.title}.musicxml`, {
+          title: item.title,
+          cloudSongId: item.id,
+          isSeed: item.isSeed,
+        })
+      } catch (err) {
+        fail(err, 'Could not load that song from the cloud.')
+      }
+    },
+    [beginLoad, fail, loadFromArrayBuffer],
   )
 
   const handleFileSelected = useCallback(
     (file) => {
-      setView('detail')
       file.arrayBuffer().then((buf) => loadFromArrayBuffer(buf, file.name))
     },
     [loadFromArrayBuffer],
   )
 
-  const handleSheetReady = useCallback(() => setSheetReady(true), [])
+  const handleSave = useCallback(async () => {
+    if (!notation || !auth.user) return
+    setSaveState('saving')
+    setSaveError(null)
+    try {
+      const song = await saveNotationToCloud(supabase, notation)
+      setNotation((current) => (current ? { ...current, cloudSongId: song.id, isSeed: false } : current))
+      setSaveState('saved')
+    } catch (err) {
+      console.error(err)
+      setSaveError(err.message || 'Could not save to the cloud.')
+      setSaveState('error')
+    }
+  }, [notation, auth.user])
+
+  const handleSheetReady = useCallback((model) => {
+    setScoreModel(model)
+    if (import.meta.env.DEV) window.__harmonic = { ...(window.__harmonic ?? {}), scoreModel: model }
+  }, [])
+
+  const handleSheetError = useCallback((err) => fail(err, 'Could not render that score.'), [fail])
 
   const playback = useMidiPlayback({
-    playbackSchedule: playbackData?.playbackSchedule ?? [],
-    cursorTimestamps: playbackData?.cursorTimestamps ?? [],
+    playbackSchedule: scoreModel?.playbackSchedule ?? NO_SCHEDULE,
+    cursorTimestamps: scoreModel?.cursorTimestamps ?? NO_TIMESTAMPS,
     sheetMusicRef,
   })
 
@@ -82,10 +135,8 @@ function VocalTab() {
     setView('library')
     setStatus('idle')
     setError(null)
-    setSongTitle(null)
-    setMusicXml(null)
-    setPlaybackData(null)
-    setSheetReady(false)
+    setNotation(null)
+    setScoreModel(null)
   }, [playback])
 
   if (view === 'library') {
@@ -93,13 +144,32 @@ function VocalTab() {
       <div className="vocal-tab">
         <header className="vocal-tab__header">
           <h1>Vocal</h1>
-          <p>Choose a song, or upload your own MIDI file.</p>
+          <p>Choose a song, or upload your own MIDI or MusicXML file.</p>
         </header>
+        <h2 className="vocal-tab__section-title">Built-in songs</h2>
         <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
-        <MidiUploader onFileSelected={handleFileSelected} disabled={false} />
+        <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
+        <CloudLibrary auth={auth} supabase={supabase} onSelectSong={handleCloudSongSelected} />
       </div>
     )
   }
+
+  // Catalog songs can be copied into the user's own library; own songs are
+  // already there; local files get saved as new songs.
+  const ownedInCloud = Boolean(notation?.cloudSongId) && !notation?.isSeed
+  const canSave = Boolean(notation && scoreModel && auth.user && !ownedInCloud && saveState !== 'saving')
+  const saveLabel = ownedInCloud
+    ? 'In your library'
+    : saveState === 'saving'
+      ? 'Saving…'
+      : notation?.isSeed
+        ? 'Add to my library'
+        : 'Save to cloud'
+  const saveHint = !auth.configured
+    ? 'Cloud library not configured'
+    : !auth.user
+      ? 'Sign in (on the Songs page) to save'
+      : undefined
 
   return (
     <div className="vocal-tab">
@@ -107,15 +177,36 @@ function VocalTab() {
         <button type="button" className="vocal-tab__back" onClick={handleBack}>
           ← Songs
         </button>
-        <span className="vocal-tab__song-title">{songTitle}</span>
+        <span className="vocal-tab__song-title">{notation?.title}</span>
+        {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
+        {notation && (
+          <div className="vocal-tab__actions">
+            <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
+            <button
+              type="button"
+              className={`vocal-tab__save ${ownedInCloud ? 'vocal-tab__save--done' : ''}`}
+              disabled={!canSave}
+              title={saveHint}
+              onClick={handleSave}
+            >
+              {saveLabel}
+            </button>
+          </div>
+        )}
       </div>
 
       {status === 'loading' && <p className="vocal-tab__status">Loading…</p>}
       {status === 'error' && <p className="vocal-tab__status vocal-tab__status--error">{error}</p>}
+      {saveState === 'error' && <p className="vocal-tab__status vocal-tab__status--error">{saveError}</p>}
 
-      {musicXml && (
+      {notation && (
         <>
-          <SheetMusicViewer ref={sheetMusicRef} musicXml={musicXml} onReady={handleSheetReady} />
+          <SheetMusicViewer
+            ref={sheetMusicRef}
+            content={notation.content}
+            onReady={handleSheetReady}
+            onError={handleSheetError}
+          />
           <PlaybackControls
             state={playback.state}
             position={playback.position}
@@ -124,8 +215,11 @@ function VocalTab() {
             onPause={playback.pause}
             onStop={playback.stop}
             onSeek={playback.seek}
-            disabled={!sheetReady}
+            disabled={!scoreModel}
           />
+          {scoreModel && (
+            <RecordPanel scoreModel={scoreModel} playback={playback} sheetMusicRef={sheetMusicRef} title={notation.title} />
+          )}
         </>
       )}
     </div>

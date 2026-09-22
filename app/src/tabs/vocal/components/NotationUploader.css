@@ -1,4 +1,4 @@
-.midi-uploader {
+.notation-uploader {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -12,12 +12,12 @@
   cursor: pointer;
 }
 
-.midi-uploader--disabled {
+.notation-uploader--disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.midi-uploader input {
+.notation-uploader input {
   position: absolute;
   width: 1px;
   height: 1px;

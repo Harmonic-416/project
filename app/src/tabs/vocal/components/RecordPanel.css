@@ -1,0 +1,88 @@
+.record-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px 0;
+}
+
+.record-panel__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.record-panel__button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  background: #cf4b36;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.record-panel__button--stop {
+  background: #24242c;
+}
+
+.record-panel__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.record-panel__live {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e2dfd8;
+  color: #24242c;
+}
+
+.record-panel__live--in-tune { background: #d5f0df; color: #1d6b3d; }
+.record-panel__live--close { background: #fbeccc; color: #7a5300; }
+.record-panel__live--octave { background: #dde5fb; color: #2d4aa8; }
+.record-panel__live--wrong { background: #f8d9d3; color: #8f2c1c; }
+
+.record-panel__error {
+  color: #cf4b36;
+  font-size: 0.85rem;
+}
+
+.record-panel__result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.record-panel__link {
+  border: none;
+  background: none;
+  color: #128789;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Pitch trace drawn over the score (see audio/useSheetOverlay.js). */
+.pitch-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.pitch-overlay__dot { opacity: 0.85; }
+.pitch-overlay__dot--in-tune { fill: #2e9e5b; }
+.pitch-overlay__dot--close { fill: #e0a100; }
+.pitch-overlay__dot--octave { fill: #5b7cf2; }
+.pitch-overlay__dot--wrong { fill: #cf4b36; }
+.pitch-overlay__dot--rest { fill: #9a9a9a; }

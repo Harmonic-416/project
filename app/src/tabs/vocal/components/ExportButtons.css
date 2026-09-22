@@ -1,0 +1,21 @@
+.export-buttons {
+  display: flex;
+  gap: 6px;
+  margin-left: 0;
+}
+
+.export-buttons button {
+  border: 1px solid #128789;
+  border-radius: 6px;
+  background: none;
+  color: #128789;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.export-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
