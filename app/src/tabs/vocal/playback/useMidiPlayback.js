@@ -28,6 +28,8 @@ export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusic
     if (!playbackSchedule.length) return undefined
 
     const synth = new Tone.PolySynth(Tone.Synth).toDestination()
+    // Release tails of consecutive notes sum; -6 dB keeps the mix under 0 dBFS.
+    synth.volume.value = -6
     synthRef.current = synth
 
     const part = new Tone.Part((time, event) => {
@@ -37,10 +39,16 @@ export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusic
     partRef.current = part
 
     // Step 0 is the cursor's resting position after reset(); every later
-    // onset advances it one step.
+    // onset advances it one step. Transport callbacks fire `lookAhead`
+    // (~100 ms) before the audio, so the DOM step is deferred to the exact
+    // audio time via Tone's draw scheduler.
     scheduledIdsRef.current = cursorTimestamps
       .slice(1)
-      .map((t) => Tone.Transport.schedule(() => sheetMusicRef.current?.next(), t))
+      .map((t) =>
+        Tone.Transport.schedule((time) => {
+          Tone.getDraw().schedule(() => sheetMusicRef.current?.next(), time)
+        }, t),
+      )
 
     sheetMusicRef.current?.reset()
 
