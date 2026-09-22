@@ -4,18 +4,19 @@ Milestone rubric and where Harmonic stands against it. Keep this current until M
 
 | Rubric item | Status | Where |
 |---|---|---|
-| **Architecture** — boxes and arrows (clients, APIs, data, jobs) | ✅ Done | [Architecture plan](https://claude.ai/code/artifact/f1e70900-cc05-4795-9066-531731d6636f) — current state vs V1 specs vs pivot; also `openspec/changes/add-backend-services/design.md` |
+| **Architecture** — boxes and arrows (clients, APIs, data, jobs) | ✅ Done | [`docs/architecture.md`](architecture.md) (lanes diagram + components, data flows, decisions, testing); diagram source in the [specifications repo](https://github.com/Harmonic-416/specifications/blob/docs/compact-architecture/3-architecture/rough-architecture.md); [Architecture plan](https://claude.ai/code/artifact/f1e70900-cc05-4795-9066-531731d6636f) — current state vs V1 specs vs pivot; `openspec/changes/add-backend-services/design.md` |
 | **Stack** — what + one-sentence why | ✅ Done | See below |
-| **Clonable repo with CI skeleton** (lint / test / build) | 🟡 Partial | This repo + `.github/workflows/ci.yml` (typecheck + test on PR, migration push on main). **Gaps: no lint step, no build step** — add ESLint + a `build` script once the Vite shell exists |
-| **Minimal prototype that runs** — a heartbeat, not the product | 🟡 Partial | Backend heartbeat exists: 14/14 vitest integration tests against the live Supabase project (auth round-trip, RLS isolation, seed library). **Gap: no runnable client** — smallest fix is a one-page Vite app that logs in and lists the 3 seed songs |
+| **Clonable repo with CI skeleton** (lint / test / build) | ✅ Done | `.github/workflows/ci.yml`: job `backend` (oxlint, `tsc --noEmit`, vitest) and job `app` (oxlint, vitest, `vite build`) on every PR and push to `main`; `migrate` (`supabase db push`) on `main`. Locally: `npm run ci`. Verified from a fresh `git clone` + `npm ci` (README "Clone and run") |
+| **Minimal prototype that runs** — a heartbeat, not the product | ✅ Runs locally · 🟡 not deployed | `app/`: sign in → song catalog → open a song → sheet music + synced playback → export → record an attempt with the pitch drawn on the staff. Backend heartbeat: 30 vitest integration tests against the live Supabase project (auth, RLS isolation, progress, MIDI/MusicXML import → bucket → signed URL). **Gap: no HTTPS deployment yet** (`add-devops-infrastructure`) |
 | **Design doc connected to requirements** | ✅ Done | `openspec/` — every capability spec ties each requirement to its F#/N# id from `specifications/2-scope/requirements.md`; `design.md` records the cross-capability decisions |
 
 ## Stack (one sentence why, each)
 
 - **React + Vite (PWA via vite-plugin-pwa/Workbox)** — installable app with the fastest iteration loop, and the ecosystem agents/tooling are best at.
 - **Supabase (Postgres + Auth + Storage)** — auth, per-user data, and private file storage with zero custom server to build or operate.
-- **AlphaTab** — renders tab + standard notation from MusicXML and doubles as the source of truth for expected notes.
-- **Pitchy (McLeod) / Web Audio FFT / Tone.js / Tonal.js** — proven client-side pitch, chord verification, transport clock, and theory helpers, keeping all real-time audio on-device (≤100 ms budget).
+- **OpenSheetMusicDisplay (OSMD)** — renders MusicXML in the browser, and its cursor iterator doubles as the source of truth for playback timing and expected notes (replaced the planned AlphaTab; same MusicXML input).
+- **Tone.js + @tonejs/midi + jszip** — transport clock and synth for playback, MIDI parsing/writing for import and export, MXL unzipping.
+- **Pitchy (McLeod) on Web Audio** — proven client-side pitch tracking, keeping all real-time audio on-device (≤100 ms budget); Tonal.js still planned for chord/theory helpers.
 - **GitHub Actions + Supabase CLI** — CI/CD in the same place as the repo; `supabase db push` makes schema deploys one command.
 
 ## Current focus (per Eddie, 2026-09-21)
@@ -24,6 +25,6 @@ Less lessons; prioritize **(1) users reviewing their own pieces** (F22/F23 backe
 
 ## To close M2
 
-1. Merge PR #2 (backend + CI to `main`); add `SUPABASE_URL` / `SUPABASE_ANON_KEY` repo secrets so CI runs the integration suite.
-2. Add ESLint + `npm run lint`, and a `npm run build` (Vite shell), each as a CI job → rubric's lint/test/build reads literally green.
-3. Heartbeat prototype: minimal Vite page — login form → list seed songs from the live library → deployed on HTTPS (also satisfies the deployment spec's build requirement).
+1. Merge the integration PR (notation import/export, cloud library + catalog, recording prototype, CI + docs) to `main`; add `SUPABASE_URL` / `SUPABASE_ANON_KEY` repo secrets so CI runs the integration suite.
+2. Deploy `app/dist` on HTTPS (Vercel/Netlify/GitHub Pages) per `openspec/changes/add-devops-infrastructure` — the only rubric gap left.
+3. Wire the record panel to `uploadRecording` + `recordRunThrough` so an attempt becomes a `run_through` row (F22/F23 end to end).

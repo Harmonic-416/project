@@ -25,7 +25,7 @@ export function midiToMusicXml(data: ArrayBuffer | Uint8Array, title = 'Imported
   let midi: Midi
   try {
     midi = new Midi(data)
-  } catch (cause) {
+  } catch {
     throw new MidiConversionError('Could not parse this file as MIDI')
   }
 

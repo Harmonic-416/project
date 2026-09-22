@@ -6,11 +6,11 @@ on:
     branches: [main]
 
 jobs:
-  # CI: typecheck + tests on every PR and push to main.
-  # Unit tests always run; backend integration tests run only when the
+  # Backend layer (src/lib + Supabase migrations): lint, typecheck, tests.
+  # Unit tests always run; the integration tests run only when the
   # SUPABASE_URL / SUPABASE_ANON_KEY secrets are configured (they skip
   # themselves otherwise). Point these at a DEDICATED test project, not prod.
-  test:
+  backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +19,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
         env:
@@ -48,7 +49,7 @@ jobs:
   # access tokens) and SUPABASE_DB_PASSWORD (project database password).
   migrate:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [test, app]
+    needs: [backend, app]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

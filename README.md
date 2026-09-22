@@ -1,11 +1,51 @@
 # Harmonic
 
+[![CI](https://github.com/Harmonic-416/project/actions/workflows/ci.yml/badge.svg)](https://github.com/Harmonic-416/project/actions/workflows/ci.yml)
+
 Music-learning PWA (CSE 416) — "Learn the instrument and the language at the
 same time." This repo holds the **frontend** (`app/`, React + Vite PWA) and
-the **backend layer** (Supabase: auth, song storage + recordings, progress)
-from the OpenSpec change `add-backend-services`. Specs live under `openspec/`.
+the **backend layer** (`src/lib/` + `supabase/`: auth, song storage and
+recordings, progress) with the OpenSpec specs that tie both to the
+requirements. Requirements and the scope documents live in the separate
+[`Harmonic-416/specifications`](https://github.com/Harmonic-416/specifications) repo.
 
-Supabase project: [`mxfclxntqbeznbubfmwa`](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa)
+## How it works
+
+Harmonic is an installable web app (React + Vite PWA) that turns any MIDI,
+MusicXML or MXL file into sheet music you can hear: the file is converted to
+MusicXML in the browser, rendered with OpenSheetMusicDisplay, and played back
+by Tone.js in lockstep with a moving cursor, with all timing taken from the
+rendered score itself. When you sing along, your microphone is analysed
+entirely on your device: pitch is tracked about fifty times a second, drawn
+onto the staff as coloured dots, and scored against the melody when the song
+ends. A thin Supabase backend supplies accounts, a shared song catalog, each
+user's own library (stored as MusicXML in a private bucket) and progress
+rows, all guarded by row-level security, so nothing but small rows and
+optional compressed recordings ever leaves the phone.
+
+## Clone and run
+
+```
+git clone git@github.com:Harmonic-416/project.git harmonic
+cd harmonic
+npm ci                       # backend layer + its tests
+npm --prefix app ci          # the PWA
+npm run ci                   # lint + typecheck + test (backend), lint + test + build (app)
+npm --prefix app run dev     # http://localhost:5173
+```
+
+The app runs without any keys: built-in songs, upload, playback, export and
+the recording prototype all work offline. For sign-in, the song catalog and
+saving to the cloud, copy `app/.env.example` to `app/.env.local` and paste the
+anon key (see *Supabase setup* below). Node 20+.
+
+## Documentation
+
+- [`docs/architecture.md`](docs/architecture.md) — boxes and arrows, components, data flows, decisions, testing
+- [`docs/scaling-plan.md`](docs/scaling-plan.md) — load model, measured baseline, when and how to move off Supabase
+- [`docs/M2-design-and-setup.md`](docs/M2-design-and-setup.md) — milestone rubric and status
+- [`openspec/`](openspec/README.md) — requirement-linked specs, proposals and design notes
+- Supabase project: [`mxfclxntqbeznbubfmwa`](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa)
 
 ## Layout
 
@@ -19,8 +59,10 @@ supabase/
 tests/
   backend/        integration tests against a Supabase project (vitest)
   fixtures/       MIDI + MusicXML corpus shared by backend and app tests
+  load/           capacity baseline script
   audio/          client-side audio spikes (pitch detection, enunciation)
-.github/workflows/ci.yml   CI (backend typecheck+tests, app lint+test+build),
+docs/             architecture, scaling plan, milestone tracker
+.github/workflows/ci.yml   CI (backend lint+typecheck+tests, app lint+test+build),
                            CD (db push on main)
 ```
 
@@ -29,26 +71,28 @@ tests/
 ```
 cd app
 cp .env.example .env.local     # optional: enables sign-in + cloud library
-npm install
+npm ci
 npm run dev                    # http://localhost:5173
-npm test                       # converter / import / export unit tests
+npm test                       # converter / import / export / pitch unit tests
+npm run lint && npm run build  # what CI runs
 ```
 
 The Vocal tab opens MIDI, MusicXML and MXL files (built-in list from
 `app/public/midi-files/`, or upload), renders them with OpenSheetMusicDisplay,
-plays them with Tone.js in sync with the cursor, exports MusicXML/MIDI, and —
-when signed in — shows the shared song catalog, lets you copy catalog songs
-or save your own files to your cloud library (stored as MusicXML in the
-private `notation` bucket).
+plays them with Tone.js in sync with the cursor, exports MusicXML/MIDI, records
+a sung attempt with the pitch drawn on the staff, and — when signed in — shows
+the shared song catalog and lets you copy catalog songs or save your own files
+to your cloud library (stored as MusicXML in the private `notation` bucket).
 
-## Setup
+## Supabase setup
 
-1. `npm install`
+1. `npm ci`
 2. `cp .env.example .env.local` and paste the **anon public** key from
-   [Settings → API](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa/settings/api).
+   [Settings → API](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa/settings/api)
+   (and the same into `app/.env.local` with the `VITE_` prefix).
 3. Apply the migrations (one-time, either way):
    - **SQL editor:** paste `supabase/migrations/0001_init.sql`, then
-     `0002_seed_songs.sql`, into the
+     `0002_seed_songs.sql` and `0003_seed_catalog.sql`, into the
      [SQL editor](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa/sql/new) and run.
    - **CLI:** `brew install supabase/tap/supabase`, then `supabase login`,
      `supabase link --project-ref mxfclxntqbeznbubfmwa`, `supabase db push`.
@@ -68,20 +112,24 @@ private `notation` bucket).
 ## Test
 
 ```
-npm test              # unit tests always run; backend tests skip without .env.local
+npm run ci            # everything CI runs, both packages
+npm test              # backend: unit tests always run; integration tests skip without .env.local
 npm run test:backend  # just the Supabase integration suite
+npm --prefix app test # app unit tests
 ```
 
 ## CI/CD (GitHub Actions)
 
-- **CI** — every PR and push to `main`: `tsc --noEmit` + `vitest run`.
+- **CI** — every PR and push to `main`: job `backend` (`oxlint`, `tsc --noEmit`,
+  `vitest run`) and job `app` (`oxlint`, `vitest run`, `vite build`).
   Add repo secrets `SUPABASE_URL` / `SUPABASE_ANON_KEY` (ideally a separate
-  test project) to run the integration suite in CI.
+  test project) to run the integration suite in CI; without them it skips.
 - **CD** — on merge to `main`: `supabase db push` applies any new files in
   `supabase/migrations/` to the live project. Needs secrets
   `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD`.
 - Frontend hosting (Vercel/Netlify/Pages) comes later with the
-  `add-devops-infrastructure` change.
+  `add-devops-infrastructure` change; `npm --prefix app run build` produces
+  `app/dist`.
 
 ## Capacity and scaling
 
