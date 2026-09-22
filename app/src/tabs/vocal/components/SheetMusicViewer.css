@@ -1,0 +1,10 @@
+.sheet-music-viewer {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #ffffff;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  padding: 8px;
+}

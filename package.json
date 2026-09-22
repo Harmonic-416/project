@@ -1,0 +1,27 @@
+{
+  "name": "harmonic",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Harmonic — music-learning PWA (CSE 416). Backend layer: Supabase auth, progress, song storage.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:backend": "vitest run tests/backend",
+    "db:diff": "supabase db diff",
+    "db:push": "supabase db push"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "@tonejs/midi": "^2.0.28"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/ws": "^8.18.1",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "ws": "^8.21.3"
+  }
+}

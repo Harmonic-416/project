@@ -1,0 +1,46 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tab-bar {
+  display: flex;
+  border-top: 1px solid #e2dfd8;
+  background: #ffffff;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.tab-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 0 8px;
+  border: none;
+  background: none;
+  color: #6c6a72;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  color: #128789;
+}
+
+.tab-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.tab-label {
+  font-size: 0.75rem;
+}
