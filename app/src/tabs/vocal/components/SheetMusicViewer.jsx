@@ -24,6 +24,7 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
       show: () => osmdRef.current?.cursor?.show(),
       hide: () => osmdRef.current?.cursor?.hide(),
       getOsmd: () => osmdRef.current,
+      getContainer: () => containerRef.current,
     }),
     [],
   )

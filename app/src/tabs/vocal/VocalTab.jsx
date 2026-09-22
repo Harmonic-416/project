@@ -5,6 +5,7 @@ import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
 import PlaybackControls from './components/PlaybackControls.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
+import RecordPanel from './components/RecordPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
 import { songLibrary } from './songs/songLibrary.js'
@@ -140,6 +141,9 @@ function VocalTab() {
             onSeek={playback.seek}
             disabled={!scoreModel}
           />
+          {scoreModel && (
+            <RecordPanel scoreModel={scoreModel} playback={playback} sheetMusicRef={sheetMusicRef} title={notation.title} />
+          )}
         </>
       )}
     </div>
