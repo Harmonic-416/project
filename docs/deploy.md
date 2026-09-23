@@ -97,3 +97,30 @@ curl -s -o /dev/null -w '%{http_code}\n' https://<host>/some/deep/link  # expect
 Then on the deployed page: it must load over HTTPS, the mic prompt must appear
 when you start a recording, and a second visit with the network disabled must
 still open the app shell.
+
+## Enabling OAuth sign-in
+
+The Home tab ships "Continue with Google" and "Continue with GitHub" buttons.
+The code is complete, but a provider stays inert until it is enabled in the
+Supabase dashboard — until then the redirect comes back with an error, which
+the sign-in panel displays. Email + password works regardless.
+
+For each provider:
+
+1. Create the OAuth app on the provider's side and set its callback URL to
+   `https://mxfclxntqbeznbubfmwa.supabase.co/auth/v1/callback`
+   — [Google Cloud console](https://console.cloud.google.com/apis/credentials)
+   (OAuth client ID → Web application) or
+   [GitHub developer settings](https://github.com/settings/developers)
+   (New OAuth App).
+2. Paste the client ID and secret into
+   [Auth → Providers](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa/auth/providers)
+   and enable it.
+3. Allowlist the app's own URLs under
+   [Auth → URL Configuration](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa/auth/url-configuration):
+   set **Site URL** to `https://harmonic-vert.vercel.app` and add
+   `http://localhost:5173/**` plus `https://*-eduardolozs-projects.vercel.app/**`
+   as redirect URLs so local development and Vercel preview deploys work too.
+
+The app asks Supabase to redirect back to `window.location.origin`, so each
+environment returns to itself as long as its URL is allowlisted in step 3.
