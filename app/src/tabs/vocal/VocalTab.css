@@ -92,3 +92,49 @@
   background: #e2dfd8;
   color: #24242c;
 }
+
+/* Moved here from CloudLibrary.css, which went away with the tab's sign-in form. */
+.vocal-tab__section-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6c6a72;
+}
+
+.vocal-tab__search-songs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #128789;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #24242c;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vocal-tab__search-songs:hover {
+  background: #f0f7f7;
+}
+
+.vocal-tab__search-songs strong {
+  display: block;
+  font-size: 1rem;
+  color: #128789;
+}
+
+.vocal-tab__search-songs small {
+  display: block;
+  color: #6c6a72;
+  font-size: 0.85rem;
+}
+
+.vocal-tab__search-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}

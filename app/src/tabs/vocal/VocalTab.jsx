@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import './VocalTab.css'
 import SongLibrary from './components/SongLibrary.jsx'
-import CloudLibrary from './components/CloudLibrary.jsx'
+import OnlineSongs from './components/OnlineSongs.jsx'
 import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
 import PlaybackControls from './components/PlaybackControls.jsx'
@@ -11,7 +11,6 @@ import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
 import { songLibrary } from './songs/songLibrary.js'
 import { fetchCloudNotation, saveNotationToCloud } from './songs/cloudLibrary.js'
-import { useSession } from '../../auth/useSession.js'
 import { supabase } from '../../lib/supabaseClient.js'
 
 const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
@@ -23,9 +22,11 @@ const NO_TIMESTAMPS = []
 // layer). Recording + live pitch detection are meant to slot in later as
 // siblings of notation/ and playback/ (e.g. audio/, pitch/) without touching
 // this file's existing wiring.
-function VocalTab() {
-  const auth = useSession()
-  const [view, setView] = useState('library') // library | detail
+function VocalTab({ auth, onNavigate }) {
+  const [view, setView] = useState('library') // library | search | detail
+  // Where the back button goes: a cloud song opens from the search view, a
+  // built-in song or an upload from the library view.
+  const [returnTo, setReturnTo] = useState('library')
   const [status, setStatus] = useState('idle') // idle | loading | ready | error
   const [error, setError] = useState(null)
   const [notation, setNotation] = useState(null) // { format, title, content, sourceBytes, cloudSongId, isSeed }
@@ -66,6 +67,7 @@ function VocalTab() {
 
   const handleSongSelected = useCallback(
     async (song) => {
+      setReturnTo('library')
       beginLoad()
       try {
         const response = await fetch(song.url)
@@ -80,6 +82,7 @@ function VocalTab() {
 
   const handleCloudSongSelected = useCallback(
     async (item) => {
+      setReturnTo('search')
       beginLoad()
       try {
         const bytes = await fetchCloudNotation(supabase, item.song)
@@ -97,6 +100,7 @@ function VocalTab() {
 
   const handleFileSelected = useCallback(
     (file) => {
+      setReturnTo('library')
       file.arrayBuffer().then((buf) => loadFromArrayBuffer(buf, file.name))
     },
     [loadFromArrayBuffer],
@@ -132,12 +136,12 @@ function VocalTab() {
 
   const handleBack = useCallback(() => {
     playback.stop()
-    setView('library')
+    setView(returnTo)
     setStatus('idle')
     setError(null)
     setNotation(null)
     setScoreModel(null)
-  }, [playback])
+  }, [playback, returnTo])
 
   if (view === 'library') {
     return (
@@ -146,10 +150,39 @@ function VocalTab() {
           <h1>Vocal</h1>
           <p>Choose a song, or upload your own MIDI or MusicXML file.</p>
         </header>
+
+        <button type="button" className="vocal-tab__search-songs" onClick={() => setView('search')}>
+          <span className="vocal-tab__search-icon" aria-hidden="true">🔍</span>
+          <span>
+            <strong>Search songs</strong>
+            <small>Browse the online catalog and your saved songs</small>
+          </span>
+        </button>
+
         <h2 className="vocal-tab__section-title">Built-in songs</h2>
         <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
         <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
-        <CloudLibrary auth={auth} supabase={supabase} onSelectSong={handleCloudSongSelected} />
+      </div>
+    )
+  }
+
+  if (view === 'search') {
+    return (
+      <div className="vocal-tab">
+        <div className="vocal-tab__toolbar">
+          <button type="button" className="vocal-tab__back" onClick={() => setView('library')}>
+            ← Songs
+          </button>
+          <span className="vocal-tab__song-title">Search songs</span>
+        </div>
+        <OnlineSongs
+          user={auth.user}
+          configured={auth.configured}
+          ready={auth.ready}
+          supabase={supabase}
+          onSelectSong={handleCloudSongSelected}
+          onNavigateHome={() => onNavigate('home')}
+        />
       </div>
     )
   }
@@ -168,14 +201,14 @@ function VocalTab() {
   const saveHint = !auth.configured
     ? 'Cloud library not configured'
     : !auth.user
-      ? 'Sign in (on the Songs page) to save'
+      ? 'Sign in on the Home tab to save'
       : undefined
 
   return (
     <div className="vocal-tab">
       <div className="vocal-tab__toolbar">
         <button type="button" className="vocal-tab__back" onClick={handleBack}>
-          ← Songs
+          {returnTo === 'search' ? '← Search' : '← Songs'}
         </button>
         <span className="vocal-tab__song-title">{notation?.title}</span>
         {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}

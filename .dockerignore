@@ -1,0 +1,17 @@
+node_modules
+app/node_modules
+app/dist
+.git
+.github
+.env
+.env.local
+.env.*.local
+.playwright-mcp
+docs
+openspec
+specifications
+project
+supabase
+tests
+*.log
+.DS_Store

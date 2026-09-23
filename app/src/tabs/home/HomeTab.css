@@ -1,0 +1,86 @@
+.home-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 16px 32px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.home-tab__header h1 {
+  margin: 0 0 4px;
+  font-size: 2rem;
+}
+
+.home-tab__header p {
+  margin: 0;
+  color: #6c6a72;
+}
+
+.home-tab__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-tab__section-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6c6a72;
+}
+
+.home-tab__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.home-tab__hint code {
+  background: #e2dfd8;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.home-tab__links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-tab__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #24242c;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-tab__link:hover {
+  border-color: #128789;
+}
+
+.home-tab__link-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.home-tab__link strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.home-tab__link small {
+  display: block;
+  color: #6c6a72;
+  font-size: 0.85rem;
+}

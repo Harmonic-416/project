@@ -27,6 +27,16 @@
   border-color: #128789;
 }
 
+/* Songs whose notation file is not in storage yet (moved from CloudLibrary.css). */
+.song-library__item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.song-library__item:disabled:hover {
+  border-color: #e2dfd8;
+}
+
 .song-library__icon {
   font-size: 1.1rem;
 }
