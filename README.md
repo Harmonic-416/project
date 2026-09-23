@@ -127,9 +127,11 @@ npm --prefix app test # app unit tests
 - **CD** — on merge to `main`: `supabase db push` applies any new files in
   `supabase/migrations/` to the live project. Needs secrets
   `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD`.
-- Frontend hosting (Vercel/Netlify/Pages) comes later with the
-  `add-devops-infrastructure` change; `npm --prefix app run build` produces
-  `app/dist`.
+- **Frontend hosting** — `npm --prefix app run build` produces `app/dist`,
+  which any static HTTPS host can serve. Vercel is the current target
+  (`vercel.json`); `deploy/` holds the self-hosted equivalents (Docker+nginx,
+  Caddy). The host is interchangeable on purpose — see
+  [`docs/deploy.md`](docs/deploy.md) for the contract and the swap procedure.
 
 ## Capacity and scaling
 
