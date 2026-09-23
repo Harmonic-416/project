@@ -48,3 +48,77 @@
   color: #cf4b36;
   font-size: 0.85rem;
 }
+
+.auth-panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-panel__providers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-panel__provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #24242c;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-panel__provider:hover:not(:disabled) {
+  border-color: #128789;
+}
+
+.auth-panel__provider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-panel__provider--github {
+  background: #24242c;
+  border-color: #24242c;
+  color: #ffffff;
+}
+
+.auth-panel__provider-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+
+.auth-panel__provider-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* A rule with the word "or" sitting in the gap. */
+.auth-panel__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #6c6a72;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-panel__divider::before,
+.auth-panel__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2dfd8;
+}

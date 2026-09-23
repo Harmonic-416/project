@@ -1,21 +1,27 @@
 import { useState } from 'react'
 import './App.css'
+import HomeTab from './tabs/home/HomeTab.jsx'
 import GuitarTab from './tabs/guitar/GuitarTab.jsx'
 import VocalTab from './tabs/vocal/VocalTab.jsx'
+import { useSession } from './auth/useSession.js'
 
 const TABS = [
+  { id: 'home', label: 'Home', icon: '🏠', Component: HomeTab },
   { id: 'guitar', label: 'Guitar', icon: '🎸', Component: GuitarTab },
   { id: 'vocal', label: 'Vocal', icon: '🎤', Component: VocalTab },
 ]
 
 function App() {
-  const [activeTab, setActiveTab] = useState('guitar')
+  const [activeTab, setActiveTab] = useState('home')
+  // One session for the whole app: Home owns the sign-in UI, the instrument
+  // tabs only read `auth.user` to decide what they may save.
+  const auth = useSession()
   const ActiveComponent = TABS.find((tab) => tab.id === activeTab).Component
 
   return (
     <div className="app">
       <main className="content">
-        <ActiveComponent />
+        <ActiveComponent auth={auth} onNavigate={setActiveTab} />
       </main>
 
       <nav className="tab-bar">

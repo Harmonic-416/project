@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { login, logout, register } from '@backend/auth'
+import { login, logout, register, signInWithProvider } from '@backend/auth'
 import { isCloudConfigured, supabase } from '../lib/supabaseClient.js'
 
 /**
@@ -30,6 +30,13 @@ export function useSession() {
   }, [])
   const signOut = useCallback(() => logout(supabase), [])
 
+  // OAuth leaves the page entirely; the session comes back through the
+  // onAuthStateChange subscription above once the provider redirects here.
+  const signInWith = useCallback(
+    (provider) => signInWithProvider(supabase, provider, window.location.origin),
+    [],
+  )
+
   return {
     configured: isCloudConfigured,
     ready,
@@ -38,5 +45,6 @@ export function useSession() {
     signIn,
     signUp,
     signOut,
+    signInWith,
   }
 }

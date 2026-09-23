@@ -38,3 +38,25 @@ export async function getSession(supabase: SupabaseClient): Promise<Session | nu
   if (error) throw error
   return data.session
 }
+
+/** Providers wired up in the Supabase dashboard (Auth → Providers). */
+export type OAuthProvider = 'google' | 'github'
+
+/**
+ * Start an OAuth sign-in. Unlike login(), this resolves nothing useful: the
+ * browser navigates away to the provider and returns to `redirectTo` with the
+ * session in the URL fragment, which supabase-js consumes on the next page
+ * load. Treat a successful call as "we are leaving now", not "we are signed
+ * in" — the session arrives through onAuthStateChange after the round trip.
+ */
+export async function signInWithProvider(
+  supabase: SupabaseClient,
+  provider: OAuthProvider,
+  redirectTo?: string,
+): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: redirectTo ? { redirectTo } : undefined,
+  })
+  if (error) throw error
+}

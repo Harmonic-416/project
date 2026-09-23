@@ -1,0 +1,63 @@
+.online-songs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.online-songs__search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.online-songs__search:focus {
+  outline: none;
+  border-color: #128789;
+}
+
+.online-songs__group {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.online-songs__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.online-songs__hint code {
+  background: #e2dfd8;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.online-songs__error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #cf4b36;
+}
+
+.online-songs__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.online-songs__cta {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
