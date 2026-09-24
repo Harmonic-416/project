@@ -241,3 +241,10 @@
 .practice__demo button:hover {
   border-color: var(--hm-accent);
 }
+
+
+
+.practice__demo button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
