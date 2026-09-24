@@ -24,13 +24,14 @@ openspec/
 | Frontend | `specs/audio-pipeline`     | `add-frontend-experience`  |
 | Frontend | `specs/notation-rendering` | `add-frontend-experience`  |
 | Frontend | `specs/scoring-engine`     | `add-frontend-experience`  |
+| Frontend | `specs/tuner`              | `add-guitar-foundation`    |
 | Backend  | `specs/auth`               | `add-backend-services`     |
 | Backend  | `specs/progress-tracking`  | `add-backend-services`     |
 | Backend  | `specs/song-storage`       | `add-backend-services`     |
 | DevOps   | `specs/pwa-infra`          | `add-devops-infrastructure`|
 | DevOps   | `specs/deployment`         | `add-devops-infrastructure`|
 
-The three `add-*` changes are the active v1 build plan; their `tasks.md` files are the per-area build checklists. (Greenfield: specs were seeded by syncing the pure-ADDED deltas; changes stay open until implemented, then get archived.)
+`add-guitar-foundation` (M2) adds the `tuner` capability (F39), the shared AudioWorklet capture, and alphaTab rendering plus tab ↔ MIDI conversion for guitar. The three area `add-*` changes are the active v1 build plan; their `tasks.md` files are the per-area build checklists. (Greenfield: specs were seeded by syncing the pure-ADDED deltas; changes stay open until implemented, then get archived.)
 
 ## Workflow
 
@@ -47,4 +48,4 @@ npx --yes @fission-ai/openspec@latest validate  # check specs + deltas
 npx --yes @fission-ai/openspec@latest show <change-id>
 ```
 
-Authoritative product/architecture source docs live in `../specifications/` (separate read-only repo): requirements (F1–F38, N1–N6), v1 scope, tech stack, rough architecture, design philosophy, division of labor.
+Authoritative product/architecture source docs live in `../specifications/` (separate read-only repo): requirements (F1–F39, N1–N6), v1 scope, tech stack, rough architecture, design philosophy, division of labor.

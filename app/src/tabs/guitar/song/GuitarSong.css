@@ -1,0 +1,90 @@
+.guitar-song {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 16px;
+}
+
+.guitar-song--open {
+  height: 100%;
+}
+
+.guitar-song__header h2 {
+  font-size: 1.5rem;
+  margin: 0 0 4px;
+}
+
+.guitar-song__header p {
+  color: #6c6a72;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.guitar-song__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.guitar-song__back {
+  border: none;
+  background: none;
+  color: #128789;
+  font: inherit;
+  font-weight: 600;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.guitar-song__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guitar-song__format {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2dfd8;
+  color: #24242c;
+}
+
+.guitar-song__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.guitar-song__actions button {
+  border: 1px solid #128789;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: #ffffff;
+  color: #128789;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.guitar-song__notice {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fbeccc;
+  color: #7a5300;
+  font-size: 0.85rem;
+}
+
+.guitar-song__status {
+  margin: 0;
+  color: #6c6a72;
+}
+
+.guitar-song__status--error {
+  color: #cf4b36;
+}

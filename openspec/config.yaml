@@ -18,8 +18,11 @@ context: |
     Deliberately thin - CRUD only for auth, per-user progress, scores, song files, attempt
     recordings. NO custom Node/Express server in V1, and none unless a future need cannot
     be expressed in Supabase.
-  - Notation + reference playback: AlphaTab (renders tab + standard notation from Guitar
-    Pro / AlphaTex / MusicXML) with its built-in alphaSynth for reference audio.
+  - Notation + reference playback, one renderer per instrument (decided at M2):
+    guitar = alphaTab (tab + standard notation from Guitar Pro / alphaTex / MusicXML,
+    built-in alphaSynth for reference audio, MIDI + Guitar Pro export); voice =
+    OpenSheetMusicDisplay (standard notation from MusicXML; its cursor iterator gives the
+    voice timing model) with Tone.js playback. Both read MusicXML.
   - Single-note / voice pitch: Pitchy (McLeod pitch method / autocorrelation).
   - Guitar chord verification: native Web Audio AnalyserNode FFT - peak-picking matched
     against the ONE expected chord's frequency fingerprint (verification, not arbitrary
@@ -39,7 +42,7 @@ context: |
   analyzers (pitch / chord-FFT / RMS-volume) -> instrument-agnostic scoring engine.
   Analyzers emit ONE normalized event shape: {note, timestamp, confidence}; the scoring
   engine never knows whether an event came from voice, a single string, or a chord.
-  AlphaTab's parsed score is the single source of truth for "expected notes", and
+  The renderer's parsed score is the single source of truth for "expected notes", and
   detected-vs-expected comparison runs on ONE transport clock (no drift). Adding an
   instrument = one new analyzer emitting the standard event shape; mic capture, worklet,
   and scoring engine stay untouched.
@@ -68,10 +71,16 @@ context: |
     patchy-area highlighting), live-feedback display, always-visible in-lesson skip control,
     hint presentation (fretboard finger-position animation), chord diagram with live
     per-string state, diagram label toggles. Owns: F3, F4, F12, F24, F30, F31, F34, F35.
+  - tuner (added by change add-guitar-foundation): guitar tuner in the onboarding sound
+    check - standard-tuning string targets, nearest-string detection with manual lock,
+    cents readout + in-tune hysteresis, too-quiet state; first consumer of the shared
+    AudioWorklet capture. Owns: F39.
   - audio-pipeline: getUserMedia + AudioWorklet capture; pitch / chord-FFT / RMS-volume
     analyzers emitting normalized {note,timestamp,confidence} events; noise/volume gating;
     low-latency + mobile-Safari viability; dynamics. Owns: F19, N1, N2, N6.
-  - notation-rendering: AlphaTab tab+standard rendering, reference playback/transport,
+  - notation-rendering: alphaTab (guitar) / OSMD (voice) rendering, guitar notation
+    conversion (Guitar Pro / alphaTex / MusicXML / MIDI in, MIDI + Guitar Pro out),
+    reference playback/transport,
     countdown, click/drag-to-seek, tempo control, notation (solfege) label toggle, and
     random exercise/chord-progression generation producing renderable "expected notes".
     Owns: F5, F6, F7, F8, F15, F20, F36, F37.
@@ -129,7 +138,9 @@ rules:
   specs:
     - One spec file per capability at specs/<capability>/spec.md; begin each with a
       "## Purpose" line of 50+ characters (every V1 capability is brand-new).
-    - Use "## ADDED Requirements" only (greenfield - nothing to MODIFY or REMOVE yet).
+    - Use "## ADDED Requirements" for new behavior. To change an existing requirement use
+      "## MODIFIED Requirements", repeating its "### Requirement:" header exactly and giving
+      the full new text (not a diff).
     - Every requirement uses a "### Requirement:" header naming it and MUST use SHALL/MUST
       (never should/may); it MUST carry at least one "#### Scenario:" with WHEN/THEN bullets.
     - Scenarios MUST use exactly four hashtags (####); three hashtags or bullets fail silently.
