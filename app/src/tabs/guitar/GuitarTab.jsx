@@ -2,12 +2,14 @@ import { lazy, Suspense, useState } from 'react'
 import './GuitarTab.css'
 import Tuner from './tuner/Tuner.jsx'
 import AccountChip from '../../auth/AccountChip.jsx' // NEW: account button
+import PracticeScreen from './practice/PracticeScreen.jsx' // NEW: practice screen
 
 // alphaTab is ~1 MB: only download it when the song view is opened.
 const GuitarSong = lazy(() => import('./song/GuitarSong.jsx'))
 
 const VIEWS = [
   { id: 'tuner', label: 'Tuner' },
+  { id: 'practice', label: 'Practice' }, // NEW
   { id: 'song', label: 'Songs' },
 ]
 
@@ -39,6 +41,8 @@ function GuitarTab({ auth, onNavigate }) {
       <div className="guitar-tab__body">
         {view === 'tuner' ? (
           <Tuner />
+        ) : view === 'practice' ? (
+          <PracticeScreen /> // NEW
         ) : (
           <Suspense fallback={<p className="guitar-tab__loading">Loading songs…</p>}>
             <GuitarSong />

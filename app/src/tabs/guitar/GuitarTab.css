@@ -55,3 +55,23 @@
 .guitar-tab__top .guitar-tab__views {
   margin: 0;
 }
+
+
+
+/* Three views + the account button: tighten the switch on phones so it all fits. */
+@media (max-width: 480px) {
+  .guitar-tab__top .guitar-tab__view {
+    padding: 6px 12px;
+  }
+}
+
+/* Very narrow phones: the account button shows just the picture. */
+@media (max-width: 380px) {
+  .guitar-tab__top .account-chip {
+    padding: 0 4px;
+  }
+
+  .guitar-tab__top .account-chip__name {
+    display: none;
+  }
+}

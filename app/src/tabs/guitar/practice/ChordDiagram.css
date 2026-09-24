@@ -1,0 +1,63 @@
+.chord-diagram {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+}
+
+.chord-diagram__nut {
+  stroke: var(--hm-text);
+  stroke-width: 6;
+  stroke-linecap: square;
+}
+
+.chord-diagram__fret,
+.chord-diagram__string {
+  stroke: var(--hm-text-muted);
+  stroke-width: 1.5;
+}
+
+.chord-diagram__open {
+  fill: none;
+  stroke: var(--hm-text);
+  stroke-width: 1.8;
+}
+
+.chord-diagram__mute,
+.chord-diagram__name {
+  fill: var(--hm-text-muted);
+  font-size: 13px;
+  text-anchor: middle;
+}
+
+.chord-diagram__dot circle {
+  fill: var(--practice-good);
+  stroke: var(--practice-good-strong);
+  stroke-width: 1.5;
+}
+
+.chord-diagram__dot text {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+/* Hint: dots throb one after another while the chord plays. */
+.chord-diagram--pulse .chord-diagram__dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chord-dot-pulse 0.5s ease-in-out 3;
+}
+
+@keyframes chord-dot-pulse {
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chord-diagram--pulse .chord-diagram__dot {
+    animation: none;
+  }
+}

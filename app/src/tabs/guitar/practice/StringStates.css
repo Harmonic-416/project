@@ -1,0 +1,47 @@
+.string-states__label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--hm-text-muted);
+  font-size: 0.8rem;
+}
+
+.string-states__row {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.string-states__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--hm-border);
+  border-radius: 50%;
+  color: var(--hm-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.string-states__dot--good {
+  border-color: var(--practice-good-strong);
+  background: var(--practice-good);
+  color: #ffffff;
+}
+
+.string-states__dot--bad {
+  border-color: var(--practice-bad);
+  background: var(--practice-bad);
+  color: #ffffff;
+}
+
+.string-states__dot--muted {
+  opacity: 0.35;
+}
