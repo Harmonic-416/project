@@ -1,0 +1,243 @@
+.practice {
+  --practice-good: #6a9f4e;
+  --practice-good-strong: #4f7d38;
+  --practice-bad: #c8553d;
+  --practice-bar: #efece5;
+  --practice-ink: #1f1c1a;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  color: var(--hm-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .practice {
+    --practice-bar: #26262d;
+    --practice-ink: #0f0f12;
+  }
+}
+
+/* ── lesson card ─────────────────────────────────────────────── */
+.practice__lesson {
+  overflow: hidden;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
+}
+
+.practice__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--practice-ink);
+  color: #f2f1ee;
+  font-size: 0.95rem;
+}
+
+.practice__demo-pill {
+  color: #d99a5b;
+  font-size: 0.8rem;
+}
+
+.practice__chords {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px 0;
+  overflow-x: auto;
+}
+
+.practice__chords button,
+.practice__labels button {
+  padding: 4px 12px;
+  border: 1px solid var(--hm-border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--hm-text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.practice__chords button.is-active,
+.practice__labels button.is-active {
+  border-color: var(--hm-accent);
+  background: var(--hm-accent);
+  color: #ffffff;
+}
+
+.practice__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+@media (max-width: 560px) {
+  .practice__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.practice__chord {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.practice__chord-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.practice__chord-top h3 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.3rem;
+}
+
+.practice__labels {
+  display: flex;
+  gap: 4px;
+}
+
+.practice__labels button {
+  padding: 3px 9px;
+  font-size: 0.78rem;
+}
+
+.practice__side {
+  padding-left: 16px;
+  border-left: 1px solid var(--hm-border);
+}
+
+@media (max-width: 560px) {
+  .practice__side {
+    padding: 14px 0 0;
+    border-top: 1px solid var(--hm-border);
+    border-left: none;
+  }
+}
+
+.practice__side-label {
+  color: var(--hm-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.practice__tab {
+  margin: 8px 0 12px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.practice__side-note {
+  margin: 0;
+  color: var(--hm-text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.practice__notice {
+  margin: 0 16px 12px;
+  color: var(--hm-text-muted);
+  font-size: 0.85rem;
+}
+
+/* ── Learn / Play / Changes ─────────────────────────────────── */
+.practice__modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.practice__mode {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--hm-border);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.practice__mode.is-active {
+  border: 2px solid #c07a3e;
+  background: color-mix(in srgb, #c07a3e 14%, var(--hm-surface));
+}
+
+.practice__mode:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.practice__mode-top {
+  display: flex;
+  justify-content: space-between;
+}
+
+.practice__mode-top strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+}
+
+.practice__mode-top small {
+  color: #c07a3e;
+  font-weight: 700;
+}
+
+.practice__mode-text {
+  color: var(--hm-text-muted);
+  font-size: 0.8rem;
+}
+
+/* ── demo controls ─────────────────────────────────────────── */
+.practice__demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px dashed var(--hm-border);
+  border-radius: 10px;
+  color: var(--hm-text-muted);
+  font-size: 0.85rem;
+}
+
+.practice__demo div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.practice__demo button {
+  padding: 5px 10px;
+  border: 1px solid var(--hm-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--hm-text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.practice__demo button:hover {
+  border-color: var(--hm-accent);
+}
