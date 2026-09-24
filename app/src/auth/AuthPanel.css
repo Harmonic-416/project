@@ -1,124 +1,102 @@
-.auth-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+@import './authTheme.css';
+
+.auth-card {
+  padding: 20px;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
 }
 
-.auth-panel input {
-  flex: 1 1 140px;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid #e2dfd8;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.9rem;
-}
-
-.auth-panel__button {
-  border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
-  background: #128789;
-  color: #ffffff;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.auth-panel__button--secondary {
-  background: #e2dfd8;
-  color: #24242c;
-}
-
-.auth-panel__button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.auth-panel__who {
-  flex: 1;
-  font-size: 0.9rem;
-}
-
-.auth-panel__error {
-  flex-basis: 100%;
+.auth-card__title {
   margin: 0;
-  color: #cf4b36;
-  font-size: 0.85rem;
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
-.auth-panel-stack {
+.auth-card__text {
+  margin: 4px 0 16px;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+}
+
+.auth-card__buttons {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.auth-panel__providers {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.auth-card__error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--hm-danger-soft);
+  color: var(--hm-danger);
+  font-size: 0.875rem;
 }
 
-.auth-panel__provider {
+/*
+ * Provider buttons. Google's branding guidelines: light = white fill,
+ * #747775 outline, #1F1F1F text; dark = #131314 fill, #8E918F outline,
+ * #E3E3E3 text; Roboto Medium 14/20; official G unchanged. GitHub gets its
+ * own near-black button with the white mark, same size and shape.
+ */
+.oauth-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 11px 14px;
-  border: 1px solid #e2dfd8;
-  border-radius: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid #747775;
+  border-radius: 22px;
   background: #ffffff;
-  color: #24242c;
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 600;
+  color: #1f1f1f;
+  font-family: Roboto, -apple-system, 'Segoe UI', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
   cursor: pointer;
+  transition: background-color 0.15s;
 }
 
-.auth-panel__provider:hover:not(:disabled) {
-  border-color: #128789;
+.oauth-button:hover:not(:disabled) {
+  background: #f2f2f2;
 }
 
-.auth-panel__provider:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.oauth-button:focus-visible {
+  outline: 2px solid var(--hm-accent);
+  outline-offset: 2px;
 }
 
-.auth-panel__provider--github {
-  background: #24242c;
-  border-color: #24242c;
+.oauth-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.oauth-button--github {
+  border-color: #24292f;
+  background: #24292f;
   color: #ffffff;
 }
 
-.auth-panel__provider-icon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
+.oauth-button--github:hover:not(:disabled) {
+  background: #32383f;
 }
 
-.auth-panel__provider-icon svg {
-  width: 100%;
-  height: 100%;
-}
+@media (prefers-color-scheme: dark) {
+  .oauth-button--google {
+    border-color: #8e918f;
+    background: #131314;
+    color: #e3e3e3;
+  }
 
-/* A rule with the word "or" sitting in the gap. */
-.auth-panel__divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #6c6a72;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+  .oauth-button--google:hover:not(:disabled) {
+    background: #232325;
+  }
 
-.auth-panel__divider::before,
-.auth-panel__divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: #e2dfd8;
+  .oauth-button--github {
+    border-color: #8e918f;
+  }
 }

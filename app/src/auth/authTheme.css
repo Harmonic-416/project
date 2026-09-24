@@ -1,0 +1,26 @@
+/*
+ * Colours for the sign-in and account screens. The light values are the
+ * app's existing palette (teal #128789 on warm white); the dark values are
+ * used when the device is in dark mode.
+ */
+:root {
+  --hm-accent: #128789;
+  --hm-surface: #ffffff;
+  --hm-border: #e2dfd8;
+  --hm-text: #24242c;
+  --hm-text-muted: #6c6a72;
+  --hm-danger: #b53a27;
+  --hm-danger-soft: #fbeae6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --hm-accent: #3fb6b8;
+    --hm-surface: #1e1e24;
+    --hm-border: #3a3a42;
+    --hm-text: #f2f1ee;
+    --hm-text-muted: #a6a4ad;
+    --hm-danger: #f28b78;
+    --hm-danger-soft: #3a1f1b;
+  }
+}

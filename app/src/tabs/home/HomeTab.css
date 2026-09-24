@@ -1,72 +1,87 @@
+@import '../../auth/authTheme.css';
+
 .home-tab {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 24px 16px 32px;
-  max-width: 640px;
+  gap: 28px;
+  max-width: 560px;
   margin: 0 auto;
+  padding: 28px 16px 32px;
+  box-sizing: border-box;
+  color: var(--hm-text);
 }
 
 .home-tab__header h1 {
-  margin: 0 0 4px;
-  font-size: 2rem;
+  margin: 0 0 6px;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 .home-tab__header p {
   margin: 0;
-  color: #6c6a72;
+  color: var(--hm-text-muted);
 }
 
 .home-tab__section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .home-tab__section-title {
   margin: 0;
-  font-size: 0.85rem;
+  color: var(--hm-text-muted);
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6c6a72;
 }
 
 .home-tab__hint {
   margin: 0;
+  color: var(--hm-text-muted);
   font-size: 0.9rem;
-  color: #6c6a72;
 }
 
 .home-tab__hint code {
-  background: #e2dfd8;
-  border-radius: 4px;
   padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--hm-border);
 }
 
 .home-tab__links {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  overflow: hidden;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
 }
 
 .home-tab__link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  padding: 14px;
-  border: 1px solid #e2dfd8;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #24242c;
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  color: var(--hm-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
+.home-tab__link + .home-tab__link {
+  border-top: 1px solid var(--hm-border);
+}
+
 .home-tab__link:hover {
-  border-color: #128789;
+  background: color-mix(in srgb, var(--hm-accent) 6%, transparent);
+}
+
+.home-tab__link:focus-visible {
+  outline: 2px solid var(--hm-accent);
+  outline-offset: -2px;
 }
 
 .home-tab__link-icon {
@@ -74,13 +89,19 @@
   line-height: 1;
 }
 
-.home-tab__link strong {
-  display: block;
-  font-size: 1rem;
+.home-tab__link-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
-.home-tab__link small {
-  display: block;
-  color: #6c6a72;
+.home-tab__link-text small {
+  color: var(--hm-text-muted);
   font-size: 0.85rem;
+}
+
+.home-tab__link-arrow {
+  color: var(--hm-text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
 }
