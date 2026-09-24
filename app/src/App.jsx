@@ -4,11 +4,12 @@ import HomeTab from './tabs/home/HomeTab.jsx'
 import GuitarTab from './tabs/guitar/GuitarTab.jsx'
 import VocalTab from './tabs/vocal/VocalTab.jsx'
 import { useSession } from './auth/useSession.js'
+import { GuitarIcon, HomeIcon, MicIcon } from './nav/TabIcons.jsx'
 
 const TABS = [
-  { id: 'home', label: 'Home', icon: '🏠', Component: HomeTab },
-  { id: 'guitar', label: 'Guitar', icon: '🎸', Component: GuitarTab },
-  { id: 'vocal', label: 'Vocal', icon: '🎤', Component: VocalTab },
+  { id: 'home', label: 'Home', Icon: HomeIcon, Component: HomeTab },
+  { id: 'guitar', label: 'Guitar', Icon: GuitarIcon, Component: GuitarTab },
+  { id: 'vocal', label: 'Vocal', Icon: MicIcon, Component: VocalTab },
 ]
 
 function App() {
@@ -30,9 +31,12 @@ function App() {
             key={tab.id}
             type="button"
             className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
             onClick={() => setActiveTab(tab.id)}
           >
-            <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
+            <span className="tab-icon" aria-hidden="true">
+              <tab.Icon />
+            </span>
             <span className="tab-label">{tab.label}</span>
           </button>
         ))}
