@@ -1,0 +1,46 @@
+.guitar-score {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guitar-score__scroll {
+  position: relative;
+  flex: 1;
+  min-height: 240px;
+  overflow: auto;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+/* alphaTab's playback cursor and beat highlight. */
+.guitar-score .at-cursor-bar {
+  background: rgba(18, 135, 137, 0.08);
+}
+
+.guitar-score .at-cursor-beat {
+  background: rgba(18, 135, 137, 0.75);
+  width: 3px;
+}
+
+.guitar-score .at-highlight * {
+  fill: #128789;
+  stroke: #128789;
+}
+
+.guitar-score__status,
+.guitar-score__error {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.guitar-score__status {
+  color: #6c6a72;
+}
+
+.guitar-score__error {
+  color: #cf4b36;
+}

@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# alphaTab assets, copied in by @coderline/alphatab-vite on dev start / build
+public/font/
+public/soundfont/

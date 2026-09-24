@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@coderline/alphatab": "^1.8.4",
     "@supabase/supabase-js": "^2.109.0",
     "@tonejs/midi": "^2.0.28",
     "jszip": "^3.10.2",
@@ -21,6 +22,7 @@
     "tone": "^15.1.22"
   },
   "devDependencies": {
+    "@coderline/alphatab-vite": "^1.8.4",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",

@@ -1,0 +1,179 @@
+.tuner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.tuner__header {
+  text-align: center;
+}
+
+.tuner__header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.tuner__header p {
+  margin: 4px 0 0;
+  color: #6c6a72;
+  font-size: 0.9rem;
+}
+
+.tuner__strings {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.tuner__string {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  border: 2px solid #e2dfd8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #24242c;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tuner__string-label {
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tuner__string-sub {
+  font-size: 0.75rem;
+  color: #6c6a72;
+}
+
+.tuner__string--active {
+  border-color: #128789;
+  background: #e3f3f3;
+}
+
+.tuner__string--locked {
+  border-color: #24242c;
+}
+
+.tuner__string--done .tuner__string-sub {
+  color: #1d6b3d;
+  font-weight: 700;
+}
+
+.tuner__mode {
+  margin: -8px 0 0;
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.tuner__meter {
+  width: 100%;
+}
+
+.tuner__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #6c6a72;
+  font-variant-numeric: tabular-nums;
+}
+
+.tuner__track {
+  position: relative;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f8d9d3, #fbeccc 38%, #d5f0df 45%, #d5f0df 55%, #fbeccc 62%, #f8d9d3);
+}
+
+.tuner__center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #1d6b3d;
+}
+
+.tuner__needle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #24242c;
+  transition: left 60ms linear;
+}
+
+.tuner__meter--in-tune .tuner__needle {
+  background: #1d6b3d;
+}
+
+.tuner__readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 72px;
+  justify-content: center;
+}
+
+.tuner__note {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.tuner__cents {
+  font-variant-numeric: tabular-nums;
+  color: #6c6a72;
+}
+
+.tuner__readout--in-tune .tuner__cents {
+  color: #1d6b3d;
+  font-weight: 600;
+}
+
+.tuner__readout--off .tuner__cents {
+  color: #8f2c1c;
+}
+
+.tuner__hint {
+  color: #6c6a72;
+}
+
+.tuner__error {
+  color: #cf4b36;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.tuner__button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 32px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tuner__button--stop {
+  background: #24242c;
+}
+
+.tuner__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

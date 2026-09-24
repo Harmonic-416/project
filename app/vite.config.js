@@ -1,5 +1,6 @@
 import { readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { alphaTab } from '@coderline/alphatab-vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -36,12 +37,34 @@ export default defineConfig({
   define: {
     __SONG_FILES__: JSON.stringify(listSongFiles()),
   },
+  // Workers and worklets (alphaTab's, and our mic capture worklet) are ES
+  // modules: AudioWorklet.addModule loads modules, and alphaTab reads
+  // import.meta.url, which an iife bundle would blank out.
+  worker: { format: 'es' },
   plugins: [
     react(),
+    // Guitar tab rendering + playback. Wires alphaTab's worker/worklet into
+    // the build and copies its music font and soundfont into public/font and
+    // public/soundfont (gitignored) on every dev start / build.
+    alphaTab(),
     VitePWA({
       registerType: 'autoUpdate',
-      // OSMD + Tone + supabase-js exceed workbox's 2 MiB precache default.
-      workbox: { maximumFileSizeToCacheInBytes: 4 * 1024 * 1024 },
+      workbox: {
+        // OSMD + Tone + supabase-js exceed workbox's 2 MiB precache default.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Guitar songs (alphaTab: ~1 MB view chunk, ~2 MB worker and worklet,
+        // ~1 MB soundfont, music font) stay out of the install-time precache;
+        // they're cached the first time the Songs view opens.
+        globIgnores: ['**/alphaTab.*.js', '**/GuitarSong-*.{js,css}'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              /\/(soundfont|font)\//.test(url.pathname) || /\/assets\/(alphaTab\.|GuitarSong-)/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'alphatab-assets', expiration: { maxEntries: 32 } },
+          },
+        ],
+      },
       manifest: {
         name: 'Harmonic',
         short_name: 'Harmonic',

@@ -1,6 +1,6 @@
 # Harmonic — architecture
 
-Status: current as of 2026-09-22 (M2). Owner: whole team. This is the
+Status: current as of 2026-09-23 (M2). Owner: whole team. This is the
 "boxes and arrows" document for the rubric; the requirement-by-requirement
 design lives in `openspec/` and the capacity plan in `docs/scaling-plan.md`.
 
@@ -13,7 +13,10 @@ by Tone.js in lockstep with a moving cursor, with all timing taken from the
 rendered score itself. When you sing along, your microphone is analysed
 entirely on your device: pitch is tracked about fifty times a second, drawn
 onto the staff as coloured dots, and scored against the melody when the song
-ends. A thin Supabase backend supplies accounts, a shared song catalog, each
+ends. The Guitar tab tunes the guitar through the same on-device microphone
+path (an AudioWorklet that sees every sample) and renders guitar songs as tab
+plus standard notation with alphaTab, which also plays them and exports MIDI
+and Guitar Pro. A thin Supabase backend supplies accounts, a shared song catalog, each
 user's own library (stored as MusicXML in a private bucket) and progress
 rows, all guarded by row-level security, so nothing but small rows and
 optional compressed recordings ever leaves the phone.
@@ -24,8 +27,11 @@ optional compressed recordings ever leaves the phone.
 flowchart LR
     subgraph C["CLIENT · React PWA in the browser (works offline)"]
         UI["UI<br/>Guitar · Vocal tabs"]
-        SCORE["Notation + playback<br/>MIDI · MusicXML · MXL → OSMD<br/>score model = expected notes · Tone.js clock"]
-        AUDIO["Audio pipeline (never leaves the device)<br/>mic → pitchy → pitch drawn on the staff<br/>→ attempt score · webm recording"]
+        SCORE["Vocal notation + playback<br/>MIDI · MusicXML · MXL → OSMD<br/>score model = expected notes · Tone.js clock"]
+        GTAB["Guitar notation + playback (lazy)<br/>Guitar Pro · alphaTex · MusicXML · MIDI → alphaTab<br/>tab + standard · alphaSynth · export MIDI / Guitar Pro"]
+        CAPTURE["Shared mic capture<br/>getUserMedia → AudioWorklet<br/>frames · level · onsets"]
+        TUNER["Guitar tuner (F39)<br/>pitchy → nearest string · cents"]
+        AUDIO["Vocal audio (never leaves the device)<br/>mic → pitchy → pitch drawn on the staff<br/>→ attempt score · webm recording"]
     end
     subgraph A["OUR API · src/lib — a TypeScript SDK, not a server"]
         AUTH["auth.ts<br/>register · login · session"]
@@ -42,6 +48,7 @@ flowchart LR
         CLI["Supabase CLI (admin)<br/>migrations · seed catalog uploads"]
     end
     UI --> AUTH
+    CAPTURE --> TUNER
     SCORE -- "load / save songs" --> SONGS
     AUDIO -- "attempt score" --> PROG
     AUDIO -- "recording (webm)" --> SONGS
@@ -69,7 +76,7 @@ is on the client, everything persistent is a Supabase row or object.
 
 React 19 + Vite 8, packaged as a PWA by `vite-plugin-pwa` (Workbox precache,
 4 MiB limit because OSMD + Tone + supabase-js are large). Two tabs: **Guitar**
-(placeholder) and **Vocal**, which is the product today.
+(tuner + tab songs) and **Vocal** (notation, playback, recording, cloud library).
 
 | Module | Responsibility |
 |---|---|
@@ -80,6 +87,10 @@ React 19 + Vite 8, packaged as a PWA by `vite-plugin-pwa` (Workbox precache,
 | `tabs/vocal/playback/useMidiPlayback.js` | Tone.js `Transport` + `PolySynth`; schedules every note and a `cursor.next()` at every timestamp; play / pause / stop / seek. |
 | `tabs/vocal/notation/exportNotation.js` | Export MusicXML (or the original MXL bytes) and Standard MIDI (original bytes for MIDI sources, otherwise one track per part rendered from the score model). |
 | `tabs/vocal/audio/*` + `components/RecordPanel.jsx` | Prototype: `getUserMedia` → `AnalyserNode` → pitchy (McLeod) at ~50 frames/s; samples are stamped with the Transport clock and only kept while it runs; `useSheetOverlay` records each cursor stop's on-screen box once and plots dots (x interpolated between stops, y from the pitch on a treble staff); `scoreAttempt` counts frames within 50¢ of the melody; a `MediaRecorder` captures webm/opus for later upload. |
+| `audio/capture/*` | Shared mic capture: `getUserMedia` → an AudioWorklet (`pcm-capture.worklet.js`) that sees every 128-sample block and, through the pure `FrameAssembler`, posts a frame of the last N samples every 512 samples plus the level and onset events (sudden energy rises, i.e. strums), positioned in samples on the capture context's clock. Takes an existing `AudioContext` to share a clock with playback. First user: the tuner; the chord analyzer is next. |
+| `tabs/guitar/tuner/*` | Tuner (F39): pitchy on 4096-sample capture frames → `createStabilizer` (median of 5, nearest standard-tuning string within ±600¢ or a locked string, in tune at ±5¢ held 0.5 s, released past ±8¢) → six string chips, a cents needle and a "play a string" state. |
+| `tabs/guitar/notation/*` | `loadGuitarNotation` turns Guitar Pro 3–8 / alphaTex / MusicXML / MXL / MIDI into an alphaTab `Score` (`{ format, title, score, sourceBytes, hasTab }`), reusing the Vocal tab's MXL unzip and MIDI → MusicXML; `exportGuitarNotation` writes MIDI with alphaTab's `MidiFileGenerator` (original bytes for MIDI sources) and Guitar Pro 7 with `Gp7Exporter`. |
+| `tabs/guitar/song/*` | Lazy-loaded Songs view: built-in list (`public/guitar-songs/`), upload, and `GuitarScore` — alphaTab rendering tab + standard notation, alphaSynth playback with cursor, click a beat to seek, reusing the Vocal `PlaybackControls`. |
 | `lib/supabaseClient.js`, `auth/*`, `components/CloudLibrary.jsx`, `songs/cloudLibrary.js` | Cloud side: a single supabase-js client from `VITE_SUPABASE_*`; session mirrored into React; sign in / create account / sign out; **Catalog** (seed songs) and **My songs** lists; open, copy or save songs through the shared backend layer. Without `app/.env.local` the app runs local-only. |
 
 ### Shared backend layer (`src/lib/`)
@@ -151,15 +162,24 @@ are applied with `supabase db push`; the catalog MusicXML lives in
 - **Two npm packages, one repo.** The backend layer and its integration
   tests are at the root; the PWA is in `app/` and imports the root layer via
   a Vite alias (`@backend`, deduped supabase-js). CI runs both.
-- **OSMD instead of AlphaTab.** The M2 plan named AlphaTab; the built client
-  uses OpenSheetMusicDisplay because its cursor iterator gives us the timing
-  model for free. The stack line in `docs/M2-design-and-setup.md` reflects this.
+- **One renderer per instrument.** Voice uses OpenSheetMusicDisplay, because
+  its cursor iterator gives us the timing model for free. Guitar uses alphaTab,
+  the only renderer that draws tab; it also plays and exports what it renders.
+  Both read MusicXML. alphaTab is lazy-loaded with the Guitar Songs view and
+  kept out of the install-time precache (cached on first use).
+- **AudioWorklet capture for guitar.** Guitar needs strum onsets to open its
+  chord-detection window. Polling an `AnalyserNode` once per animation frame
+  (as the Vocal prototype does) can miss them; the worklet sees every sample.
+  Vocal can move onto the same capture later.
+- **Guitar tab ↔ MIDI.** alphaTab exports MIDI and Guitar Pro but cannot import
+  MIDI or work out frets from pitch, so MIDI files open as notation only until
+  our fret assignment lands (`openspec/changes/add-guitar-foundation`, task 3.6).
 
 ## Testing
 
 | Layer | Where | What | Runs |
 |---|---|---|---|
-| Unit (app) | `app/tests/*.test.js` (vitest) | converter over the shared MIDI corpus, format detection + MXL unzip, export round trips, pitch detection on sine waves, attempt scoring, staff geometry | always (`npm --prefix app test`) |
+| Unit (app) | `app/tests/*.test.js` (vitest) | converter over the shared MIDI corpus, format detection + MXL unzip, export round trips, pitch detection on sine waves, attempt scoring, staff geometry; capture framing and onsets, tuner string choice / cents / hysteresis, guitar import of every format and MIDI + Guitar Pro round trips | always (`npm --prefix app test`) |
 | Integration (backend) | `tests/backend/*.test.ts` (vitest) | auth round trips, RLS isolation, progress persistence, MIDI + MusicXML import → bucket → signed URL read-back, catalog listing | only with `SUPABASE_URL` / `SUPABASE_ANON_KEY` (`.env.local` or CI secrets); registers throwaway users at `*@harmonic-tests.example.com` |
 | Browser | manual / Playwright scripts (not yet checked in) | every fixture renders, exports download and re-parse, cloud flow end to end, simulated-microphone attempts score 97–98 % | on demand |
 | Load | `tests/load/supabase-baseline.mjs` | ~1.3k requests against the live project, latency percentiles per VU count | on demand, see `docs/scaling-plan.md` |
@@ -172,8 +192,11 @@ stress cases, 3 MusicXML/MXL files) and are used by both suites.
 ```
 app/                       React + Vite PWA (the client)
   src/tabs/vocal/          notation/ midi/ playback/ audio/ components/ songs/
+  src/tabs/guitar/         tuner/ notation/ song/ (alphaTab, lazy-loaded)
+  src/audio/capture/       shared AudioWorklet mic capture
   src/auth/, src/lib/      session hook, sign-in panel, supabase client
   public/midi-files/       built-in songs (any .mid/.midi/.musicxml/.mxl)
+  public/guitar-songs/     built-in guitar songs (MusicXML with string/fret)
   tests/                   unit tests (vitest)
 src/lib/                   shared backend layer (TypeScript, supabase-js)
 supabase/migrations/       schema, RLS, buckets, seed rows (applied by CD)
@@ -196,5 +219,12 @@ openspec/                  requirement-linked specs, proposals, design notes
 - Overlay assumes a treble clef and takes the first part as the melody; no
   microphone latency compensation.
 - Timewise MusicXML is rejected with a clear message (partwise only).
-- The `house-of-the-rising-sun` seed row has no notation file yet and shows
-  as "notation missing"; the Guitar tab is a stub.
+- The `house-of-the-rising-sun` seed file now exists
+  (`supabase/seed/notation/`, generated by `tests/fixtures/guitar/generate.mjs`)
+  but still has to be uploaded to the `notation` bucket.
+- Guitar: no chord verification or scoring yet; alphaSynth plays on its own
+  `AudioContext`, so the one-clock choice for guitar scoring is open; MIDI
+  files show no tab until fret assignment lands; guitar songs can't be saved
+  to the cloud yet (stored-format question in `add-guitar-foundation/design.md`).
+- The tuner and capture worklet are verified in desktop Chrome (fake
+  microphone); the iPhone Safari check is still to do.
