@@ -1,0 +1,19 @@
+@import './authTheme.css';
+
+.hm-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--hm-accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.hm-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

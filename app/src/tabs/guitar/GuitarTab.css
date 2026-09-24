@@ -41,3 +41,17 @@
   text-align: center;
   color: #6c6a72;
 }
+
+
+/* Tuner | Songs switch on the left, account button on the right. */
+.guitar-tab__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 16px 0;
+}
+
+.guitar-tab__top .guitar-tab__views {
+  margin: 0;
+}
