@@ -3,10 +3,11 @@ import './HomeTab.css'
 import AccountCard from '../../auth/AccountCard.jsx'
 import AuthPanel from '../../auth/AuthPanel.jsx'
 import { firstNameFor, friendlyAuthError, readOAuthError } from '../../auth/authHelpers.js'
+import { GuitarIcon, MicIcon } from '../../nav/TabIcons.jsx'
 
 const PRACTICE = [
-  { id: 'guitar', icon: '🎸', title: 'Guitar', text: 'Tuner, then songs as tab and notation' },
-  { id: 'vocal', icon: '🎤', title: 'Vocal', text: 'Sheet music, playback and recording' },
+  { id: 'guitar', Icon: GuitarIcon, title: 'Guitar', text: 'Tuner, then songs as tab and notation' },
+  { id: 'vocal', Icon: MicIcon, title: 'Vocal', text: 'Sheet music, playback and recording' },
 ]
 
 /**
@@ -62,7 +63,7 @@ function HomeTab({ auth, onNavigate }) {
           {PRACTICE.map((item) => (
             <button key={item.id} type="button" className="home-tab__link" onClick={() => onNavigate(item.id)}>
               <span className="home-tab__link-icon" aria-hidden="true">
-                {item.icon}
+                <item.Icon />
               </span>
               <span className="home-tab__link-text">
                 <strong>{item.title}</strong>
