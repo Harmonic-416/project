@@ -12,7 +12,7 @@ import { CHORDS } from './chords.js'
  */
 
 export const PROGRESSION = ['Em', 'C', 'G', 'D']
-export const SECONDS_PER_CHORD = 3
+export const SECONDS_PER_CHORD = 10
 export const COUNTDOWN_FROM = 3
 
 export function progressionChords(ids = PROGRESSION) {

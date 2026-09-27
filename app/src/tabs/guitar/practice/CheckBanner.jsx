@@ -4,9 +4,9 @@ import './CheckBanner.css'
 /**
  * The bar under the lesson: did we hear the chord? (F16, F21, F34) and the
  * always-visible Hint / Skip / Retry buttons (F30, F31). When the chord is
- * verified, Retry becomes Next.
+ * verified, Retry becomes Next (or `nextLabel`, e.g. "Practice").
  */
-function CheckBanner({ chord, verdict, misses, hinting, onHint, onSkip, onRetry, onNext }) {
+function CheckBanner({ chord, verdict, misses, hinting, onHint, onSkip, onRetry, onNext, nextLabel = 'Next' }) {
   const message = {
     listening: { icon: '♪', text: `Play ${chord.name}` },
     verified: { icon: '✓', text: `${chord.name} — heard it` },
@@ -31,7 +31,7 @@ function CheckBanner({ chord, verdict, misses, hinting, onHint, onSkip, onRetry,
         </button>
         {verdict === 'verified' ? (
           <button type="button" className="check-banner__primary" onClick={onNext}>
-            Next
+            {nextLabel}
           </button>
         ) : (
           <button type="button" onClick={onRetry}>

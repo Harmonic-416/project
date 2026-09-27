@@ -1,0 +1,24 @@
+/* Practice mode reuses PlayRun.css; only the extras live here. */
+.practice-run__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.practice-run__status {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.practice-run__status--verified {
+  color: var(--practice-good-strong);
+}
+
+.practice-run__status--wrong {
+  color: var(--practice-bad);
+}

@@ -13,32 +13,40 @@ import { CHORDS } from './chords.js'
  *   strings: six of 'good' | 'bad' | 'idle', low E first          (F17, F34)
  *
  * Three misses on one chord auto-skip to the next (F29); Skip and Retry are
- * always available (F30).
+ * always available (F30). Only the first `unlocked` chords can be opened:
+ * moving on wraps within them, and Practice mode raises the limit.
  */
 
 export const MAX_MISSES = 3
 
 const IDLE_STRINGS = ['idle', 'idle', 'idle', 'idle', 'idle', 'idle']
 
-export function initialPractice(chordIndex = 0) {
-  return { chordIndex, verdict: 'listening', strings: IDLE_STRINGS, misses: 0, notice: null }
+export function initialPractice(chordIndex = 0, unlocked = CHORDS.length) {
+  return { chordIndex, unlocked, verdict: 'listening', strings: IDLE_STRINGS, misses: 0, notice: null }
 }
 
-function moveTo(chordIndex, notice) {
-  return { ...initialPractice(chordIndex % CHORDS.length), notice }
+function moveTo(state, chordIndex, notice) {
+  return { ...initialPractice(chordIndex % state.unlocked, state.unlocked), notice }
 }
 
 export function practiceReducer(state, action) {
   switch (action.type) {
     case 'select':
-      return initialPractice(action.index)
+      if (action.index >= state.unlocked) return state
+      return initialPractice(action.index, state.unlocked)
+
+    case 'unlocked': {
+      // Practice mode passed a chord, or the demo reset progress.
+      const unlocked = Math.max(1, Math.min(action.count, CHORDS.length))
+      return state.chordIndex < unlocked ? { ...state, unlocked } : initialPractice(0, unlocked)
+    }
 
     case 'result': {
       const strings = action.strings ?? IDLE_STRINGS
       if (action.verdict === 'wrong') {
         const misses = state.misses + 1
         if (misses >= MAX_MISSES) {
-          return moveTo(state.chordIndex + 1, `Skipped ${CHORDS[state.chordIndex].name} after ${MAX_MISSES} tries.`)
+          return moveTo(state, state.chordIndex + 1, `Skipped ${CHORDS[state.chordIndex].name} after ${MAX_MISSES} tries.`)
         }
         return { ...state, verdict: 'wrong', strings, misses, notice: null }
       }
@@ -46,13 +54,13 @@ export function practiceReducer(state, action) {
     }
 
     case 'retry':
-      return initialPractice(state.chordIndex)
+      return initialPractice(state.chordIndex, state.unlocked)
 
     case 'skip':
-      return moveTo(state.chordIndex + 1, `Skipped ${CHORDS[state.chordIndex].name}.`)
+      return moveTo(state, state.chordIndex + 1, `Skipped ${CHORDS[state.chordIndex].name}.`)
 
     case 'next':
-      return moveTo(state.chordIndex + 1, null)
+      return moveTo(state, state.chordIndex + 1, null)
 
     default:
       return state

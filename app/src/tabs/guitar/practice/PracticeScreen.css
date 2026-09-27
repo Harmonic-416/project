@@ -72,6 +72,22 @@
   color: #ffffff;
 }
 
+/* unlock state (unlocks.js): locked chords wait for Practice */
+.practice__chords button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.practice__chord-pill--passed:not(.is-active) {
+  border-color: var(--practice-good);
+  color: var(--practice-good-strong);
+}
+
+.practice__chord-mark {
+  margin-left: 4px;
+  font-size: 0.75rem;
+}
+
 .practice__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -156,11 +172,17 @@
   font-size: 0.85rem;
 }
 
-/* ── Learn / Play / Changes ─────────────────────────────────── */
+/* ── Learn / Practice / Play / Changes ──────────────────────── */
 .practice__modes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .practice__modes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .practice__mode {
@@ -243,6 +265,11 @@
 }
 
 
+
+.practice__demo .practice__demo-reset {
+  border-style: dashed;
+  color: var(--hm-text-muted);
+}
 
 .practice__demo button:disabled {
   opacity: 0.45;

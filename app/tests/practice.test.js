@@ -76,4 +76,26 @@ describe('practiceReducer', () => {
     const last = initialPractice(CHORDS.length - 1)
     expect(practiceReducer(last, { type: 'next' }).chordIndex).toBe(0)
   })
+
+  it('locked chords cannot be opened, and moving on stays within the unlocked ones', () => {
+    const onlyEm = initialPractice(0, 1)
+    expect(practiceReducer(onlyEm, { type: 'select', index: 2 })).toBe(onlyEm)
+    expect(practiceReducer(onlyEm, { type: 'next' }).chordIndex).toBe(0)
+    expect(practiceReducer(onlyEm, { type: 'skip' }).chordIndex).toBe(0)
+    let s = onlyEm
+    for (let i = 0; i < MAX_MISSES; i++) s = practiceReducer(s, wrong)
+    expect(s).toMatchObject({ chordIndex: 0, misses: 0 })
+
+    const am = initialPractice(1, 2)
+    expect(practiceReducer(am, { type: 'next' })).toMatchObject({ chordIndex: 0, unlocked: 2 })
+  })
+
+  it('unlocking raises the limit; lowering it moves back to the first chord', () => {
+    const passed = practiceReducer(initialPractice(0, 1), { type: 'unlocked', count: 2 })
+    expect(passed).toMatchObject({ chordIndex: 0, unlocked: 2 })
+    expect(practiceReducer(passed, { type: 'select', index: 1 }).chordIndex).toBe(1)
+
+    const onAm = initialPractice(1, 2)
+    expect(practiceReducer(onAm, { type: 'unlocked', count: 1 })).toMatchObject({ chordIndex: 0, unlocked: 1 })
+  })
 })
