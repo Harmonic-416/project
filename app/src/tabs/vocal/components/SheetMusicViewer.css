@@ -1,11 +1,13 @@
 .sheet-music-viewer {
   position: relative; /* anchors OSMD's cursor and the pitch overlay */
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex: none;
+  /* A strip one staff line tall that scrolls sideways (see SheetMusicViewer.jsx). */
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain; /* a swipe at either end doesn't trigger browser back/forward */
+  -webkit-overflow-scrolling: touch;
   background: #ffffff;
   border: 1px solid #e2dfd8;
   border-radius: 8px;
-  padding: 8px;
+  padding: 8px 0;
 }

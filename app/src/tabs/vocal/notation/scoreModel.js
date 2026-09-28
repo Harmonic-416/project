@@ -21,7 +21,12 @@ function secondsPerWholeNote(bpm) {
   return 240 / bpm
 }
 
-export function extractScoreModel(osmd) {
+/**
+ * Pass `sourceNotes: []` to also collect each entry's OSMD Note at the same
+ * index as `notes`, for callers that need to find it on screen again (kept
+ * out of the model so the model stays plain data).
+ */
+export function extractScoreModel(osmd, { sourceNotes } = {}) {
   const cursor = osmd.cursor
   const instruments = osmd.Sheet.Instruments
   const defaultBpm = osmd.Sheet.DefaultStartTempoInBpm || 120
@@ -38,6 +43,7 @@ export function extractScoreModel(osmd) {
   let prevBpm = defaultBpm
 
   while (!iterator.EndReached) {
+    const step = cursorTimestamps.length
     const timestamp = iterator.CurrentEnrolledTimestamp.RealValue
     const bpm = iterator.CurrentBpm > 0 ? iterator.CurrentBpm : defaultBpm
     if (prevTimestamp !== null) seconds += (timestamp - prevTimestamp) * secondsPerWholeNote(prevBpm)
@@ -66,9 +72,11 @@ export function extractScoreModel(osmd) {
           frequency: midiToFrequency(midi),
           time: seconds,
           duration,
+          step, // cursor position (index into cursorTimestamps) where this note starts
         }
         byOsmdNote.set(note, entry)
         notes.push(entry)
+        sourceNotes?.push(note)
       }
     }
 

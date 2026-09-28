@@ -1,14 +1,18 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import './VocalTab.css'
 import SongLibrary from './components/SongLibrary.jsx'
 import OnlineSongs from './components/OnlineSongs.jsx'
 import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
 import PlaybackControls from './components/PlaybackControls.jsx'
+import PracticeModeToggle from './components/PracticeModeToggle.jsx'
+import WaitModePlayer from './components/WaitModePlayer.jsx'
+import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
+import { melodyLine } from './practice/practiceLogic.js'
 import { songLibrary } from './songs/songLibrary.js'
 import { fetchCloudNotation, saveNotationToCloud } from './songs/cloudLibrary.js'
 import { supabase } from '../../lib/supabaseClient.js'
@@ -33,6 +37,7 @@ function VocalTab({ auth, onNavigate }) {
   const [scoreModel, setScoreModel] = useState(null) // derived from the rendered score
   const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
   const [saveError, setSaveError] = useState(null)
+  const [practiceMode, setPracticeMode] = useState('listen') // listen | wait | trouble (see practice/practiceLogic.js)
   const sheetMusicRef = useRef(null)
 
   const beginLoad = useCallback(() => {
@@ -133,6 +138,16 @@ function VocalTab({ auth, onNavigate }) {
     cursorTimestamps: scoreModel?.cursorTimestamps ?? NO_TIMESTAMPS,
     sheetMusicRef,
   })
+
+  const melody = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
+
+  const handleModeChange = useCallback(
+    (mode) => {
+      playback.stop()
+      setPracticeMode(mode)
+    },
+    [playback],
+  )
 
   const handleBack = useCallback(() => {
     playback.stop()
@@ -240,17 +255,24 @@ function VocalTab({ auth, onNavigate }) {
             onReady={handleSheetReady}
             onError={handleSheetError}
           />
-          <PlaybackControls
-            state={playback.state}
-            position={playback.position}
-            duration={playback.duration}
-            onPlay={playback.play}
-            onPause={playback.pause}
-            onStop={playback.stop}
-            onSeek={playback.seek}
-            disabled={!scoreModel}
-          />
-          {scoreModel && (
+          <PracticeModeToggle mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
+          {scoreModel && practiceMode === 'wait' ? (
+            <WaitModePlayer melody={melody} duration={playback.duration} sheetMusicRef={sheetMusicRef} />
+          ) : scoreModel && practiceMode === 'trouble' ? (
+            <TroubleSpotsPlayer melody={melody} playback={playback} sheetMusicRef={sheetMusicRef} />
+          ) : (
+            <PlaybackControls
+              state={playback.state}
+              position={playback.position}
+              duration={playback.duration}
+              onPlay={playback.play}
+              onPause={playback.pause}
+              onStop={playback.stop}
+              onSeek={playback.seek}
+              disabled={!scoreModel}
+            />
+          )}
+          {scoreModel && practiceMode === 'listen' && (
             <RecordPanel scoreModel={scoreModel} playback={playback} sheetMusicRef={sheetMusicRef} title={notation.title} />
           )}
         </>

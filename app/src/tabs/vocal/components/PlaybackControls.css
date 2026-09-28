@@ -28,6 +28,7 @@
 
 .playback-controls__seek {
   flex: 1;
+  min-width: 0; /* range inputs default to ~130px, which overflows phone widths */
   accent-color: #128789;
 }
 
@@ -35,6 +36,6 @@
   font-variant-numeric: tabular-nums;
   font-size: 0.8rem;
   color: #6c6a72;
-  min-width: 84px;
+  white-space: nowrap;
   text-align: right;
 }

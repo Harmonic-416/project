@@ -60,8 +60,9 @@ export function useMicPitch({ getTime, onSample }) {
     [],
   )
 
+  /** Resolves true once listening, false if the microphone couldn't be opened. */
   const start = useCallback(async () => {
-    if (rigRef.current) return
+    if (rigRef.current) return true
     setStatus('requesting')
     setError(null)
     samplesRef.current = []
@@ -119,10 +120,12 @@ export function useMicPitch({ getTime, onSample }) {
       }
       rig.raf = requestAnimationFrame(tick)
       setStatus('listening')
+      return true
     } catch (err) {
       console.error(err)
       setError(err.message || 'Microphone unavailable.')
       setStatus('error')
+      return false
     }
   }, [])
 
