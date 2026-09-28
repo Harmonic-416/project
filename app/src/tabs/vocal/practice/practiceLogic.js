@@ -16,6 +16,44 @@ export const PRACTICE_MODES = [
   { id: 'trouble', label: 'Trouble spots', hint: 'Plays in time; notes you miss are marked in red.' },
 ]
 
+/**
+ * Who you practise with, for scores with several parts. `hint` is per
+ * practice mode (see VocalTab for how each mode uses it).
+ */
+export const ACCOMPANIMENTS = [
+  {
+    id: 'solo',
+    label: 'By myself',
+    hint: { listen: 'Only your part plays.', wait: 'Silent until you sing.', trouble: 'Your part plays for you to sing along with.' },
+  },
+  {
+    id: 'all',
+    label: 'With all parts',
+    hint: {
+      listen: 'Every part plays; yours is on top.',
+      wait: 'The other parts hold their chord while you find your note.',
+      trouble: 'The other parts play; your part is left for you to sing.',
+    },
+  },
+]
+
+/** Tone.Part events for a set of score-model notes (one pitch each). */
+export function scheduleFor(notes) {
+  return notes.map((n) => ({ time: n.time, pitches: [n.frequency], duration: n.duration }))
+}
+
+/**
+ * Frequencies sounding at `time` — started by then and not yet ended (so a
+ * note ending exactly as the target starts doesn't count), one per pitch.
+ */
+export function soundingAt(notes, time, epsilon = 1e-3) {
+  const frequencies = new Set()
+  for (const note of notes) {
+    if (note.time <= time + epsilon && time < note.time + note.duration - epsilon) frequencies.add(note.frequency)
+  }
+  return [...frequencies].sort((a, b) => a - b)
+}
+
 /** Cents from the target, folded to the nearest octave when `anyOctave`. */
 export function noteDistanceCents(midi, targetMidi, { anyOctave = true } = {}) {
   const cents = centsOff(midi, targetMidi)
@@ -27,14 +65,14 @@ export function isOnTarget(midi, targetMidi, { toleranceCents = 50, anyOctave = 
 }
 
 /**
- * The line to practise: the first part, one note per onset (the highest,
- * when the part has chords). Each entry keeps `index` into scoreModel.notes
+ * The line to practise: one part (the first by default), one note per
+ * onset (the highest, when the part has chords). Each entry keeps `index` into scoreModel.notes
  * so it can be found on screen again.
  */
-export function melodyLine(notes) {
+export function melodyLine(notes, partIndex = 0) {
   const byTime = new Map()
   notes.forEach((note, index) => {
-    if (note.partIndex !== 0) return
+    if (note.partIndex !== partIndex) return
     const existing = byTime.get(note.time)
     if (!existing || note.midi > existing.midi) byTime.set(note.time, { ...note, index })
   })

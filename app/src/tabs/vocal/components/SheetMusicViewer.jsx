@@ -34,7 +34,13 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
   const osmdRef = useRef(null)
   const stepRef = useRef(0) // cursor position, so goToStep only walks forward when it can
   const sourceNotesRef = useRef([]) // OSMD Notes, aligned with scoreModel.notes
-  const marksRef = useRef(new Map()) // SVG element -> Set of classes we added
+  const marksRef = useRef(new Map()) // note index -> Set of classes we added (re-applied after every render)
+
+  /** The rendered <g> for scoreModel.notes[noteIndex]; a new element after every render. */
+  const noteElement = (noteIndex) => {
+    const note = sourceNotesRef.current[noteIndex]
+    return note ? osmdRef.current?.EngravingRules?.GNote(note)?.getSVGGElement?.() : null
+  }
 
   useImperativeHandle(
     ref,
@@ -44,8 +50,9 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
         const container = containerRef.current
         const element = osmdRef.current?.cursor?.cursorElement
         if (!container) return
-        // A hidden cursor has no offsetParent (and offsetLeft 0).
-        const left = element?.offsetParent ? element.offsetLeft - container.clientWidth * CURSOR_ANCHOR : 0
+        // At the first step (or with the cursor hidden: no offsetParent) show the very start, part names included.
+        const left =
+          stepRef.current > 0 && element?.offsetParent ? element.offsetLeft - container.clientWidth * CURSOR_ANCHOR : 0
         container.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' })
       }
       const step = () => {
@@ -62,13 +69,14 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
         follow()
       }
       const clearMarks = (className) => {
-        for (const [element, classes] of marksRef.current) {
+        for (const [noteIndex, classes] of marksRef.current) {
+          const element = noteElement(noteIndex)
           for (const c of classes) {
             if (className && c !== className) continue
-            element.classList.remove(c)
+            element?.classList.remove(c)
             classes.delete(c)
           }
-          if (!classes.size) marksRef.current.delete(element)
+          if (!classes.size) marksRef.current.delete(noteIndex)
         }
       }
       return {
@@ -85,15 +93,12 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
         },
         /** Add/remove a CSS class on the rendered note for scoreModel.notes[noteIndex]. */
         markNote: (noteIndex, className, on = true) => {
-          const note = sourceNotesRef.current[noteIndex]
-          const element = note && osmdRef.current?.EngravingRules?.GNote(note)?.getSVGGElement?.()
-          if (!element) return
-          element.classList.toggle(className, on)
-          const classes = marksRef.current.get(element) ?? new Set()
+          noteElement(noteIndex)?.classList.toggle(className, on)
+          const classes = marksRef.current.get(noteIndex) ?? new Set()
           if (on) classes.add(className)
           else classes.delete(className)
-          if (classes.size) marksRef.current.set(element, classes)
-          else marksRef.current.delete(element)
+          if (classes.size) marksRef.current.set(noteIndex, classes)
+          else marksRef.current.delete(noteIndex)
         },
         /** Remove one mark class everywhere, or every mark when called without one. */
         clearMarks,
@@ -127,17 +132,24 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
         // The strip is one line tall; OSMD's default page margins would leave a band of blank space.
         osmdRef.current.EngravingRules.PageTopMargin = 1
         osmdRef.current.EngravingRules.PageBottomMargin = 1
+        // Re-rendering (autoResize on window resize / phone rotation) replaces every SVG
+        // element, so put the note marks back on the new ones.
+        const baseRender = osmdRef.current.render.bind(osmdRef.current)
+        osmdRef.current.render = () => {
+          baseRender()
+          for (const [noteIndex, classes] of marksRef.current) noteElement(noteIndex)?.classList.add(...classes)
+        }
       }
       const osmd = osmdRef.current
       await osmd.load(content)
       if (cancelled) return
+      marksRef.current.clear() // they belong to the previous score
       osmd.Zoom = zoomFor(containerRef.current.clientWidth)
       osmd.render()
       containerRef.current.scrollLeft = 0
       const sourceNotes = []
       const model = extractScoreModel(osmd, { sourceNotes })
       sourceNotesRef.current = sourceNotes
-      marksRef.current.clear()
       stepRef.current = 0
       osmd.cursor.show()
       onReady?.(model)

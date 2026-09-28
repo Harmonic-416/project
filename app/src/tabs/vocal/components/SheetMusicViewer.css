@@ -3,7 +3,8 @@
   flex: none;
   /* A strip one staff line tall that scrolls sideways (see SheetMusicViewer.jsx). */
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto; /* a score with several staves (e.g. piano) stacks them; past max-height the strip scrolls down too */
+  max-height: 45dvh;
   overscroll-behavior-x: contain; /* a swipe at either end doesn't trigger browser back/forward */
   -webkit-overflow-scrolling: touch;
   background: #ffffff;

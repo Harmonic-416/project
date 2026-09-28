@@ -94,3 +94,45 @@
 .practice-note--sung rect { fill: #2e9e5b; stroke: #2e9e5b; }
 .practice-note--missed path,
 .practice-note--missed rect { fill: #cf4b36; stroke: #cf4b36; }
+
+/* Part tabs (PartTabs.jsx): scroll sideways when a choir score has many parts. */
+.part-tabs {
+  /* Never shrink: as a scroll container in the Vocal tab's column it would
+     otherwise collapse to nothing when a tall score ("with all parts") needs the room. */
+  flex: none;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.part-tabs::-webkit-scrollbar { display: none; }
+
+.part-tabs__tab {
+  flex: none;
+  border: 1px solid #e2dfd8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #24242c;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.part-tabs__tab[aria-selected='true'] {
+  border-color: #128789;
+  background: #128789;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.part-tabs__tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* "With all parts": the other parts' notes fade so the selected part (on top) stands out. */
+.practice-note--other-part { opacity: 0.3; }

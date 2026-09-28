@@ -3,8 +3,8 @@ import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
-import { midiToNoteName } from '../audio/pitchDetector.js'
-import { createHoldDetector, noteDistanceCents } from '../practice/practiceLogic.js'
+import { frequencyToMidi, midiToNoteName } from '../audio/pitchDetector.js'
+import { createHoldDetector, noteDistanceCents, soundingAt } from '../practice/practiceLogic.js'
 
 const TARGET_CLASS = 'practice-note--target'
 const SUNG_CLASS = 'practice-note--sung'
@@ -12,6 +12,20 @@ const HINT_SECONDS = 0.8
 // Ignore the mic while the hint tone (and a little room echo) is sounding,
 // or the speaker would "sing" the note for the user.
 const HINT_DEAF_MS = HINT_SECONDS * 1000 + 300
+
+const HELD_CHORD_DB = -14
+
+/**
+ * What the other parts are sounding at the target's onset, minus anything
+ * with the target's note name: through speakers the mic would hear that
+ * pitch and move on without the singer.
+ */
+function heldChord(backingNotes, target) {
+  const pitchClass = (midi) => ((Math.round(midi) % 12) + 12) % 12
+  return soundingAt(backingNotes, target.time).filter(
+    (f) => pitchClass(frequencyToMidi(f)) !== pitchClass(target.midi),
+  )
+}
 
 /** There's no playback clock in this mode; any non-null time lets samples through. */
 const wallClock = () => performance.now() / 1000
@@ -29,13 +43,18 @@ function verdictFor(cents) {
  * hears that note held on pitch (see practiceLogic.createHoldDetector).
  * Play/Pause start and stop listening, Stop goes back to the first note,
  * and the scrub bar jumps to a note.
+ *
+ * With `backingNotes` (the other parts, "with all parts"), whatever they
+ * are sounding at the target's moment is held as a chord while waiting,
+ * and changes as the singer moves on.
  */
-function WaitModePlayer({ melody, duration, sheetMusicRef, disabled }) {
+function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNotes = null }) {
   const [index, setIndex] = useState(0)
   const indexRef = useRef(0)
   const [detector] = useState(() => createHoldDetector())
   const deafUntilRef = useRef(0)
   const synthRef = useRef(null)
+  const chordSynthRef = useRef(null)
   const done = melody.length > 0 && index >= melody.length
 
   const highlight = useCallback(
@@ -87,6 +106,22 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled }) {
     }
   }, [highlight, sheetMusicRef])
 
+  // Hold the other parts' chord under the current target while listening.
+  useEffect(() => {
+    const target = melody[index]
+    if (!backingNotes || !listening || !target) return undefined
+    if (!chordSynthRef.current) {
+      chordSynthRef.current = new Tone.PolySynth(Tone.Synth, {
+        envelope: { attack: 0.08, decay: 0.2, sustain: 0.7, release: 0.5 },
+      }).toDestination()
+      chordSynthRef.current.volume.value = HELD_CHORD_DB
+    }
+    const synth = chordSynthRef.current
+    const chord = heldChord(backingNotes, target)
+    if (chord.length) synth.triggerAttack(chord)
+    return () => synth.releaseAll()
+  }, [backingNotes, listening, index, melody])
+
   // Last note sung: release the microphone.
   useEffect(() => {
     if (done && listening) mic.stop()
@@ -96,6 +131,8 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled }) {
     () => () => {
       synthRef.current?.dispose()
       synthRef.current = null
+      chordSynthRef.current?.dispose()
+      chordSynthRef.current = null
     },
     [],
   )
@@ -105,8 +142,9 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled }) {
       sheetMusicRef.current?.clearMarks(SUNG_CLASS)
       goTo(0)
     }
+    if (backingNotes) await Tone.start() // audio must be unlocked inside the click
     await mic.start()
-  }, [done, goTo, mic, sheetMusicRef])
+  }, [backingNotes, done, goTo, mic, sheetMusicRef])
 
   const stop = useCallback(() => {
     mic.stop()

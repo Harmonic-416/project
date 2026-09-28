@@ -5,6 +5,8 @@ import {
   isOnTarget,
   melodyLine,
   noteDistanceCents,
+  scheduleFor,
+  soundingAt,
 } from '../src/tabs/vocal/practice/practiceLogic.js'
 
 describe('note matching', () => {
@@ -28,6 +30,33 @@ describe('note matching', () => {
       [64, 1],
       [62, 3],
     ])
+  })
+})
+
+describe('melody line', () => {
+  it('follows the chosen part', () => {
+    const note = (partIndex, midi, time) => ({ partIndex, midi, time, duration: 1 })
+    const notes = [note(0, 72, 0), note(1, 64, 0), note(1, 65, 1)]
+    expect(melodyLine(notes, 1).map((n) => [n.midi, n.index])).toEqual([
+      [64, 1],
+      [65, 2],
+    ])
+  })
+})
+
+describe('accompaniment', () => {
+  const note = (frequency, time, duration) => ({ frequency, time, duration })
+  const others = [note(220, 0, 2), note(330, 0, 1), note(440, 1, 1), note(220, 1, 0.5), note(550, 3, 1)]
+
+  it('finds what the other parts are holding at a moment', () => {
+    expect(soundingAt(others, 0)).toEqual([220, 330])
+    expect(soundingAt(others, 1)).toEqual([220, 440]) // 330 ended exactly as this onset begins
+    expect(soundingAt(others, 1.75)).toEqual([220, 440])
+    expect(soundingAt(others, 2.5)).toEqual([]) // everyone resting
+  })
+
+  it('schedules notes for playback', () => {
+    expect(scheduleFor([note(440, 1, 0.5)])).toEqual([{ time: 1, pitches: [440], duration: 0.5 }])
   })
 })
 

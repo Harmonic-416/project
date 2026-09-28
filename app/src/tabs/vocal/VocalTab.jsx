@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './VocalTab.css'
 import SongLibrary from './components/SongLibrary.jsx'
 import OnlineSongs from './components/OnlineSongs.jsx'
@@ -6,13 +6,16 @@ import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
 import PlaybackControls from './components/PlaybackControls.jsx'
 import PracticeModeToggle from './components/PracticeModeToggle.jsx'
+import PartTabs from './components/PartTabs.jsx'
+import AccompanimentToggle from './components/AccompanimentToggle.jsx'
 import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
-import { melodyLine } from './practice/practiceLogic.js'
+import { melodyLine, scheduleFor } from './practice/practiceLogic.js'
+import { extractPart, listParts, partOnTop } from './notation/partFilter.js'
 import { songLibrary } from './songs/songLibrary.js'
 import { fetchCloudNotation, saveNotationToCloud } from './songs/cloudLibrary.js'
 import { supabase } from '../../lib/supabaseClient.js'
@@ -20,6 +23,7 @@ import { supabase } from '../../lib/supabaseClient.js'
 const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
 const NO_SCHEDULE = []
 const NO_TIMESTAMPS = []
+const OTHER_PART_CLASS = 'practice-note--other-part'
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
 // playback, export, and the cloud library (Supabase, via the shared backend
@@ -38,6 +42,8 @@ function VocalTab({ auth, onNavigate }) {
   const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
   const [saveError, setSaveError] = useState(null)
   const [practiceMode, setPracticeMode] = useState('listen') // listen | wait | trouble (see practice/practiceLogic.js)
+  const [practicePart, setPracticePart] = useState(undefined) // part id; undefined = the first part
+  const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
   const sheetMusicRef = useRef(null)
 
   const beginLoad = useCallback(() => {
@@ -46,6 +52,7 @@ function VocalTab({ auth, onNavigate }) {
     setError(null)
     setNotation(null)
     setScoreModel(null)
+    setPracticePart(undefined)
     setSaveState('idle')
     setSaveError(null)
   }, [])
@@ -133,13 +140,81 @@ function VocalTab({ auth, onNavigate }) {
 
   const handleSheetError = useCallback((err) => fail(err, 'Could not render that score.'), [fail])
 
+  // With several parts the viewer gets a rearranged copy of the score: the
+  // selected part alone (by myself), or every part with the selected one on
+  // top (with all parts). Either way the practised part is the rendered
+  // score's part 0, which is what melodyLine and RecordPanel follow.
+  const parts = useMemo(() => (notation ? listParts(notation.content) : []), [notation])
+  const multiPart = parts.length > 1
+  const selectedPart = multiPart ? (parts.find((p) => p.id === practicePart) ?? parts[0]) : null
+  const withOthers = multiPart && accompaniment === 'all'
+  const viewerContent = useMemo(() => {
+    if (!notation || !selectedPart) return notation?.content
+    try {
+      return withOthers ? partOnTop(notation.content, selectedPart.id) : extractPart(notation.content, selectedPart.id)
+    } catch (err) {
+      console.error(err)
+      return notation.content
+    }
+  }, [notation, selectedPart, withOthers])
+
+  const otherPartNotes = useMemo(
+    () => (withOthers && scoreModel ? scoreModel.notes.filter((n) => n.partIndex !== 0) : null),
+    [withOthers, scoreModel],
+  )
+
+  // What Play sounds like: every part on screen, except in Trouble spots
+  // with all parts, where your part is left for you to sing. (Wait for me
+  // doesn't use playback; it holds the other parts' chords itself.)
+  const playbackSchedule = useMemo(() => {
+    if (!scoreModel) return NO_SCHEDULE
+    if (otherPartNotes && practiceMode === 'trouble') return scheduleFor(otherPartNotes)
+    return scoreModel.playbackSchedule
+  }, [scoreModel, otherPartNotes, practiceMode])
+
   const playback = useMidiPlayback({
-    playbackSchedule: scoreModel?.playbackSchedule ?? NO_SCHEDULE,
+    playbackSchedule,
     cursorTimestamps: scoreModel?.cursorTimestamps ?? NO_TIMESTAMPS,
     sheetMusicRef,
+    minDuration: scoreModel?.duration ?? 0,
   })
 
   const melody = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
+
+  // With all parts on screen, fade every note but the selected part's.
+  useEffect(() => {
+    const viewer = sheetMusicRef.current
+    if (!viewer || !otherPartNotes) return undefined
+    scoreModel.notes.forEach((note, i) => {
+      if (note.partIndex !== 0) viewer.markNote(i, OTHER_PART_CLASS)
+    })
+    return () => viewer.clearMarks(OTHER_PART_CLASS)
+  }, [scoreModel, otherPartNotes])
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    window.__harmonic = { ...(window.__harmonic ?? {}), playbackSchedule, otherPartNotes }
+  }, [playbackSchedule, otherPartNotes])
+
+  const handlePartChange = useCallback(
+    (partId) => {
+      if (partId === selectedPart?.id) return
+      playback.stop()
+      setScoreModel(null) // until the viewer has rendered the new selection
+      setPracticePart(partId)
+    },
+    [playback, selectedPart],
+  )
+
+  const handleAccompanimentChange = useCallback(
+    (value) => {
+      if (value === accompaniment) return
+      playback.stop()
+      if (multiPart) setScoreModel(null) // the viewer re-renders with or without the other parts
+      setAccompaniment(value)
+    },
+    [accompaniment, multiPart, playback],
+  )
 
   const handleModeChange = useCallback(
     (mode) => {
@@ -249,17 +324,33 @@ function VocalTab({ auth, onNavigate }) {
 
       {notation && (
         <>
+          <PartTabs parts={parts} selected={selectedPart?.id} onSelect={handlePartChange} />
           <SheetMusicViewer
             ref={sheetMusicRef}
-            content={notation.content}
+            content={viewerContent}
             onReady={handleSheetReady}
             onError={handleSheetError}
           />
           <PracticeModeToggle mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
+          {multiPart && (
+            <AccompanimentToggle
+              value={accompaniment}
+              mode={practiceMode}
+              onChange={handleAccompanimentChange}
+              disabled={!scoreModel}
+            />
+          )}
           {scoreModel && practiceMode === 'wait' ? (
-            <WaitModePlayer melody={melody} duration={playback.duration} sheetMusicRef={sheetMusicRef} />
+            // Keyed by part so switching parts starts the mode fresh on the new line.
+            <WaitModePlayer
+              key={selectedPart?.id}
+              melody={melody}
+              duration={playback.duration}
+              sheetMusicRef={sheetMusicRef}
+              backingNotes={withOthers ? otherPartNotes : null}
+            />
           ) : scoreModel && practiceMode === 'trouble' ? (
-            <TroubleSpotsPlayer melody={melody} playback={playback} sheetMusicRef={sheetMusicRef} />
+            <TroubleSpotsPlayer key={selectedPart?.id} melody={melody} playback={playback} sheetMusicRef={sheetMusicRef} />
           ) : (
             <PlaybackControls
               state={playback.state}
@@ -273,7 +364,13 @@ function VocalTab({ auth, onNavigate }) {
             />
           )}
           {scoreModel && practiceMode === 'listen' && (
-            <RecordPanel scoreModel={scoreModel} playback={playback} sheetMusicRef={sheetMusicRef} title={notation.title} />
+            <RecordPanel
+              key={selectedPart?.id}
+              scoreModel={scoreModel}
+              playback={playback}
+              sheetMusicRef={sheetMusicRef}
+              title={notation.title}
+            />
           )}
         </>
       )}

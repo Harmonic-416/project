@@ -6,17 +6,18 @@ import * as Tone from 'tone'
  * OSMD cursor (via `sheetMusicRef.current.{next,reset,show}`) stepping in
  * lockstep. `playbackSchedule` and `cursorTimestamps` must come from the
  * same midiToMusicXml() call so the two clocks can't drift apart.
+ *
+ * `minDuration` keeps playback running to the end of the score when the
+ * schedule leaves the last notes out (practising with the other parts only).
  */
-export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusicRef }) {
+export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusicRef, minDuration = 0 }) {
   const [state, setState] = useState('idle') // idle | playing | paused | stopped
   const [position, setPosition] = useState(0)
   const partRef = useRef(null)
   const synthRef = useRef(null)
   const scheduledIdsRef = useRef([])
 
-  const duration = playbackSchedule.length
-    ? Math.max(...playbackSchedule.map((n) => n.time + n.duration))
-    : 0
+  const duration = Math.max(minDuration, ...playbackSchedule.map((n) => n.time + n.duration))
 
   // (Re)build the Tone.Part + cursor-advance schedule whenever a new piece loads.
   useEffect(() => {
