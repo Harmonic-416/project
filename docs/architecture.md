@@ -55,7 +55,7 @@ flowchart TB
         direction LR
         SHARED[("shared_attempt<br/>pitch trace · score · part<br/>song = catalog id or SHA-256")]
         REC[("recordings bucket<br/>webm of shared attempts")]
-        CAT[("Catalog, read-only<br/>6 public-domain songs")]
+        CAT[("Catalog, read-only<br/>public-domain songs<br/>4 vocal · 2 guitar")]
         GOTRUE["Auth<br/>OAuth → JWT"]
         IDLEDB[("progress tables · users' songs<br/>exist, unused")]
     end
@@ -240,7 +240,7 @@ Framework-neutral TypeScript over supabase-js; the app imports it as
 |---|---|---|---|
 | `shared_attempt` | a shared attempt: song (catalog id or file SHA-256), part, pitch trace `[[s, midi], …]`, accuracy, recording path, sharer's name | owner only; anyone signed in reads one row by id via `get_shared_attempt()` | **yes** |
 | `recordings` bucket | webm per shared attempt, `<user_id>/<id>.webm` | owner only, plus signed-in read of recordings attached to a share | **yes** |
-| `song` (catalog rows) + `notation/seed/` | 6 public-domain catalog songs as MusicXML | readable by anyone | **yes** (read-only) |
+| `song` (catalog rows) + `notation/seed/` | 6 catalog rows (4 vocal, 2 guitar) over 5 public-domain MusicXML files | readable by anyone | **yes** (read-only) |
 | `profiles` | one row per user (trigger-created) | owner | created on sign-up only |
 | `song` (user rows) + `notation/<user_id>/` | users' own songs | owner | no (only test users have any) |
 | `lesson_progress`, `run_through`, `song_pref`, `recording` | progress, attempts history, tempo, recording metadata | owner | no |
@@ -311,8 +311,9 @@ openspec/                  requirement-linked specs, proposals, design notes
   still advance on the result buttons; no strumming-pattern or timing score
   yet; MIDI files open without tab (no fret assignment); guitar songs can't
   be shared.
-- **Vocal:** the overlay assumes a treble staff for dot height; no microphone
-  latency compensation; timewise MusicXML is rejected (partwise only).
+- **Vocal:** the pitch-dot overlay assumes a treble staff, so on the bass and
+  tenor (treble-8vb) staves MIDI imports now get, the dots sit at the wrong
+  height; no microphone latency compensation; timewise MusicXML is rejected (partwise only).
 - **Sharing:** no "stop sharing" button yet (`deleteSharedAttempt` exists);
   sharing only from Listen mode; the recording isn't synced to the cursor.
 - **Progress** (unlocks, run-through history, tempo) isn't saved to the
