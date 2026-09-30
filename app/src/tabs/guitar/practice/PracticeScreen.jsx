@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import CheckBanner from './CheckBanner.jsx'
 import ChordDiagram from './ChordDiagram.jsx'
@@ -10,6 +10,7 @@ import { initialPlay, playReducer, progressionChords } from './playState.js'
 import { initialPracticeRun, practiceRunReducer } from './practiceRunState.js'
 import { initialPractice, practiceReducer } from './practiceState.js'
 import { chordStatuses, loadCleared, saveCleared, unlockedCount } from './unlocks.js'
+import { useChordDetection } from './useChordDetection.js'
 import '../../../auth/authTheme.css'
 import './PracticeScreen.css'
 
@@ -22,6 +23,16 @@ const MODES = [
 
 // Chord pill marks by unlock status (unlocks.js); plain 'unlocked' has none.
 const PILL_MARK = { passed: '✓', skipped: '↷', locked: '🔒' }
+
+// What the app heard: lit green / red / yellow by the mic, or clicked to demo a result.
+const RESULTS = [
+  ['verified', 'The right chord'],
+  ['wrong', 'A wrong chord'],
+  ['silent', 'Nothing'],
+]
+
+// How long a Hint strum rings; the mic ignores it for that long.
+const HINT_SOUND_MS = 3000
 
 /**
  * Demo results until chord detection is connected. Detection will dispatch
@@ -57,7 +68,7 @@ async function playChord(chord) {
   chordMidi(chord).forEach((midi, i) => {
     synth.triggerAttackRelease(Tone.Frequency(midi, 'midi').toFrequency(), 1.4, now + i * 0.045)
   })
-  setTimeout(() => synth.dispose(), 3000)
+  setTimeout(() => synth.dispose(), HINT_SOUND_MS)
 }
 
 /** Six-line tab for one chord, high e on top like real tab (picture item 2). */
@@ -100,8 +111,37 @@ function PracticeScreen() {
   // The chord in Learn that hasn't been cleared yet leads on to Practice.
   const needsPractice = statuses[chord.id] === 'unlocked'
 
+  // Last result, heard by the mic or clicked, for the chord that was up; it
+  // goes dark once another chord is. `n` replays the flash when it repeats.
+  const expectedChord = isPlay ? playChords[play.index] : chord
+  const [heard, setHeard] = useState({ verdict: null, chordId: null, n: 0 })
+  const showHeard = (verdict) => setHeard(({ n }) => ({ verdict, chordId: expectedChord.id, n: n + 1 }))
+  const heardVerdict = heard.chordId === expectedChord.id ? heard.verdict : null
+
+  // The mic only lights the result buttons; the lessons still move on clicks.
+  const detection = useChordDetection({ chord: expectedChord, onVerdict: showHeard })
+  const listening = detection.status === 'listening'
+
+  // Starting a Practice or Play run turns the mic on too (a tap, so the browser allows it).
+  const { start: startListening } = detection
+  const runDispatchWithMic = useCallback(
+    (action) => {
+      if (action.type === 'start') startListening()
+      runDispatch(action)
+    },
+    [startListening],
+  )
+  const playDispatchWithMic = useCallback(
+    (action) => {
+      if (action.type === 'start') startListening()
+      playDispatch(action)
+    },
+    [startListening],
+  )
+
   const chooseMode = (id) => {
     setMode(id)
+    setHeard(({ n }) => ({ verdict: null, chordId: null, n }))
     runDispatch({ type: 'reset' })
     playDispatch({ type: 'reset' })
   }
@@ -144,6 +184,7 @@ function PracticeScreen() {
   }
 
   const hint = async () => {
+    detection.muteFor(HINT_SOUND_MS)
     setHinting(true)
     clearTimeout(hintTimer.current)
     hintTimer.current = setTimeout(() => setHinting(false), 1600)
@@ -156,6 +197,7 @@ function PracticeScreen() {
 
   // Demo buttons feed whichever mode is showing, the same way detection will.
   const simulate = (verdict) => {
+    showHeard(verdict)
     if (isPlay) playDispatch({ type: 'result', verdict })
     else if (isPractice) practiceResult(verdict)
     else dispatch({ type: 'result', verdict, strings: demoResult(verdict, chord) })
@@ -183,13 +225,13 @@ function PracticeScreen() {
         </header>
 
         {isPlay ? (
-          <PlayRun chords={playChords} state={play} dispatch={playDispatch} labelMode={labelMode} />
+          <PlayRun chords={playChords} state={play} dispatch={playDispatchWithMic} labelMode={labelMode} />
         ) : isPractice ? (
           <PracticeRun
             chord={chord}
             nextChord={nextChord}
             state={run}
-            dispatch={runDispatch}
+            dispatch={runDispatchWithMic}
             labelMode={labelMode}
             onLearnNext={learnNext}
             onBackToLearn={() => chooseMode('learn')}
@@ -289,22 +331,42 @@ function PracticeScreen() {
         ))}
       </div>
 
-      <section className="practice__demo" aria-label="Demo controls">
-        <span>Demo · pretend the app heard:</span>
+      <section className="practice__demo" aria-label="What the app heard">
         <div>
-          {[
-            ['verified', 'The right chord'],
-            ['wrong', 'A wrong chord'],
-            ['silent', 'Nothing'],
-          ].map(([verdict, label]) => (
-            <button key={verdict} type="button" disabled={demoDisabled} onClick={() => simulate(verdict)}>
-              {label}
-            </button>
-          ))}
+          <button
+            type="button"
+            className={`practice__listen ${listening ? 'is-on' : ''}`}
+            aria-pressed={listening}
+            disabled={detection.status === 'requesting'}
+            onClick={listening ? detection.stop : detection.start}
+          >
+            {listening ? '● Listening · Stop' : detection.status === 'requesting' ? 'Starting mic…' : '🎤 Listen'}
+          </button>
+          {detection.error && <span className="practice__listen-error">{detection.error}</span>}
+        </div>
+        <div>
+          {RESULTS.map(([verdict, label]) => {
+            const lit = heardVerdict === verdict
+            return (
+              <button
+                key={verdict}
+                type="button"
+                className={lit ? `is-lit is-${verdict}` : ''}
+                disabled={demoDisabled}
+                onClick={() => simulate(verdict)}
+              >
+                {lit && <span key={heard.n} className="practice__flash" aria-hidden="true" />}
+                {label}
+              </button>
+            )
+          })}
           <button type="button" className="practice__demo-reset" onClick={resetUnlocks}>
             Reset unlocks
           </button>
         </div>
+        <p className="practice__sr-only" role="status" aria-live="polite">
+          {heardVerdict && `Heard: ${RESULTS.find(([v]) => v === heardVerdict)[1].toLowerCase()}`}
+        </p>
       </section>
     </div>
   )
