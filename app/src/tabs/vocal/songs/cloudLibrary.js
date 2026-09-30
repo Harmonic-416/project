@@ -36,11 +36,21 @@ export async function fetchCloudNotation(supabase, song) {
   return response.arrayBuffer()
 }
 
-/** Store the loaded notation as MusicXML in the caller's own library. */
+/**
+ * Store the loaded notation as MusicXML in the caller's own library. An
+ * uploaded MIDI or MXL file is kept as well (song.source_path), so the
+ * original can be downloaded or re-converted later; for MusicXML the
+ * stored copy already is the original.
+ */
 export function saveNotationToCloud(supabase, notation) {
+  const source =
+    notation.sourceBytes && notation.format !== 'musicxml'
+      ? { data: notation.sourceBytes, format: notation.format }
+      : undefined
   return importMusicXml(
     supabase,
     { name: `${notation.title}.musicxml`, content: notation.content },
     { title: notation.title, instrument: 'voice' },
+    source,
   )
 }

@@ -99,9 +99,11 @@ Framework-neutral TypeScript on top of supabase-js — the same code runs in
 the browser (via the Vite alias `@backend`) and in Node for the integration
 tests. `songs.ts` is the important one: `listLibrary`, `getNotationUrl`
 (signed URL, 1 h), `importMusicXml` (validates the root element, uploads to
-`notation/<user_id>/<uuid>.musicxml`, inserts the `song` row), `importMidi`
+`notation/<user_id>/<uuid>.musicxml`, optionally keeps the original file as
+`<uuid>.source.<ext>`, inserts the `song` row, and removes the uploads again
+if any step fails), `getSourceUrl`, `importMidi`
 (best-effort monophonic MIDI → MusicXML for callers without the app's
-converter), `uploadRecording` / `getRecordingUrl` (private bucket, owner
+converter; keeps the .mid), `uploadRecording` / `getRecordingUrl` (private bucket, owner
 folder, linked to a `run_through`). `progress.ts` holds lesson completion,
 run-through history, last score and tempo preference.
 
@@ -110,18 +112,18 @@ run-through history, last score and tempo preference.
 | Table | Purpose | RLS |
 |---|---|---|
 | `profiles` | one row per auth user (trigger-created) | owner read/update |
-| `song` | catalog rows (`user_id NULL`, public) and per-user imports; `notation_path` points into the `notation` bucket; `instrument` = guitar or voice | authenticated read of public + own; insert/update/delete own only |
+| `song` | catalog rows (`user_id NULL`, public) and per-user imports; `notation_path` points into the `notation` bucket, `source_path`/`source_format` at the imported original (MIDI/MXL) when there is one; `instrument` = guitar or voice | authenticated read of public + own; insert/update/delete own only |
 | `lesson_progress` | completed lesson-map nodes | owner only |
 | `run_through` | one row per finished attempt with a 0–100 score | owner only |
 | `song_pref` | per-song tempo (50–100 %) | owner only |
 | `recording` | metadata for an uploaded attempt recording | owner only |
 
-Storage: `notation` is private; any authenticated user can read (that is how
-the catalog under `seed/` works), users can only write under their own
-`<user_id>/` folder. `recordings` is private and owner-only in both
+Storage: `notation` is private; authenticated users can read `seed/` (the
+catalog) and their own `<user_id>/` folder, and write or delete only in their
+own folder (`0004`). `recordings` is private and owner-only in both
 directions. Migrations `0001` (schema, RLS, buckets), `0002` (three V1 seed
-songs), `0003` (voice catalog: Ode to Joy, Twinkle Twinkle, C-major warm-up)
-are applied with `supabase db push`; the catalog MusicXML lives in
+songs), `0003` (voice catalog: Ode to Joy, Twinkle Twinkle, C-major warm-up),
+`0004` (song source files, owner-only notation reads) are applied with `supabase db push`; the catalog MusicXML lives in
 `supabase/seed/notation/` and is uploaded with `supabase storage cp`.
 
 ## Data flows

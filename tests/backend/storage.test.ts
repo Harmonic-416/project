@@ -2,7 +2,14 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getNotationUrl, importMidi, importMusicXml, listLibrary, type Song } from '../../src/lib/songs'
+import {
+  getNotationUrl,
+  getSourceUrl,
+  importMidi,
+  importMusicXml,
+  listLibrary,
+  type Song,
+} from '../../src/lib/songs'
 import { hasSupabaseEnv, newClient, newTestUser } from '../helpers'
 
 // Tasks 3.1–3.4 (F4, F9, F10, N5) as an end-to-end round trip against the
@@ -42,6 +49,13 @@ describe.skipIf(!hasSupabaseEnv)('song storage round trip (F4, F9, F10, N5)', ()
       expect(xml).toMatch(/<score-partwise[\s>]/)
       expect(xml).toContain(`<work-title>${file}</work-title>`)
       expect(xml).toContain('<pitch>')
+
+      // The original .mid is kept next to it, byte for byte.
+      expect(song.source_format).toBe('midi')
+      expect(song.source_path).toBe(song.notation_path.replace(/\.musicxml$/, '.source.mid'))
+      const source = await fetch((await getSourceUrl(owner.supabase, song))!)
+      expect(source.status).toBe(200)
+      expect(new Uint8Array(await source.arrayBuffer())).toEqual(new Uint8Array(bytes))
     },
     30_000,
   )
@@ -57,6 +71,14 @@ describe.skipIf(!hasSupabaseEnv)('song storage round trip (F4, F9, F10, N5)', ()
     const other = await newTestUser('storage-other')
     const library = await listLibrary(other.supabase)
     expect(library.filter((s) => s.user_id === ownerId)).toHaveLength(0)
+
+    // Not even with the storage paths in hand (0004 limits reads to seed/ + own folder).
+    const song = imported[0]!
+    for (const path of [song.notation_path, song.source_path!]) {
+      const { data, error } = await other.supabase.storage.from('notation').download(path)
+      expect(data).toBeNull()
+      expect(error).not.toBeNull()
+    }
   }, 30_000)
 
   it('refuses uploads from a signed-out client', async () => {
@@ -84,6 +106,24 @@ describe.skipIf(!hasSupabaseEnv)('song storage round trip (F4, F9, F10, N5)', ()
     )
     const res = await fetch(await getNotationUrl(owner.supabase, song))
     expect(await res.text()).toBe(xml)
+    expect(song.source_path).toBeNull()
+    expect(await getSourceUrl(owner.supabase, song)).toBeNull()
+  })
+
+  it('rolls back the uploaded files when the song row is rejected', async () => {
+    const xml = readFileSync(join(musicXmlDir, 'ode-to-joy.musicxml'), 'utf8')
+    const before = (await owner.supabase.storage.from('notation').list(ownerId, { limit: 1000 })).data!.length
+    await expect(
+      importMusicXml(
+        owner.supabase,
+        { name: 'bad.musicxml', content: xml },
+        // violates song.instrument's check constraint, after both uploads
+        { title: 'bad', instrument: 'kazoo' as 'voice' },
+        { data: new Uint8Array([0x4d, 0x54, 0x68, 0x64]), format: 'midi' },
+      ),
+    ).rejects.toThrow()
+    const after = (await owner.supabase.storage.from('notation').list(ownerId, { limit: 1000 })).data!.length
+    expect(after).toBe(before)
   })
 
   it('reports which seed notation files exist in the bucket (README step 5)', async () => {

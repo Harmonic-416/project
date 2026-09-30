@@ -82,7 +82,8 @@ The Vocal tab opens MIDI, MusicXML and MXL files (built-in list from
 plays them with Tone.js in sync with the cursor, exports MusicXML/MIDI, records
 a sung attempt with the pitch drawn on the staff, and — when signed in — shows
 the shared song catalog and lets you copy catalog songs or save your own files
-to your cloud library (stored as MusicXML in the private `notation` bucket).
+to your cloud library (stored as MusicXML in the private `notation` bucket,
+with the original MIDI kept alongside).
 
 The Guitar tab opens on a **tuner** (standard tuning; tap Start, play a string,
 tap a string to lock it) that runs on the shared AudioWorklet mic capture in
