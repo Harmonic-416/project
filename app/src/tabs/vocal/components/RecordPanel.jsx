@@ -5,6 +5,11 @@ import { useMicPitch } from '../audio/useMicPitch.js'
 import { useSheetOverlay } from '../audio/useSheetOverlay.js'
 import { centsOff, classifyCents, findActiveNote, midiToNoteName, scoreAttempt } from '../audio/pitchDetector.js'
 import { downloadBlob, safeFilename } from '../notation/exportNotation.js'
+import { judgeNotes } from '../share/sharedAttempt.js'
+import ShareAttempt from './ShareAttempt.jsx'
+
+const SUNG_CLASS = 'practice-note--sung'
+const MISSED_CLASS = 'practice-note--missed'
 
 /** Playback clock, or null while the transport isn't running (mic warm-up, permission prompt). */
 const getTransportSeconds = () => (Tone.Transport.state === 'started' ? Tone.Transport.seconds : null)
@@ -13,11 +18,11 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? Tone.Tra
  * "Record attempt": starts the microphone and playback together, plots the
  * sung pitch on the sheet music while the cursor moves, and scores the
  * attempt against the first part's melody when playback ends (or Stop is
- * pressed). The compressed recording can be downloaded; uploading it via the
- * backend's uploadRecording is the next step once a cloud song/run-through
- * is linked.
+ * pressed): each note of the part turns green (sung) or red (missed). The
+ * compressed recording can be downloaded, and the attempt shared as a link
+ * (see ShareAttempt; `shareSong` describes the song without uploading it).
  */
-function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
+function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong }) {
   const melody = useMemo(
     () =>
       scoreModel
@@ -29,6 +34,16 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
   const [armed, setArmed] = useState(false)
   const [result, setResult] = useState(null)
   const [recording, setRecording] = useState(null)
+  const [notes, setNotes] = useState(null) // { hit, missed, total }
+  const [samples, setSamples] = useState([])
+
+  const clearNoteMarks = useCallback(() => {
+    sheetMusicRef.current?.clearMarks(SUNG_CLASS)
+    sheetMusicRef.current?.clearMarks(MISSED_CLASS)
+  }, [sheetMusicRef])
+
+  // Leaving (another part, another mode, another song) takes the marks along.
+  useEffect(() => clearNoteMarks, [clearNoteMarks])
 
   const handleSample = useCallback(
     (sample) => {
@@ -43,20 +58,28 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
   const startAttempt = useCallback(async () => {
     setResult(null)
     setRecording(null)
+    setNotes(null)
+    clearNoteMarks()
     overlay.clear()
     playback.stop()
     await mic.start()
     await playback.play()
     setArmed(true)
-  }, [mic, overlay, playback])
+  }, [clearNoteMarks, mic, overlay, playback])
 
   const finishAttempt = useCallback(async () => {
     setArmed(false)
     const blob = await mic.stop()
     if (playback.state === 'playing' || playback.state === 'paused') playback.stop()
+    const sung = [...mic.getSamples()]
+    const judged = judgeNotes(sung, scoreModel.notes)
+    judged.hit.forEach((note) => sheetMusicRef.current?.markNote(note.index, SUNG_CLASS))
+    judged.missed.forEach((note) => sheetMusicRef.current?.markNote(note.index, MISSED_CLASS))
     setRecording(blob)
-    setResult(scoreAttempt(mic.getSamples(), melody))
-  }, [melody, mic, playback])
+    setSamples(sung)
+    setNotes(judged)
+    setResult(scoreAttempt(sung, melody))
+  }, [melody, mic, playback, scoreModel, sheetMusicRef])
 
   // Playback reaching the end (or Stop) ends the attempt. Deferred a tick so
   // the state updates in finishAttempt don't cascade inside this effect.
@@ -113,6 +136,12 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
       {result && (
         <div className="record-panel__result">
           <strong>{Math.round(result.accuracy)}% in tune</strong>
+          {notes && notes.total > 0 && (
+            <span>
+              {notes.hit.length} of {notes.total} notes sung
+              {notes.missed.length ? ` · ${notes.missed.length} missed (red)` : ''}
+            </span>
+          )}
           <span>
             {result.inTune} of {result.scoredFrames} frames within 50¢
             {result.octaveAgnosticAccuracy > result.accuracy + 0.5
@@ -128,9 +157,26 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
               Download recording ({Math.round(recording.size / 1024)} KB)
             </button>
           )}
-          <button type="button" className="record-panel__link" onClick={() => { overlay.clear(); setResult(null) }}>
+          <button
+            type="button"
+            className="record-panel__link"
+            onClick={() => {
+              overlay.clear()
+              clearNoteMarks()
+              setResult(null)
+              setNotes(null)
+            }}
+          >
             Clear trace
           </button>
+          <ShareAttempt
+            auth={auth}
+            supabase={supabase}
+            song={shareSong}
+            samples={samples}
+            accuracy={result.accuracy}
+            recording={recording}
+          />
         </div>
       )}
     </section>

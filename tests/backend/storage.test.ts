@@ -57,7 +57,27 @@ describe.skipIf(!hasSupabaseEnv)('song storage round trip (F4, F9, F10, N5)', ()
     const other = await newTestUser('storage-other')
     const library = await listLibrary(other.supabase)
     expect(library.filter((s) => s.user_id === ownerId)).toHaveLength(0)
+
+    // Not even with the storage path in hand (0004 limits reads to seed/ + own folder).
+    const { data, error } = await other.supabase.storage.from('notation').download(imported[0]!.notation_path)
+    expect(data).toBeNull()
+    expect(error).not.toBeNull()
   }, 30_000)
+
+  it('shows the catalog without an account, and nothing else (0004)', async () => {
+    const anon = newClient()
+    const catalog = await listLibrary(anon)
+    expect(catalog.length).toBeGreaterThan(0)
+    expect(catalog.every((s) => s.user_id === null)).toBe(true)
+
+    const seed = catalog.find((s) => s.title === 'Ode to Joy')!
+    const res = await fetch(await getNotationUrl(anon, seed))
+    expect(res.status).toBe(200)
+
+    const { data, error } = await anon.storage.from('notation').download(imported[0]!.notation_path)
+    expect(data).toBeNull()
+    expect(error).not.toBeNull()
+  })
 
   it('refuses uploads from a signed-out client', async () => {
     const bytes = readFileSync(join(fixtureDir, fixtures[0]!))

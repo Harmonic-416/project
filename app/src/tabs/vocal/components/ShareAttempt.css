@@ -1,0 +1,121 @@
+.share-attempt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.share-attempt__button {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.share-attempt__button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.share-attempt__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: inherit;
+}
+
+.share-attempt__link {
+  flex: 1 1 220px;
+  min-width: 0;
+  border: 1px solid #d6d3cc;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+  background: #ffffff;
+  color: #24242c;
+}
+
+.share-attempt__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.share-attempt__error {
+  font-size: 0.85rem;
+  color: #cf4b36;
+}
+
+/* SharedAttemptPanel: someone else's attempt on this device's copy of the score. */
+.shared-attempt__title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: inherit;
+}
+
+.shared-attempt__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.shared-attempt__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.shared-attempt__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.shared-attempt__swatch--in-tune { background: #2e9e5b; }
+.shared-attempt__swatch--close { background: #e0a100; }
+.shared-attempt__swatch--octave { background: #5b7cf2; }
+.shared-attempt__swatch--wrong { background: #cf4b36; }
+
+.shared-attempt__audio {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* SharedAttemptGate: before the score is open (sign in, pick your copy). */
+.shared-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 4px;
+}
+
+.shared-gate h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.shared-gate p {
+  margin: 0;
+  color: #6c6a72;
+}
+
+.shared-gate__warning {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fbeccc;
+  color: #7a5300 !important;
+}

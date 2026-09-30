@@ -29,7 +29,11 @@ describe.skipIf(!hasSupabaseEnv)('RLS isolation (F1, N5)', () => {
     expect(progress.data).toEqual([]) // ...but RLS returns zero rows
     const songs = await anon.from('song').select('*')
     expect(songs.error).toBeNull()
-    expect(songs.data).toEqual([]) // library requires authentication too
+    // The catalog is public since 0004; users' own songs are not.
+    expect(songs.data!.length).toBeGreaterThan(0)
+    expect(songs.data!.every((s) => s.user_id === null)).toBe(true)
+    const shares = await anon.from('shared_attempt').select('*')
+    expect(shares.data ?? []).toEqual([])
   })
 
   it('seed songs are read-only to clients (F4)', async () => {

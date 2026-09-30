@@ -32,42 +32,32 @@ function SongList({ items, onSelectSong, icon }) {
 }
 
 /**
- * Browse the songs stored in Supabase: the shared catalog (seed songs) and the
- * signed-in user's own saved songs, filtered by a search box. Sign-in itself
- * lives on the Home tab — this component only reads `user` to decide between
- * the lists and the "sign in first" prompt.
+ * Browse the shared song catalog (public-domain songs the team curates in
+ * Supabase), filtered by a search box. No sign-in needed: the catalog is
+ * public, and the app doesn't store anyone's own songs in the cloud.
  */
-function OnlineSongs({ user, configured, ready, supabase, onSelectSong, onNavigateHome }) {
-  const userId = user?.id ?? null
+function OnlineSongs({ configured, supabase, onSelectSong }) {
   const [query, setQuery] = useState('')
-  const [result, setResult] = useState(null) // { forUser, songs } | { forUser, error }
+  const [result, setResult] = useState(null) // { songs } | { error }
 
   useEffect(() => {
-    if (!supabase || !userId) return undefined
+    if (!supabase) return undefined
     let cancelled = false
     fetchCloudSongs(supabase).then(
       (songs) => {
-        if (!cancelled) setResult({ forUser: userId, songs })
+        if (!cancelled) setResult({ songs })
       },
       (err) => {
         console.error(err)
-        if (!cancelled) setResult({ forUser: userId, error: err.message || 'Could not load the song catalog.' })
+        if (!cancelled) setResult({ error: err.message || 'Could not load the song catalog.' })
       },
     )
     return () => {
       cancelled = true
     }
-  }, [supabase, userId])
+  }, [supabase])
 
-  const current = result?.forUser === userId ? result : null
-  const catalog = useMemo(
-    () => filterSongs(current?.songs?.filter((item) => item.isSeed), query),
-    [current, query],
-  )
-  const mine = useMemo(
-    () => filterSongs(current?.songs?.filter((item) => !item.isSeed), query),
-    [current, query],
-  )
+  const catalog = useMemo(() => filterSongs(result?.songs, query), [result, query])
 
   if (!configured) {
     return (
@@ -75,21 +65,6 @@ function OnlineSongs({ user, configured, ready, supabase, onSelectSong, onNaviga
         Cloud not configured — copy <code>app/.env.example</code> to <code>app/.env.local</code> to
         enable the online catalog.
       </p>
-    )
-  }
-
-  if (!ready) {
-    return <p className="online-songs__hint">Loading…</p>
-  }
-
-  if (!user) {
-    return (
-      <div className="online-songs__empty">
-        <p className="online-songs__hint">Sign in to search the online catalog and your saved songs.</p>
-        <button type="button" className="online-songs__cta" onClick={onNavigateHome}>
-          Go to Home to sign in
-        </button>
-      </div>
     )
   }
 
@@ -104,10 +79,10 @@ function OnlineSongs({ user, configured, ready, supabase, onSelectSong, onNaviga
         autoFocus
       />
 
-      {!current && <p className="online-songs__hint">Loading…</p>}
-      {current?.error && <p className="online-songs__error">{current.error}</p>}
+      {!result && <p className="online-songs__hint">Loading…</p>}
+      {result?.error && <p className="online-songs__error">{result.error}</p>}
 
-      {current?.songs && (
+      {result?.songs && (
         <>
           <h3 className="online-songs__group">Catalog</h3>
           {catalog.length === 0 ? (
@@ -116,17 +91,6 @@ function OnlineSongs({ user, configured, ready, supabase, onSelectSong, onNaviga
             </p>
           ) : (
             <SongList items={catalog} onSelectSong={onSelectSong} icon="☁️" />
-          )}
-
-          <h3 className="online-songs__group">My songs</h3>
-          {mine.length === 0 ? (
-            <p className="online-songs__hint">
-              {query.trim()
-                ? 'None of your songs match that search.'
-                : 'Nothing saved yet — open a catalog song or a file and press “Save to cloud”.'}
-            </p>
-          ) : (
-            <SongList items={mine} onSelectSong={onSelectSong} icon="🎵" />
           )}
         </>
       )}

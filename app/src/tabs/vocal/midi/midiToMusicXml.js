@@ -1,12 +1,13 @@
 import { DIVISIONS_PER_QUARTER, quantizeTicksToGrid, ticksToDivisions, decomposeDuration } from './quantize.js'
 import { midiNoteToPitch, keySignatureToFifths } from './pitch.js'
+import { assignLyrics } from './lyrics.js'
 
 // Known simplifications (documented, not silent): only the first tempo/time
 // signature/key signature event is used (no mid-piece changes); notes are
 // assumed melodic-with-occasional-chords per track (true overlapping
 // polyphony within one track isn't voice-separated); notes that cross a
-// measure boundary are clipped rather than tied; clef is always treble.
-// All are reasonable for "clean" input and are natural spots to improve
+// measure boundary are clipped rather than tied; the clef is picked once per
+// part (from its name, else its range). All are reasonable for "clean" input and are natural spots to improve
 // later without touching the rest of the pipeline.
 
 const XML_HEADER = `<?xml version="1.0" encoding="UTF-8"?>
@@ -25,11 +26,37 @@ function groupIntoChords(sortedNotes) {
     if (last && last.startDivision === note.startDivision) {
       last.notes.push(note)
       last.endDivision = Math.max(last.endDivision, note.endDivision)
+      last.lyric ??= note.lyric
     } else {
-      groups.push({ startDivision: note.startDivision, endDivision: note.endDivision, notes: [note] })
+      groups.push({ startDivision: note.startDivision, endDivision: note.endDivision, notes: [note], lyric: note.lyric })
     }
   }
   return groups
+}
+
+const CLEFS = {
+  treble: '<clef><sign>G</sign><line>2</line></clef>',
+  // Tenor parts are written an octave up on a treble clef with an 8 below.
+  tenor: '<clef><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>',
+  bass: '<clef><sign>F</sign><line>4</line></clef>',
+}
+
+/** Voice-part names decide the clef; otherwise the part's median pitch does. */
+export function clefFor(name, midiNotes) {
+  if (/\b(bass|baritone|bari)\b/i.test(name)) return 'bass'
+  if (/\btenor\b/i.test(name)) return 'tenor'
+  if (/\b(soprano|alto|mezzo|treble|contralto)\b/i.test(name)) return 'treble'
+  if (!midiNotes.length) return 'treble'
+  const sorted = [...midiNotes].sort((a, b) => a - b)
+  return sorted[Math.floor(sorted.length / 2)] < 57 ? 'bass' : 'treble' // below A3: mostly under the treble staff
+}
+
+function renderLyric(lyric) {
+  return `
+        <lyric number="1">
+          <syllabic>${lyric.syllabic}</syllabic>
+          <text>${escapeXml(lyric.text)}</text>
+        </lyric>`
 }
 
 function renderRestChunk({ divisions, type, dots }) {
@@ -41,7 +68,7 @@ function renderRestChunk({ divisions, type, dots }) {
       </note>`
 }
 
-function renderChordChunk(notes, { divisions, type, dots }) {
+function renderChordChunk(notes, { divisions, type, dots }, lyric) {
   return notes
     .map((note, i) => {
       const { step, alter, octave } = midiNoteToPitch(note.midi)
@@ -52,7 +79,7 @@ function renderChordChunk(notes, { divisions, type, dots }) {
           <octave>${octave}</octave>
         </pitch>
         <duration>${divisions}</duration>
-        <type>${type}</type>${dots ? '\n        <dot/>' : ''}
+        <type>${type}</type>${dots ? '\n        <dot/>' : ''}${i === 0 && lyric ? renderLyric(lyric) : ''}
       </note>`
     })
     .join('')
@@ -63,16 +90,16 @@ function renderChunks(totalDivisions, cursorStart, renderOne) {
   let xml = ''
   const onsets = []
   let pos = cursorStart
-  for (const chunk of decomposeDuration(totalDivisions)) {
+  for (const [i, chunk] of decomposeDuration(totalDivisions).entries()) {
     onsets.push(pos)
-    xml += renderOne(chunk)
+    xml += renderOne(chunk, i)
     pos += chunk.divisions
   }
   return { xml, onsets }
 }
 
 function buildPart(partId, groups, opts) {
-  const { divisionsPerMeasure, measureCount, numerator, denominator, fifths, bpm, isFirstPart } = opts
+  const { divisionsPerMeasure, measureCount, numerator, denominator, fifths, bpm, isFirstPart, clef } = opts
   const measuresXml = []
   const onsets = []
   let groupIndex = 0
@@ -94,7 +121,10 @@ function buildPart(partId, groups, opts) {
       const clippedEnd = Math.min(group.endDivision, measureEnd)
       const dur = clippedEnd - cursor
       if (dur > 0) {
-        const { xml, onsets: noteOnsets } = renderChunks(dur, cursor, (chunk) => renderChordChunk(group.notes, chunk))
+        const { xml, onsets: noteOnsets } = renderChunks(dur, cursor, (chunk, i) =>
+          // The syllable goes under the note's first chunk only.
+          renderChordChunk(group.notes, chunk, i === 0 ? group.lyric : null),
+        )
         notesXml += xml
         onsets.push(...noteOnsets)
       }
@@ -115,7 +145,7 @@ function buildPart(partId, groups, opts) {
         <divisions>${DIVISIONS_PER_QUARTER}</divisions>
         <key><fifths>${fifths}</fifths></key>
         <time><beats>${numerator}</beats><beat-type>${denominator}</beat-type></time>
-        <clef><sign>G</sign><line>2</line></clef>
+        ${CLEFS[clef]}
       </attributes>`
         : ''
     const direction =
@@ -135,13 +165,28 @@ function buildPart(partId, groups, opts) {
 }
 
 /**
+ * Voice part name for a track: its MIDI track name, else a non-default
+ * instrument name ("choir aahs"), else "Part N" — never "acoustic grand
+ * piano" for a vocal line that just didn't set a program.
+ */
+function partName(track, index) {
+  const name = track.name?.trim()
+  if (name) return name
+  if (track.instrument?.number > 0 && !track.instrument.percussion) return track.instrument.name
+  return `Part ${index + 1}`
+}
+
+/**
  * Convert a parsed @tonejs/midi Midi object into MusicXML plus a parallel
  * playback schedule. Both are derived from the same quantized note groups
  * so Tone.js audio and the OSMD cursor can never drift apart: `cursorTimestamps`
  * is the exact ordered list of onsets (notes + rests) the XML renders, and
  * `playbackSchedule` uses the same time base (seconds, from a single tempo).
+ *
+ * `lyricStreams` (readLyricStreams from lyrics.js) puts each syllable under
+ * the note it's sung on.
  */
-export function midiToMusicXml(midi) {
+export function midiToMusicXml(midi, { lyricStreams = [] } = {}) {
   const ppq = midi.header.ppq
   const [numerator, denominator] = midi.header.timeSignatures[0]?.timeSignature ?? [4, 4]
   const bpm = midi.header.tempos[0]?.bpm ?? 120
@@ -154,16 +199,20 @@ export function midiToMusicXml(midi) {
     throw new Error('This MIDI file has no notes to convert.')
   }
 
-  const quantizedTracks = tracks.map((track) => {
+  const lyricsByTrack = assignLyrics(tracks, lyricStreams, ppq)
+
+  const quantizedTracks = tracks.map((track, trackIndex) => {
     const notes = track.notes
-      .map((note) => {
+      .map((note, noteIndex) => {
         const startDivision = ticksToDivisions(quantizeTicksToGrid(note.ticks, ppq), ppq)
         let endDivision = ticksToDivisions(quantizeTicksToGrid(note.ticks + note.durationTicks, ppq), ppq)
         if (endDivision <= startDivision) endDivision = startDivision + 1
-        return { midi: note.midi, name: note.name, startDivision, endDivision }
+        const lyric = lyricsByTrack[trackIndex].get(noteIndex)
+        return { midi: note.midi, name: note.name, startDivision, endDivision, lyric }
       })
       .sort((a, b) => a.startDivision - b.startDivision)
-    return { name: track.name || track.instrument?.name || 'Track', notes }
+    const name = partName(track, trackIndex)
+    return { name, notes, clef: clefFor(name, notes.map((n) => n.midi)) }
   })
 
   const chordGroupsByTrack = quantizedTracks.map((t) => groupIntoChords(t.notes))
@@ -180,6 +229,7 @@ export function midiToMusicXml(midi) {
       fifths,
       bpm,
       isFirstPart: i === 0,
+      clef: quantizedTracks[i].clef,
     }),
   )
 

@@ -6,7 +6,7 @@
 /** The sign-in options the app offers, in the order they are shown. */
 export const PROVIDERS = ['google', 'github']
 
-const PROVIDER_NAMES = { google: 'Google', github: 'GitHub', email: 'Email' }
+const PROVIDER_NAMES = { google: 'Google', github: 'GitHub' }
 
 export function providerName(provider) {
   return PROVIDER_NAMES[provider] ?? provider

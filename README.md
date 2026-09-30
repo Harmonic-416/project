@@ -70,7 +70,7 @@ docs/             architecture, scaling plan, milestone tracker
 
 ```
 cd app
-cp .env.example .env.local     # optional: enables sign-in + cloud library
+cp .env.example .env.local     # optional: enables the catalog, sign-in and sharing
 npm ci
 npm run dev                    # http://localhost:5173
 npm test                       # converter / import / export / pitch unit tests
@@ -80,9 +80,12 @@ npm run lint && npm run build  # what CI runs
 The Vocal tab opens MIDI, MusicXML and MXL files (built-in list from
 `app/public/midi-files/`, or upload), renders them with OpenSheetMusicDisplay,
 plays them with Tone.js in sync with the cursor, exports MusicXML/MIDI, records
-a sung attempt with the pitch drawn on the staff, and — when signed in — shows
-the shared song catalog and lets you copy catalog songs or save your own files
-to your cloud library (stored as MusicXML in the private `notation` bucket).
+a sung attempt with the pitch drawn on the staff, and shows the public song
+catalog (no sign-in needed). After a recorded attempt, the
+part's notes turn green (sung) or red (missed); signed-in users can share the
+attempt as a link. Songs are never uploaded (copyright): a shared attempt
+names its song by catalog id or file fingerprint, and the viewer opens their
+own copy of the file.
 
 The Guitar tab opens on a **tuner** (standard tuning; tap Start, play a string,
 tap a string to lock it) that runs on the shared AudioWorklet mic capture in

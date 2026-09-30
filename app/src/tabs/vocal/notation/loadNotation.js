@@ -1,6 +1,7 @@
 import JSZip from 'jszip'
 import { parseMidiFile } from '../midi/parseMidi.js'
 import { midiToMusicXml } from '../midi/midiToMusicXml.js'
+import { readLyricStreams } from '../midi/lyrics.js'
 
 /**
  * Notation import. Everything the Vocal tab can open goes through here and
@@ -72,7 +73,7 @@ export async function loadNotation(arrayBuffer, filename, { title } = {}) {
 
   if (format === 'midi') {
     const midi = await parseMidiFile(arrayBuffer)
-    const { musicXml } = midiToMusicXml(midi)
+    const { musicXml } = midiToMusicXml(midi, { lyricStreams: readLyricStreams(arrayBuffer) })
     return { format, title: resolvedTitle, content: musicXml, sourceBytes: arrayBuffer }
   }
 
