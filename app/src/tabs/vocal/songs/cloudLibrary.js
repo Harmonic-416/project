@@ -1,12 +1,14 @@
-import { getNotationUrl, importMusicXml, listLibrary } from '@backend/songs'
+import { getNotationUrl, listLibrary } from '@backend/songs'
 
 /**
  * Cloud side of the song library, on top of the shared backend layer
- * (src/lib/songs.ts at the repo root): the `song` table plus the private
- * `notation` bucket, where every song is stored as MusicXML.
+ * (src/lib/songs.ts at the repo root): the public catalog in the `song`
+ * table, stored as MusicXML in the `notation` bucket's seed/ folder. The app
+ * never uploads songs (copyright); the catalog is curated by the team, and it
+ * is readable without signing in.
  */
 
-/** Vocal songs visible to this user: voice seed songs plus their own imports. */
+/** Vocal catalog songs. */
 export async function fetchCloudSongs(supabase) {
   const [songs, seedFiles] = await Promise.all([
     listLibrary(supabase),
@@ -16,17 +18,22 @@ export async function fetchCloudSongs(supabase) {
       .then(({ data }) => new Set((data ?? []).map((object) => `seed/${object.name}`))),
   ])
   return songs
-    .filter((song) => song.instrument === 'voice')
+    .filter((song) => song.user_id === null && song.instrument === 'voice')
     .map((song) => ({
       id: song.id,
       title: song.title,
       artist: song.artist,
-      isSeed: song.user_id === null,
       // Seed rows point at files that are uploaded by hand (README step 5);
       // flag the ones that aren't there yet instead of failing on click.
-      available: song.user_id !== null || seedFiles.has(song.notation_path),
+      available: seedFiles.has(song.notation_path),
       song,
     }))
+}
+
+/** One catalog song by id (for a shared attempt), or null. */
+export async function fetchCatalogSong(supabase, songId) {
+  const songs = await listLibrary(supabase)
+  return songs.find((song) => song.id === songId && song.user_id === null) ?? null
 }
 
 export async function fetchCloudNotation(supabase, song) {
@@ -34,23 +41,4 @@ export async function fetchCloudNotation(supabase, song) {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Could not download the notation file (HTTP ${response.status}).`)
   return response.arrayBuffer()
-}
-
-/**
- * Store the loaded notation as MusicXML in the caller's own library. An
- * uploaded MIDI or MXL file is kept as well (song.source_path), so the
- * original can be downloaded or re-converted later; for MusicXML the
- * stored copy already is the original.
- */
-export function saveNotationToCloud(supabase, notation) {
-  const source =
-    notation.sourceBytes && notation.format !== 'musicxml'
-      ? { data: notation.sourceBytes, format: notation.format }
-      : undefined
-  return importMusicXml(
-    supabase,
-    { name: `${notation.title}.musicxml`, content: notation.content },
-    { title: notation.title, instrument: 'voice' },
-    source,
-  )
 }
