@@ -9,6 +9,10 @@ import * as Tone from 'tone'
  *
  * `minDuration` keeps playback running to the end of the score when the
  * schedule leaves the last notes out (practising with the other parts only).
+ *
+ * `setAudible(events)` limits what sounds to that subset of
+ * `playbackSchedule` (null = everything) without rebuilding the part, so a
+ * mic-scored run can mute the singer's own line (see practice/deviceBleed.js).
  */
 export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusicRef, minDuration = 0 }) {
   const [state, setState] = useState('idle') // idle | playing | paused | stopped
@@ -16,6 +20,7 @@ export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusic
   const partRef = useRef(null)
   const synthRef = useRef(null)
   const scheduledIdsRef = useRef([])
+  const audibleRef = useRef(null)
 
   const duration = Math.max(minDuration, ...playbackSchedule.map((n) => n.time + n.duration))
 
@@ -33,9 +38,11 @@ export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusic
     synth.volume.value = -6
     synthRef.current = synth
 
+    audibleRef.current = null
     const part = new Tone.Part((time, event) => {
+      if (audibleRef.current && !audibleRef.current.has(playbackSchedule[event.id])) return
       synth.triggerAttackRelease(event.pitches, event.duration, time)
-    }, playbackSchedule.map((n) => ({ time: n.time, pitches: n.pitches, duration: n.duration })))
+    }, playbackSchedule.map((n, id) => ({ id, time: n.time, pitches: n.pitches, duration: n.duration })))
     part.start(0)
     partRef.current = part
 
@@ -114,5 +121,9 @@ export function useMidiPlayback({ playbackSchedule, cursorTimestamps, sheetMusic
     return () => cancelAnimationFrame(raf)
   }, [state, duration, stop])
 
-  return { state, position, duration, play, pause, stop, seek }
+  const setAudible = useCallback((events) => {
+    audibleRef.current = events ? new Set(events) : null
+  }, [])
+
+  return { state, position, duration, play, pause, stop, seek, setAudible }
 }

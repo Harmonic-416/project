@@ -87,7 +87,13 @@ export function extractScoreModel(osmd, { sourceNotes } = {}) {
   cursor.reset()
 
   const duration = notes.reduce((max, n) => Math.max(max, n.time + n.duration), 0)
-  const playbackSchedule = notes.map((n) => ({ time: n.time, pitches: [n.frequency], duration: n.duration }))
+  const playbackSchedule = notes.map((n) => ({
+    time: n.time,
+    pitches: [n.frequency],
+    duration: n.duration,
+    partIndex: n.partIndex,
+    midi: n.midi,
+  }))
 
   return {
     notes,

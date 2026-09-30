@@ -9,11 +9,17 @@ import { createHoldDetector, noteDistanceCents, soundingAt } from '../practice/p
 const TARGET_CLASS = 'practice-note--target'
 const SUNG_CLASS = 'practice-note--sung'
 const HINT_SECONDS = 0.8
+// Short enough to die out inside the deaf window; Tone.Synth's default 1 s
+// release would still be ringing (at the target pitch) when the mic reopens.
+const HINT_RELEASE_SECONDS = 0.1
 // Ignore the mic while the hint tone (and a little room echo) is sounding,
 // or the speaker would "sing" the note for the user.
-const HINT_DEAF_MS = HINT_SECONDS * 1000 + 300
+const HINT_DEAF_MS = (HINT_SECONDS + HINT_RELEASE_SECONDS) * 1000 + 300
 
 const HELD_CHORD_DB = -14
+const HELD_CHORD_RELEASE_SECONDS = 0.5
+// Frames this close to a chord tone that is still fading out are the speaker, not the singer.
+const CHORD_BLEED_CENTS = 60
 
 /**
  * What the other parts are sounding at the target's onset, minus anything
@@ -55,6 +61,10 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
   const deafUntilRef = useRef(0)
   const synthRef = useRef(null)
   const chordSynthRef = useRef(null)
+  // Chord tones still audible after moving on: [{ midi, untilMs }]. The new
+  // target may share a pitch class with the old chord, and its release tail
+  // mustn't count as the singer landing on it.
+  const fadingChordRef = useRef([])
   const done = melody.length > 0 && index >= melody.length
 
   const highlight = useCallback(
@@ -84,6 +94,10 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     (sample) => {
       const now = performance.now()
       if (now < deafUntilRef.current) return
+      fadingChordRef.current = fadingChordRef.current.filter((tone) => tone.untilMs > now)
+      if (fadingChordRef.current.some((tone) => Math.abs(noteDistanceCents(sample.midi, tone.midi)) <= CHORD_BLEED_CENTS)) {
+        return
+      }
       const note = melody[indexRef.current]
       if (!note || !detector.update(sample.midi, note.midi, now)) return
       sheetMusicRef.current?.markNote(note.index, SUNG_CLASS)
@@ -112,14 +126,18 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     if (!backingNotes || !listening || !target) return undefined
     if (!chordSynthRef.current) {
       chordSynthRef.current = new Tone.PolySynth(Tone.Synth, {
-        envelope: { attack: 0.08, decay: 0.2, sustain: 0.7, release: 0.5 },
+        envelope: { attack: 0.08, decay: 0.2, sustain: 0.7, release: HELD_CHORD_RELEASE_SECONDS },
       }).toDestination()
       chordSynthRef.current.volume.value = HELD_CHORD_DB
     }
     const synth = chordSynthRef.current
     const chord = heldChord(backingNotes, target)
     if (chord.length) synth.triggerAttack(chord)
-    return () => synth.releaseAll()
+    return () => {
+      synth.releaseAll()
+      const untilMs = performance.now() + (HELD_CHORD_RELEASE_SECONDS + 0.2) * 1000
+      fadingChordRef.current = chord.map((f) => ({ midi: frequencyToMidi(f), untilMs }))
+    }
   }, [backingNotes, listening, index, melody])
 
   // Last note sung: release the microphone.
@@ -164,7 +182,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     const note = melody[indexRef.current]
     if (!note) return
     await Tone.start()
-    if (!synthRef.current) synthRef.current = new Tone.Synth().toDestination()
+    if (!synthRef.current) synthRef.current = new Tone.Synth({ envelope: { release: HINT_RELEASE_SECONDS } }).toDestination()
     deafUntilRef.current = performance.now() + HINT_DEAF_MS
     detector.reset()
     synthRef.current.triggerAttackRelease(note.frequency, HINT_SECONDS)

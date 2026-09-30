@@ -1,23 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import './RecordPanel.css'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { useSheetOverlay } from '../audio/useSheetOverlay.js'
 import { centsOff, classifyCents, findActiveNote, midiToNoteName, scoreAttempt } from '../audio/pitchDetector.js'
 import { downloadBlob, safeFilename } from '../notation/exportNotation.js'
-
-/** Playback clock, or null while the transport isn't running (mic warm-up, permission prompt). */
-const getTransportSeconds = () => (Tone.Transport.state === 'started' ? Tone.Transport.seconds : null)
+import { heardScoreTime } from '../audio/scoreClock.js'
+import { createBleedGate, playableWhileScoring } from '../practice/deviceBleed.js'
 
 /**
  * "Record attempt": starts the microphone and playback together, plots the
  * sung pitch on the sheet music while the cursor moves, and scores the
  * attempt against the first part's melody when playback ends (or Stop is
- * pressed). The compressed recording can be downloaded; uploading it via the
+ * pressed). On the speaker, the singer's own part is muted for the attempt
+ * and frames matching what the device plays are ignored (deviceBleed.js). The compressed recording can be downloaded; uploading it via the
  * backend's uploadRecording is the next step once a cloud song/run-through
  * is linked.
  */
-function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
+function RecordPanel({ scoreModel, playback, playbackSchedule, headphones, sheetMusicRef, title }) {
   const melody = useMemo(
     () =>
       scoreModel
@@ -29,6 +29,8 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
   const [armed, setArmed] = useState(false)
   const [result, setResult] = useState(null)
   const [recording, setRecording] = useState(null)
+  const bleedGateRef = useRef(null)
+  const isBleed = useCallback((time, midi) => bleedGateRef.current?.(time, midi) ?? false, [])
 
   const handleSample = useCallback(
     (sample) => {
@@ -38,22 +40,30 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
     [melody, overlay],
   )
 
-  const mic = useMicPitch({ getTime: getTransportSeconds, onSample: handleSample })
+  const mic = useMicPitch({ getTime: heardScoreTime, onSample: handleSample, isBleed })
 
   const startAttempt = useCallback(async () => {
     setResult(null)
     setRecording(null)
     overlay.clear()
     playback.stop()
-    await mic.start()
+    const audible = playableWhileScoring(playbackSchedule, melody, { headphones })
+    playback.setAudible(audible)
+    bleedGateRef.current = headphones ? null : createBleedGate(audible)
+    if (!(await mic.start())) {
+      playback.setAudible(null)
+      return
+    }
     await playback.play()
     setArmed(true)
-  }, [mic, overlay, playback])
+  }, [headphones, melody, mic, overlay, playback, playbackSchedule])
 
   const finishAttempt = useCallback(async () => {
     setArmed(false)
     const blob = await mic.stop()
     if (playback.state === 'playing' || playback.state === 'paused') playback.stop()
+    playback.setAudible(null)
+    bleedGateRef.current = null
     setRecording(blob)
     setResult(scoreAttempt(mic.getSamples(), melody))
   }, [melody, mic, playback])
@@ -65,6 +75,10 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title }) {
     const id = setTimeout(finishAttempt, 0)
     return () => clearTimeout(id)
   }, [armed, mic.status, playback.state, finishAttempt])
+
+  // Leaving mid-attempt (mode or part change) must not leave the part muted.
+  const { setAudible } = playback
+  useEffect(() => () => setAudible(null), [setAudible])
 
   useEffect(() => {
     if (!import.meta.env.DEV) return
