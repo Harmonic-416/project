@@ -2,6 +2,8 @@
   --practice-good: #6a9f4e;
   --practice-good-strong: #4f7d38;
   --practice-bad: #c8553d;
+  --practice-warn: #e3b341;
+  --practice-warn-ink: #3a2c05;
   --practice-bar: #efece5;
   --practice-ink: #1f1c1a;
 
@@ -264,8 +266,6 @@
   border-color: var(--hm-accent);
 }
 
-
-
 .practice__demo .practice__demo-reset {
   border-style: dashed;
   color: var(--hm-text-muted);
@@ -274,4 +274,81 @@
 .practice__demo button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* mic toggle */
+.practice__demo .practice__listen.is-on {
+  border-color: var(--practice-good);
+  color: var(--practice-good-strong);
+  font-weight: 600;
+}
+
+.practice__listen-error {
+  align-self: center;
+  color: var(--practice-bad);
+  font-size: 0.8rem;
+}
+
+/* what the app heard: right = green, wrong = red, nothing = yellow.
+   Lit stays full colour even while the button can't be clicked. */
+.practice__demo button {
+  position: relative;
+  overflow: hidden;
+}
+
+.practice__demo button.is-lit {
+  opacity: 1;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.practice__demo button.is-verified {
+  border-color: var(--practice-good-strong);
+  background: var(--practice-good);
+}
+
+.practice__demo button.is-wrong {
+  border-color: var(--practice-bad);
+  background: var(--practice-bad);
+}
+
+.practice__demo button.is-silent {
+  border-color: var(--practice-warn);
+  background: var(--practice-warn);
+  color: var(--practice-warn-ink);
+}
+
+/* replays on every result, so hearing the same thing twice still shows */
+.practice__flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  animation: practice-flash 0.6s ease-out;
+}
+
+@keyframes practice-flash {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice__flash {
+    animation: none;
+  }
+}
+
+.practice__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
