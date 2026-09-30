@@ -56,9 +56,7 @@ describe('accompaniment', () => {
   })
 
   it('schedules notes for playback', () => {
-    expect(scheduleFor([{ ...note(440, 1, 0.5), partIndex: 1, midi: 69 }])).toEqual([
-      { time: 1, pitches: [440], duration: 0.5, partIndex: 1, midi: 69 },
-    ])
+    expect(scheduleFor([note(440, 1, 0.5)])).toEqual([{ time: 1, pitches: [440], duration: 0.5 }])
   })
 })
 

@@ -7,14 +7,11 @@ const UI_INTERVAL_MS = 50
  * Microphone → pitch samples, entirely client-side (live audio never leaves
  * the device; see README architecture rules). Every analysed frame becomes
  * { time, frequency, midi, clarity, noteName } where `time` comes from
- * `getTime(captureDelay)` — the playback clock, given how long ago (seconds)
- * the frame was actually sung — so samples line up with the score.
- * Frames `isBleed(time, midi)` flags as the device's own playback are
- * dropped before they are scored or stored (see practice/deviceBleed.js).
+ * `getTime()` — the playback clock — so samples line up with the score.
  * A MediaRecorder runs alongside and yields a compressed webm/opus Blob on
  * stop(), the shape the backend's uploadRecording expects.
  */
-export function useMicPitch({ getTime, onSample, isBleed }) {
+export function useMicPitch({ getTime, onSample }) {
   const [status, setStatus] = useState('idle') // idle | requesting | listening | error
   const [error, setError] = useState(null)
   const [current, setCurrent] = useState(null)
@@ -22,13 +19,11 @@ export function useMicPitch({ getTime, onSample, isBleed }) {
   const samplesRef = useRef([])
   const getTimeRef = useRef(getTime)
   const onSampleRef = useRef(onSample)
-  const isBleedRef = useRef(isBleed)
 
   useEffect(() => {
     getTimeRef.current = getTime
     onSampleRef.current = onSample
-    isBleedRef.current = isBleed
-  }, [getTime, onSample, isBleed])
+  }, [getTime, onSample])
 
   const stop = useCallback(
     () =>
@@ -82,10 +77,6 @@ export function useMicPitch({ getTime, onSample, isBleed }) {
       ctx.createMediaStreamSource(stream).connect(analyser)
       const tracker = createPitchTracker({ bufferSize: analyser.fftSize })
       const buffer = new Float32Array(analyser.fftSize)
-      // How long ago the middle of an analysed frame was sung: input latency
-      // (when the browser reports it) plus half the analysis window.
-      const inputLatency = stream.getAudioTracks()[0]?.getSettings?.().latency ?? 0.01
-      const captureDelay = inputLatency + (ctx.baseLatency || 0) + analyser.fftSize / 2 / ctx.sampleRate
 
       let recorder = null
       const chunks = []
@@ -108,11 +99,10 @@ export function useMicPitch({ getTime, onSample, isBleed }) {
       const tick = () => {
         if (rigRef.current !== rig) return
         analyser.getFloatTimeDomainData(buffer)
-        const analysed = tracker.analyze(buffer, ctx.sampleRate)
+        const result = tracker.analyze(buffer, ctx.sampleRate)
         const now = performance.now()
-        const time = analysed ? getTimeRef.current(captureDelay) : null
-        const result = analysed && !(time !== null && isBleedRef.current?.(time, analysed.midi)) ? analysed : null
         if (result) {
+          const time = getTimeRef.current()
           const sample = { ...result, time, noteName: midiToNoteName(result.midi) }
           if (time !== null) {
             samplesRef.current.push(sample)

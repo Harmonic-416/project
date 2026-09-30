@@ -5,13 +5,13 @@ import PlaybackControls from './PlaybackControls.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { findActiveNote, midiToNoteName } from '../audio/pitchDetector.js'
 import { createTroubleTracker, noteDistanceCents } from '../practice/practiceLogic.js'
-import { createBleedGate, playableWhileScoring } from '../practice/deviceBleed.js'
-import { heardScoreTime, TYPICAL_CAPTURE_DELAY } from '../audio/scoreClock.js'
 
 const MISSED_CLASS = 'practice-note--missed'
 // Stopping this close to the end counts as finishing, so the last notes still get a verdict.
-// The heard clock trails the transport by lookahead + output latency (up to ~0.4 s on Bluetooth).
-const END_SLACK_SECONDS = 1
+const END_SLACK_SECONDS = 0.5
+
+/** Playback clock, or null while the transport isn't running (so paused frames aren't scored). */
+const getTransportSeconds = () => (Tone.Transport.state === 'started' ? Tone.Transport.seconds : null)
 
 /**
  * "Trouble spots": normal playback that never waits. The mic runs alongside
@@ -19,22 +19,16 @@ const END_SLACK_SECONDS = 1
  * decides whether it was sung (within a semitone, any octave); misses are
  * coloured red on the score and stay there until that passage is sung
  * again or the marks are cleared.
- *
- * On the speaker the singer's own part is muted and frames matching what
- * the device plays are ignored, so the device can't hit notes for them
- * (practice/deviceBleed.js).
  */
-function TroubleSpotsPlayer({ melody, playback, playbackSchedule, headphones, sheetMusicRef, disabled }) {
+function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
   const [missed, setMissed] = useState([])
   const missedRef = useRef([])
   const [run, setRun] = useState(null) // { hit, checked, finished }
   const trackerRef = useRef(null)
   const lastTimeRef = useRef(0)
 
-  const bleedGateRef = useRef(null)
-  const isBleed = useCallback((time, midi) => bleedGateRef.current?.(time, midi) ?? false, [])
   const handleSample = useCallback((sample) => trackerRef.current?.addSample(sample), [])
-  const mic = useMicPitch({ getTime: heardScoreTime, onSample: handleSample, isBleed })
+  const mic = useMicPitch({ getTime: getTransportSeconds, onSample: handleSample })
   const listening = mic.status === 'listening'
 
   const applyVerdicts = useCallback(
@@ -77,13 +71,10 @@ function TroubleSpotsPlayer({ melody, playback, playbackSchedule, headphones, sh
   }, [sheetMusicRef])
 
   const play = useCallback(async () => {
-    const audible = playableWhileScoring(playbackSchedule, melody, { headphones })
-    playback.setAudible(audible)
-    bleedGateRef.current = headphones ? null : createBleedGate(audible)
     if (!(await mic.start())) return
     if (playback.state !== 'paused' || !trackerRef.current) startRun(Tone.Transport.seconds)
     await playback.play()
-  }, [headphones, melody, mic, playback, playbackSchedule, startRun])
+  }, [mic, playback, startRun])
 
   const seek = useCallback(
     (time) => {
@@ -97,14 +88,8 @@ function TroubleSpotsPlayer({ melody, playback, playbackSchedule, headphones, sh
   useEffect(() => {
     if (playback.state !== 'playing') return undefined
     let raf
-    // Judged on the clock the mic frames use, so a note isn't closed before
-    // the frames sung during it have arrived.
     const tick = () => {
-      const t = heardScoreTime(TYPICAL_CAPTURE_DELAY)
-      if (t === null) {
-        raf = requestAnimationFrame(tick)
-        return
-      }
+      const t = Tone.Transport.seconds
       lastTimeRef.current = t
       if (trackerRef.current) applyVerdicts(trackerRef.current.collect(t))
       raf = requestAnimationFrame(tick)
@@ -128,15 +113,11 @@ function TroubleSpotsPlayer({ melody, playback, playbackSchedule, headphones, sh
     mic.stop()
   }, [playback.state, playback.duration, applyVerdicts, mic])
 
-  // Leaving the mode takes the red marks off the score and unmutes playback.
-  const { setAudible } = playback
+  // Leaving the mode takes the red marks off the score.
   useEffect(() => {
     const viewer = sheetMusicRef.current
-    return () => {
-      viewer?.clearMarks(MISSED_CLASS)
-      setAudible(null)
-    }
-  }, [sheetMusicRef, setAudible])
+    return () => viewer?.clearMarks(MISSED_CLASS)
+  }, [sheetMusicRef])
 
   const live = mic.current
   const liveTarget = live ? findActiveNote(melody, live.time) : null
@@ -164,13 +145,7 @@ function TroubleSpotsPlayer({ melody, playback, playbackSchedule, headphones, sh
               : 'listening…'}
           </span>
         ) : (
-          !run && (
-            <span>
-              {headphones
-                ? 'Sing along with playback.'
-                : 'Sing your part as the cursor moves — it stays silent so the mic only scores you.'}
-            </span>
-          )
+          !run && <span>Sing along with playback. Headphones help — otherwise the mic also hears the music.</span>
         )}
         {run?.finished && (
           <strong>

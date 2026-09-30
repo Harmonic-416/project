@@ -8,7 +8,6 @@ import PlaybackControls from './components/PlaybackControls.jsx'
 import PracticeModeToggle from './components/PracticeModeToggle.jsx'
 import PartTabs from './components/PartTabs.jsx'
 import AccompanimentToggle from './components/AccompanimentToggle.jsx'
-import HeadphonesToggle from './components/HeadphonesToggle.jsx'
 import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
@@ -25,15 +24,6 @@ const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
 const NO_SCHEDULE = []
 const NO_TIMESTAMPS = []
 const OTHER_PART_CLASS = 'practice-note--other-part'
-const HEADPHONES_KEY = 'harmonic.headphones'
-
-function readHeadphones() {
-  try {
-    return localStorage.getItem(HEADPHONES_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
 // playback, export, and the cloud library (Supabase, via the shared backend
@@ -54,7 +44,6 @@ function VocalTab({ auth, onNavigate }) {
   const [practiceMode, setPracticeMode] = useState('listen') // listen | wait | trouble (see practice/practiceLogic.js)
   const [practicePart, setPracticePart] = useState(undefined) // part id; undefined = the first part
   const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
-  const [headphones, setHeadphones] = useState(readHeadphones) // false = speaker: mute your part while scored
   const sheetMusicRef = useRef(null)
 
   const beginLoad = useCallback(() => {
@@ -235,19 +224,6 @@ function VocalTab({ auth, onNavigate }) {
     [playback],
   )
 
-  const handleHeadphonesChange = useCallback(
-    (value) => {
-      playback.stop()
-      setHeadphones(value)
-      try {
-        localStorage.setItem(HEADPHONES_KEY, String(value))
-      } catch {
-        // private mode: the choice just isn't remembered
-      }
-    },
-    [playback],
-  )
-
   const handleBack = useCallback(() => {
     playback.stop()
     setView(returnTo)
@@ -364,9 +340,6 @@ function VocalTab({ auth, onNavigate }) {
               disabled={!scoreModel}
             />
           )}
-          {practiceMode !== 'wait' && (
-            <HeadphonesToggle value={headphones} onChange={handleHeadphonesChange} disabled={!scoreModel} />
-          )}
           {scoreModel && practiceMode === 'wait' ? (
             // Keyed by part so switching parts starts the mode fresh on the new line.
             <WaitModePlayer
@@ -377,14 +350,7 @@ function VocalTab({ auth, onNavigate }) {
               backingNotes={withOthers ? otherPartNotes : null}
             />
           ) : scoreModel && practiceMode === 'trouble' ? (
-            <TroubleSpotsPlayer
-              key={selectedPart?.id}
-              melody={melody}
-              playback={playback}
-              playbackSchedule={playbackSchedule}
-              headphones={headphones}
-              sheetMusicRef={sheetMusicRef}
-            />
+            <TroubleSpotsPlayer key={selectedPart?.id} melody={melody} playback={playback} sheetMusicRef={sheetMusicRef} />
           ) : (
             <PlaybackControls
               state={playback.state}
@@ -402,8 +368,6 @@ function VocalTab({ auth, onNavigate }) {
               key={selectedPart?.id}
               scoreModel={scoreModel}
               playback={playback}
-              playbackSchedule={playbackSchedule}
-              headphones={headphones}
               sheetMusicRef={sheetMusicRef}
               title={notation.title}
             />

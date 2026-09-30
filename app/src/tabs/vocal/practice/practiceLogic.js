@@ -24,11 +24,7 @@ export const ACCOMPANIMENTS = [
   {
     id: 'solo',
     label: 'By myself',
-    hint: {
-      listen: 'Only your part plays.',
-      wait: 'Silent until you sing.',
-      trouble: 'Your part plays for you to sing along with (headphones only; on the speaker it stays silent).',
-    },
+    hint: { listen: 'Only your part plays.', wait: 'Silent until you sing.', trouble: 'Your part plays for you to sing along with.' },
   },
   {
     id: 'all',
@@ -43,13 +39,7 @@ export const ACCOMPANIMENTS = [
 
 /** Tone.Part events for a set of score-model notes (one pitch each). */
 export function scheduleFor(notes) {
-  return notes.map((n) => ({
-    time: n.time,
-    pitches: [n.frequency],
-    duration: n.duration,
-    partIndex: n.partIndex,
-    midi: n.midi,
-  }))
+  return notes.map((n) => ({ time: n.time, pitches: [n.frequency], duration: n.duration }))
 }
 
 /**
