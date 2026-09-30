@@ -1,4 +1,4 @@
-import { centsOff, classifyCents, findActiveNote } from '../audio/pitchDetector.js'
+import { centsOff, classifyCents, findActiveNote, midiToNoteName } from '../audio/pitchDetector.js'
 import { createTroubleTracker, melodyLine } from '../practice/practiceLogic.js'
 
 /**
@@ -42,6 +42,16 @@ export function judgeNotes(samples, scoreNotes) {
   for (const sample of samples) tracker.addSample(sample)
   const { hit, missed } = tracker.collect(Infinity)
   return { hit, missed, total: melody.length }
+}
+
+/** Missed notes as "bar 3 G4, bar 7 C5" (bar numbers when `measureOf` knows them). */
+export function describeMissed(missed, measureOf = () => null) {
+  return missed
+    .map((note) => {
+      const bar = measureOf(note)
+      return `${bar ? `bar ${bar} ` : ''}${midiToNoteName(note.midi)}`
+    })
+    .join(', ')
 }
 
 /** SHA-256 of the song file as lowercase hex: two copies of the same file match. */

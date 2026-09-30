@@ -455,6 +455,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
               scoreModel={scoreModel}
               sheetMusicRef={sheetMusicRef}
               supabase={supabase}
+              content={viewerContent}
+              title={notation.title}
             />
           )}
           {scoreModel && practiceMode === 'listen' && !viewingShared && (
@@ -467,6 +469,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
               auth={auth}
               supabase={supabase}
               shareSong={shareSong}
+              content={viewerContent}
             />
           )}
         </>

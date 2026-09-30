@@ -54,14 +54,25 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Guitar songs (alphaTab: ~1 MB view chunk, ~2 MB worker and worklet,
         // ~1 MB soundfont, music font) stay out of the install-time precache;
-        // they're cached the first time the Songs view opens.
-        globIgnores: ['**/alphaTab.*.js', '**/GuitarSong-*.{js,css}'],
+        // they're cached the first time the Songs view opens. The same goes
+        // for the "Save PDF" code (jsPDF + svg2pdf, ~900 KB), fetched on first use.
+        globIgnores: [
+          '**/alphaTab.*.js',
+          '**/GuitarSong-*.{js,css}',
+          '**/{attemptPdf,jspdf.es.min,svg2pdf.es.min,html2canvas,purify.es,index.es}-*.js',
+        ],
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
               /\/(soundfont|font)\//.test(url.pathname) || /\/assets\/(alphaTab\.|GuitarSong-)/.test(url.pathname),
             handler: 'CacheFirst',
             options: { cacheName: 'alphatab-assets', expiration: { maxEntries: 32 } },
+          },
+          {
+            urlPattern: ({ url }) =>
+              /\/assets\/(attemptPdf|jspdf\.es\.min|svg2pdf\.es\.min|html2canvas|purify\.es|index\.es)-/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'pdf-export', expiration: { maxEntries: 16 } },
           },
         ],
       },

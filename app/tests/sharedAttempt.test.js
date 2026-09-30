@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   MAX_TRACE_SAMPLES,
+  describeMissed,
   fingerprintBytes,
   fromTrace,
   judgeNotes,
@@ -76,4 +77,10 @@ it('builds and reads share links', () => {
   expect(readSharedAttemptId(url)).toBe(id)
   expect(readSharedAttemptId('https://harmonic.example/?attempt=not-an-id')).toBeNull()
   expect(readSharedAttemptId('https://harmonic.example/')).toBeNull()
+})
+
+it('lists missed notes with their bars', () => {
+  const missed = [note(67, 1), note(72, 3)]
+  expect(describeMissed(missed, (n) => (n.time === 1 ? 2 : null))).toBe('bar 2 G4, C5')
+  expect(describeMissed([])).toBe('')
 })

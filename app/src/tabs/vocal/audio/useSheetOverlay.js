@@ -11,8 +11,8 @@ import { useCallback, useEffect, useRef } from 'react'
  */
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
-const OSMD_UNIT_PX = 10
-const STAFF_UNITS = 4
+export const OSMD_UNIT_PX = 10
+export const STAFF_UNITS = 4
 const DIATONIC_INDEX = [0, 0.5, 1, 1.5, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6]
 const LINE_BREAK_NUDGE_PX = 28
 
@@ -55,7 +55,7 @@ export function positionFor(steps, time) {
   return { x, top: a.top }
 }
 
-function measureCursorSteps(osmd, container, cursorTimestamps) {
+export function measureCursorSteps(osmd, container, cursorTimestamps) {
   const cursor = osmd.cursor
   const element = cursor.cursorElement
   const follow = osmd.FollowCursor

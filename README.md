@@ -83,7 +83,8 @@ plays them with Tone.js in sync with the cursor, exports MusicXML/MIDI, records
 a sung attempt with the pitch drawn on the staff, and shows the public song
 catalog (no sign-in needed). After a recorded attempt, the
 part's notes turn green (sung) or red (missed); signed-in users can share the
-attempt as a link. Songs are never uploaded (copyright): a shared attempt
+attempt as a link. **Save PDF** writes the attempt on the full score (dots,
+notes sung / missed, score and missed bars) as a printable A4 file. Songs are never uploaded (copyright): a shared attempt
 names its song by catalog id or file fingerprint, and the viewer opens their
 own copy of the file.
 

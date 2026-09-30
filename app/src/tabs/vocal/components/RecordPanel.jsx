@@ -6,7 +6,9 @@ import { useSheetOverlay } from '../audio/useSheetOverlay.js'
 import { centsOff, classifyCents, findActiveNote, midiToNoteName, scoreAttempt } from '../audio/pitchDetector.js'
 import { downloadBlob, safeFilename } from '../notation/exportNotation.js'
 import { judgeNotes } from '../share/sharedAttempt.js'
+import SaveAttemptPdf from './SaveAttemptPdf.jsx'
 import ShareAttempt from './ShareAttempt.jsx'
+import { displayNameFor } from '../../../auth/authHelpers.js'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -22,7 +24,7 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? Tone.Tra
  * compressed recording can be downloaded, and the attempt shared as a link
  * (see ShareAttempt; `shareSong` describes the song without uploading it).
  */
-function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong }) {
+function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, content }) {
   const melody = useMemo(
     () =>
       scoreModel
@@ -169,6 +171,17 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
           >
             Clear trace
           </button>
+          <SaveAttemptPdf
+            getAttempt={() => ({
+              title,
+              partName: shareSong?.partName,
+              singer: auth?.user ? displayNameFor(auth.user) : null,
+              date: new Date().toLocaleDateString(),
+              accuracy: result.accuracy,
+              samples,
+              content,
+            })}
+          />
           <ShareAttempt
             auth={auth}
             supabase={supabase}

@@ -4,6 +4,7 @@ import './ShareAttempt.css'
 import { getSharedRecordingUrl } from '@backend/attempts'
 import { useSheetOverlay } from '../audio/useSheetOverlay.js'
 import { fromTrace, judgeNotes, sampleVerdict } from '../share/sharedAttempt.js'
+import SaveAttemptPdf from './SaveAttemptPdf.jsx'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -22,7 +23,7 @@ const LEGEND = [
  * Everything is recomputed from the stored pitch trace, so it matches what
  * the singer saw as long as both copies of the song are the same file.
  */
-function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase }) {
+function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase, content, title }) {
   const { addSample, clear } = useSheetOverlay(sheetMusicRef, scoreModel)
   const samples = useMemo(() => fromTrace(attempt.samples), [attempt])
   const [notes, setNotes] = useState(null)
@@ -78,6 +79,17 @@ function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase }) {
             {notes.missed.length ? ` · ${notes.missed.length} missed (red)` : ''}
           </span>
         )}
+        <SaveAttemptPdf
+          getAttempt={() => ({
+            title: title || attempt.song_title,
+            partName: attempt.part_name,
+            singer: attempt.sharer_name,
+            date: when,
+            accuracy: Number(attempt.accuracy),
+            samples,
+            content,
+          })}
+        />
       </div>
       <ul className="shared-attempt__legend" aria-label="Dot colours">
         {LEGEND.map(([verdict, label]) => (
