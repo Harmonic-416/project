@@ -78,4 +78,48 @@ const save = (name, midi) => writeFileSync(`${outDir}${name}`, Buffer.from(midi.
   ;[63, 65, 67, 68, 70, 72, 74, 75].forEach((n, i) => t.addNote({ midi: n, ticks: i * ppq / 2, durationTicks: ppq / 2 }))
   save('synth_eb_major_flats.mid', m)
 }
+
+{
+  // SATB with lyrics on the soprano (not the first) track, written with
+  // midi-file because @tonejs/midi can't write per-track lyric events.
+  const { writeMidi } = await import('midi-file')
+  const ppq = 480
+  const track = (name, program, notes, lyrics = []) => {
+    const timed = [{ ticks: 0, event: { type: 'trackName', text: name } }]
+    timed.push({ ticks: 0, event: { type: 'programChange', channel: 0, programNumber: program } })
+    notes.forEach(([midi, beat, beats]) => {
+      timed.push({ ticks: beat * ppq, event: { type: 'noteOn', channel: 0, noteNumber: midi, velocity: 80 } })
+      timed.push({ ticks: (beat + beats) * ppq, event: { type: 'noteOff', channel: 0, noteNumber: midi, velocity: 0 } })
+    })
+    lyrics.forEach(([beat, text]) => timed.push({ ticks: beat * ppq, event: { type: 'lyrics', text } }))
+    timed.sort((a, b) => a.ticks - b.ticks || (a.event.type === 'noteOff' ? -1 : 1))
+    let last = 0
+    const events = timed.map(({ ticks, event }) => {
+      const e = { deltaTime: ticks - last, ...event }
+      last = ticks
+      return e
+    })
+    events.push({ deltaTime: 0, type: 'endOfTrack' })
+    return events
+  }
+  const bar = (pitches) => pitches.map((p, i) => [p, i, 1])
+  const conductor = [
+    { deltaTime: 0, type: 'setTempo', microsecondsPerBeat: 600000 },
+    { deltaTime: 0, type: 'timeSignature', numerator: 4, denominator: 4, metronome: 24, thirtyseconds: 8 },
+    { deltaTime: 0, type: 'endOfTrack' },
+  ]
+  const data = writeMidi({
+    header: { format: 1, numTracks: 5, ticksPerBeat: ppq },
+    tracks: [
+      conductor,
+      track('Soprano', 52, [...bar([72, 72, 79, 79]), [81, 4, 1], [81, 5, 1], [79, 6, 2]], [
+        [0, 'Twin-'], [1, 'kle '], [2, 'twin-'], [3, 'kle '], [4, 'lit-'], [5, 'tle '], [6, 'star'],
+      ]),
+      track('Alto', 52, [...bar([64, 64, 64, 64]), [65, 4, 1], [65, 5, 1], [64, 6, 2]]),
+      track('Tenor', 52, [...bar([55, 55, 60, 60]), [60, 4, 1], [60, 5, 1], [60, 6, 2]]),
+      track('Bass', 52, [...bar([48, 48, 52, 52]), [53, 4, 1], [53, 5, 1], [48, 6, 2]]),
+    ],
+  })
+  writeFileSync(`${outDir}synth_satb_lyrics.mid`, Buffer.from(data))
+}
 console.log('fixtures written to', outDir)
