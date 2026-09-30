@@ -1,258 +1,323 @@
 # Harmonic — architecture
 
-Status: current as of 2026-09-30 (M2). Diagram updated 2026-09-30. Owner: whole team. This is the
+Status: current as of 2026-09-30 (`main`). Owner: whole team. This is the
 "boxes and arrows" document for the rubric; the requirement-by-requirement
 design lives in `openspec/` and the capacity plan in `docs/scaling-plan.md`.
 
-## In three sentences
+## At a glance
 
-Harmonic is an installable web app (React + Vite PWA) that turns any MIDI,
-MusicXML or MXL file into sheet music you can hear: the file is converted to
-MusicXML in the browser, rendered with OpenSheetMusicDisplay, and played back
-by Tone.js in lockstep with a moving cursor, with all timing taken from the
-rendered score itself. When you sing along, your microphone is analysed
-entirely on your device: pitch is tracked about fifty times a second, drawn
-onto the staff as coloured dots, and scored against the melody when the song
-ends. The Guitar tab tunes the guitar through the same on-device microphone
-path (an AudioWorklet that sees every sample) and renders guitar songs as tab
-plus standard notation with alphaTab, which also plays them and exports MIDI
-and Guitar Pro. A thin Supabase backend supplies accounts, a shared song catalog, each
-user's own library (stored as MusicXML in a private bucket) and progress
-rows, all guarded by row-level security, so nothing but small rows and
-optional compressed recordings ever leaves the phone.
+Harmonic is an installable web app (React + Vite PWA) with two instruments.
+**Vocal** turns any MIDI, MusicXML or MXL file into sheet music you can hear
+and sing against: the pitch you sing is drawn on the staff as coloured dots
+and each note of your part is marked sung or missed. **Guitar** tunes the
+guitar, teaches six open chords and checks by ear that you played the chord
+it asked for, and shows guitar songs as tab plus standard notation.
 
-## Diagram
+**Everything happens on the device.** Rendering, playback, microphone
+analysis and scoring run in the browser; live audio is never uploaded, and
+songs you open (your own files) are never uploaded either (copyright). The
+server is used for exactly three things:
+
+| What | Why it needs the server | Sign-in? |
+|---|---|---|
+| **Sharing an attempt** (the only thing the app writes) | the link has to work on someone else's phone | yes, to share and to open |
+| **Sign-in** (Google / GitHub) | sharing needs to know who you are | — |
+| **Online catalog** (read-only) | a handful of public-domain songs the team curates | no |
+
+Progress, run-through history, tempo preferences and "my songs" exist in the
+backend layer and database (built and tested) but **the app does not use
+them**; guitar unlocks are kept in the browser's `localStorage`.
+
+## 1. System overview
+
+```mermaid
+flowchart TB
+    subgraph DEVICE["ON THE DEVICE · React 19 + Vite PWA · installable, works offline"]
+        direction LR
+        MIC["Microphone<br/>analysed in the browser<br/>live audio never uploaded"]
+        VOCAL["Vocal tab<br/>sheet music · playback<br/>practice modes · pitch dots"]
+        GUITAR["Guitar tab<br/>tuner · chord practice<br/>tab songs"]
+        SHELL["App shell<br/>Home · sign-in card<br/>service worker"]
+        LOCAL[("Browser storage<br/>session · guitar unlocks<br/>built-in songs · your files")]
+        MIC --> VOCAL & GUITAR
+        GUITAR --> LOCAL
+    end
+
+    subgraph API["src/lib · TypeScript SDK that runs in the browser · no server code of our own"]
+        direction LR
+        ATTLIB["attempts.ts<br/>share · open · recording URL"]
+        SONGSLIB["songs.ts<br/>catalog list · signed URLs"]
+        AUTHLIB["auth.ts<br/>Google / GitHub sign-in"]
+        IDLEAPI["progress.ts · song imports<br/>built and tested, not called"]
+    end
+
+    subgraph SUPA["SUPABASE (managed) · sharing, sign-in, read-only catalog"]
+        direction LR
+        SHARED[("shared_attempt<br/>pitch trace · score · part<br/>song = catalog id or SHA-256")]
+        REC[("recordings bucket<br/>webm of shared attempts")]
+        CAT[("Catalog, read-only<br/>6 public-domain songs")]
+        GOTRUE["Auth<br/>OAuth → JWT"]
+        IDLEDB[("progress tables · users' songs<br/>exist, unused")]
+    end
+
+    VOCAL -- "share / open an attempt" --> ATTLIB
+    VOCAL -- "browse catalog" --> SONGSLIB
+    SHELL -- "sign in" --> AUTHLIB
+    ATTLIB --> SHARED & REC
+    SONGSLIB --> CAT
+    AUTHLIB --> GOTRUE
+    IDLEAPI -.- IDLEDB
+
+    classDef idle fill:#f3f3f3,stroke:#9a9a9a,stroke-dasharray:4 3,color:#6c6a72
+    class IDLEAPI,IDLEDB idle
+```
+
+Arrows are runtime calls. Grey dashed boxes exist in the code and database,
+but nothing in the app calls them. Deploy is not a runtime part: on every push
+to `main`, GitHub Actions lints, type-checks, tests and builds, applies the
+Supabase migrations (`supabase db push`) and deploys the static build to
+Vercel, which serves the PWA (details in `docs/deploy.md`). Every call
+to Supabase goes through `src/lib` with the user's JWT; row-level security
+in Postgres is what enforces who may read or write what.
+
+## 2. Vocal tab
 
 ```mermaid
 flowchart LR
-    subgraph C["CLIENT · React 19 + Vite PWA in the browser (works offline)"]
-        SHELL["App shell · Home · Guitar · Vocal tabs<br/>Home = sign-in / account card<br/>service worker (Workbox) · installable"]
-        subgraph CV["Vocal tab"]
-            SCORE["Notation + playback<br/>MIDI (lyrics, voice parts) · MusicXML · MXL<br/>→ MusicXML → OSMD · score model · Tone.js clock<br/>export MusicXML / MIDI"]
-            VPRAC["Practice modes<br/>Listen · Wait for me · Trouble spots<br/>part picker · by myself / with the others"]
-            SHARE["Shared attempts<br/>share: trace + score + webm, song by catalog id or SHA-256<br/>open: your own copy of the file · dots + green/red notes"]
-            VAUDIO["Vocal mic (live audio never leaves the device)<br/>AnalyserNode → pitchy ~50/s → dots on the staff<br/>→ attempt score · notes sung / missed · webm"]
-        end
-        subgraph CG["Guitar tab"]
-            CAPTURE["Shared mic capture<br/>getUserMedia → AudioWorklet<br/>frames · level · onsets"]
-            TUNER["Tuner (F39)<br/>pitchy → nearest string · cents"]
-            GPRAC["Chord practice<br/>Learn · Practice · Play · chord diagrams<br/>unlocks in localStorage · detection stubbed"]
-            GTAB["Songs (lazy)<br/>Guitar Pro · alphaTex · MusicXML · MIDI → alphaTab<br/>tab + standard · alphaSynth · export MIDI / GP7"]
-        end
+    subgraph IN["Pick a song"]
+        BUILTIN["Built-in<br/>public/midi-files"]
+        UPLOAD["Your file<br/>MIDI · MusicXML · MXL<br/>stays on the device"]
+        CATALOG["Online catalog<br/>public-domain MusicXML"]
     end
-    subgraph A["OUR API · src/lib — a TypeScript SDK, not a server"]
-        AUTH["auth.ts<br/>Google / GitHub OAuth · session · logout"]
-        SONGS["songs.ts<br/>public catalog · signed URLs<br/>(imports: tests only, no uploads from the app)"]
-        ATT["attempts.ts<br/>share · open by id (RPC) · recording URL · unshare"]
-        PROG["progress.ts<br/>run-throughs · unlocks · tempo pref"]
+
+    LOAD["loadNotation<br/>MIDI → MusicXML (lyrics, voice parts)<br/>MXL unzip · SHA-256 fingerprint"]
+    PARTS["Part picker<br/>by myself / with the others"]
+    OSMD["Sheet music<br/>OpenSheetMusicDisplay"]
+    MODEL["Score model<br/>expected notes · one clock"]
+    PLAY["Tone.js playback<br/>cursor in lockstep"]
+
+    subgraph MODES["Practice modes"]
+        LISTEN["Listen<br/>+ Record attempt"]
+        WAIT["Wait for me<br/>holds until you sing the note"]
+        TROUBLE["Trouble spots<br/>missed notes turn red"]
     end
-    subgraph S["SERVER · Supabase (managed) — schema, RLS and storage policies via migrations"]
-        GOTRUE["Auth (GoTrue)<br/>Google / GitHub OAuth → JWT<br/>(email + password: tests only)"]
-        DB[("Postgres + RLS, via PostgREST<br/>profiles · song · run_through · shared_attempt<br/>lesson_progress · song_pref · recording")]
-        FILES[("Storage, private buckets<br/>notation: catalog in seed/ (public read)<br/>recordings: webm, owner-only unless shared")]
-    end
-    subgraph J["BUILD + DEPLOY · no runtime jobs yet"]
-        CI["GitHub Actions<br/>CI: lint · typecheck · test · build<br/>CD: supabase db push on main"]
-        HOST["Vercel static hosting<br/>app/dist · SPA rewrite · mic permission header<br/>(Docker + nginx image as fallback)"]
-        CLI["Supabase CLI (admin)<br/>migrations · seed catalog uploads"]
-    end
-    SHELL --> AUTH
-    SCORE --> VPRAC
-    SCORE -- "expected notes + clock" --> VAUDIO
-    CAPTURE --> TUNER
-    SCORE -- "load catalog songs" --> SONGS
-    VAUDIO -. "attempt score (planned)" .-> PROG
-    VAUDIO --> SHARE
-    SHARE -- "share / open" --> ATT
-    GPRAC -. "unlocks (planned)" .-> PROG
-    CAPTURE -. "chord detection (planned)" .-> GPRAC
-    AUTH --> GOTRUE
-    SONGS & PROG & ATT -- "HTTPS + JWT" --> DB
-    SONGS & ATT -- "signed URLs" --> FILES
-    CI -. "migrations" .-> DB
-    CI -. "build" .-> HOST
-    HOST -. "serves the PWA" .-> SHELL
-    CLI -. "migrations · files" .-> DB & FILES
+
+    MIC["Mic → pitchy<br/>~50 pitch frames / s"]
+    RESULT["Attempt result<br/>coloured dots on the staff<br/>notes sung (green) / missed (red)<br/>% in tune · webm recording"]
+    OUT["Export MusicXML / MIDI<br/>Download recording<br/>Share attempt → section 4"]
+
+    BUILTIN & UPLOAD & CATALOG --> LOAD --> PARTS --> OSMD --> MODEL
+    MODEL --> PLAY --> MODES
+    MIC --> MODES
+    LISTEN --> RESULT --> OUT
 ```
 
-Lanes left to right. Solid arrows are runtime calls that work today; dotted
-arrows are deploy-time, or runtime links marked "(planned)" that are not wired up yet. There is no server code of our own: "our API" is the typed SDK
-in `src/lib`, and everything server-side we own is declarative (migrations
-for schema, RLS, bucket policies, seed catalog). The diagram's source of
-truth is [`3-architecture/rough-architecture.md` in the specifications
-repo](https://github.com/Harmonic-416/specifications/blob/main/3-architecture/rough-architecture.md)
-(separate repository, `Harmonic-416/specifications`); keep the two in sync.
+Dot colours: green in tune (within 50¢), yellow close (within a semitone),
+blue right note in another octave, red wrong note, grey during a rest.
 
-There are no runtime jobs, queues or custom servers: everything real-time
-is on the client, everything persistent is a Supabase row or object.
+## 3. Guitar tab
+
+```mermaid
+flowchart LR
+    MIC["Mic"] --> CAP["Shared capture<br/>AudioWorklet sees every sample<br/>frames · level · strum onsets"]
+    CAP --> TUNER["Tuner<br/>pitchy → nearest string<br/>cents off · in-tune hold"]
+    CAP --> DETECT["Chord check<br/>FFT → chroma → match the expected chord<br/>heard it · something else · too quiet"]
+
+    subgraph PRACTICE["Chord practice · Em · Am · C · G · D · E"]
+        LEARN["Learn<br/>one chord at a time<br/>hint · skip · retry"]
+        PASS["Practice<br/>pass it to unlock the next chord"]
+        PLAYRUN["Play<br/>Em → C → G → D, 10 s each<br/>countdown · end score"]
+    end
+
+    DETECT -- "live verdict lights the result" --> PRACTICE
+    TAPS["Result buttons<br/>runs still advance on taps"] --> PRACTICE
+    HINT["Hint<br/>Tone.js strums the chord<br/>mic muted meanwhile"] --> LEARN
+    PRACTICE --> UNLOCKS[("Unlocks<br/>localStorage")]
+
+    subgraph SONGS["Songs · lazy-loaded"]
+        GFILE["Built-in or your file<br/>Guitar Pro · alphaTex · MusicXML · MXL · MIDI"]
+        ALPHA["alphaTab<br/>tab + standard notation<br/>alphaSynth playback · click to seek"]
+        GEXP["Export MIDI / Guitar Pro 7"]
+        GFILE --> ALPHA --> GEXP
+    end
+```
+
+Nothing in the Guitar tab talks to the server.
+
+## 4. Sharing an attempt (the only server write)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Singer
+    participant A as App (singer)
+    participant S as Supabase
+    participant B as App (friend)
+    actor Friend
+
+    Singer->>A: Record attempt, then Share attempt (signed in)
+    opt Include my recording
+        A->>S: upload webm to recordings/{user}/{id}.webm
+    end
+    A->>S: insert shared_attempt (trace, score, part, song id or SHA-256)
+    S-->>A: id
+    A-->>Singer: link /?attempt={id} via share sheet or clipboard
+    Singer->>Friend: sends the link
+    Friend->>B: opens the link, signs in with Google or GitHub if needed
+    B->>S: rpc get_shared_attempt(id)
+    S-->>B: the attempt
+    alt catalog or built-in song
+        B->>B: loads the song by itself
+    else the singer's own file
+        Friend->>B: opens their own copy, the SHA-256 must match
+    end
+    B->>S: signed URL for the recording
+    B-->>Friend: same dots and green / red notes on the score, plays the recording
+```
+
+The song itself is never uploaded: a shared attempt names it by catalog id or
+by the SHA-256 of the file, and the friend supplies their own copy. Shares
+can't be listed; a row is only readable through `get_shared_attempt(id)` by
+someone signed in who has the link, and only the recording attached to a
+share becomes readable to others.
 
 ## Components
 
 ### Client (`app/`)
 
 React 19 + Vite 8, packaged as a PWA by `vite-plugin-pwa` (Workbox precache,
-4 MiB limit because OSMD + Tone + supabase-js are large). Two tabs: **Guitar**
-(tuner + tab songs) and **Vocal** (notation, playback, recording, online catalog, shared attempts).
+4 MiB limit; alphaTab and the guitar Songs view are kept out of the precache
+and cached on first use).
+
+**Shell and sign-in**
 
 | Module | Responsibility |
 |---|---|
-| `tabs/vocal/notation/loadNotation.js` | One entry point for every file: detects MIDI / MusicXML / MXL by extension then by bytes; MIDI → `midi/midiToMusicXml.js`, MXL → unzipped with jszip, MusicXML validated (partwise only). Output is always `{ format, title, content: MusicXML string, sourceBytes }`. |
-| `tabs/vocal/midi/*` | The MIDI → MusicXML converter: 16th-note quantization, chords, multiple tracks → parts, key/time signature, first tempo. Documented simplifications: no ties across barlines, no voice separation of overlapping notes, treble clef only. |
-| `tabs/vocal/components/SheetMusicViewer.jsx` | Renders the MusicXML with OpenSheetMusicDisplay (OSMD) and exposes a tiny imperative cursor API (`next/reset/show/hide`) plus `getOsmd/getContainer`. |
-| `tabs/vocal/notation/scoreModel.js` | Walks OSMD's cursor iterator once after render and derives `{ notes[midi,time,duration,part], playbackSchedule, cursorTimestamps, duration, bpm }` from the rendered score — repeats expanded, tempo changes honoured, ties merged. Because the cursor later steps through exactly these timestamps, audio, cursor and pitch scoring share one clock regardless of input format. |
-| `tabs/vocal/playback/useMidiPlayback.js` | Tone.js `Transport` + `PolySynth`; schedules every note and a `cursor.next()` at every timestamp; play / pause / stop / seek. |
-| `tabs/vocal/notation/exportNotation.js` | Export MusicXML (or the original MXL bytes) and Standard MIDI (original bytes for MIDI sources, otherwise one track per part rendered from the score model). |
-| `tabs/vocal/audio/*` + `components/RecordPanel.jsx` | Prototype: `getUserMedia` → `AnalyserNode` → pitchy (McLeod) at ~50 frames/s; samples are stamped with the Transport clock and only kept while it runs; `useSheetOverlay` records each cursor stop's on-screen box once and plots dots (x interpolated between stops, y from the pitch on a treble staff); `scoreAttempt` counts frames within 50¢ of the melody; a `MediaRecorder` captures webm/opus for later upload. |
-| `audio/capture/*` | Shared mic capture: `getUserMedia` → an AudioWorklet (`pcm-capture.worklet.js`) that sees every 128-sample block and, through the pure `FrameAssembler`, posts a frame of the last N samples every 512 samples plus the level and onset events (sudden energy rises, i.e. strums), positioned in samples on the capture context's clock. Takes an existing `AudioContext` to share a clock with playback. First user: the tuner; the chord analyzer is next. |
-| `tabs/guitar/tuner/*` | Tuner (F39): pitchy on 4096-sample capture frames → `createStabilizer` (median of 5, nearest standard-tuning string within ±600¢ or a locked string, in tune at ±5¢ held 0.5 s, released past ±8¢) → six string chips, a cents needle and a "play a string" state. |
-| `tabs/guitar/notation/*` | `loadGuitarNotation` turns Guitar Pro 3–8 / alphaTex / MusicXML / MXL / MIDI into an alphaTab `Score` (`{ format, title, score, sourceBytes, hasTab }`), reusing the Vocal tab's MXL unzip and MIDI → MusicXML; `exportGuitarNotation` writes MIDI with alphaTab's `MidiFileGenerator` (original bytes for MIDI sources) and Guitar Pro 7 with `Gp7Exporter`. |
-| `tabs/guitar/song/*` | Lazy-loaded Songs view: built-in list (`public/guitar-songs/`), upload, and `GuitarScore` — alphaTab rendering tab + standard notation, alphaSynth playback with cursor, click a beat to seek, reusing the Vocal `PlaybackControls`. |
-| `lib/supabaseClient.js`, `auth/*`, `components/CloudLibrary.jsx`, `songs/cloudLibrary.js` | Cloud side: a single supabase-js client from `VITE_SUPABASE_*`; session mirrored into React; sign in with Google or GitHub, link the other provider, sign out; **Catalog** list (public, no sign-in needed). Songs are never uploaded (copyright). Without `app/.env.local` the app runs local-only. |
-| `share/sharedAttempt.js`, `components/ShareAttempt.jsx`, `SharedAttemptGate.jsx`, `SharedAttemptPanel.jsx` | Shared attempts: after a recorded attempt, the part's notes are marked sung (green) or missed (red); **Share attempt** (signed in) stores the pitch trace, score and optional webm via `src/lib/attempts.ts` and returns `/?attempt=<id>`. The song is named by catalog id or by the SHA-256 of the file. Opening a link (signed in) loads a catalog or built-in song automatically, otherwise asks for the viewer's own copy and checks the fingerprint, then redraws the dots and note marks and plays the recording. |
+| `App.jsx`, `nav/*` | Three tabs (Home, Guitar, Vocal) switched in state, no router. Reads a share link (`/?attempt=<id>`) and keeps the id in `sessionStorage` so it survives the OAuth round trip. |
+| `lib/supabaseClient.js`, `auth/*` | One supabase-js client from `VITE_SUPABASE_*` (without `app/.env.local` the app runs local-only); `useSession` mirrors the session into React; sign in with Google or GitHub, link the other provider, sign out. |
 
-### Shared backend layer (`src/lib/`)
+**Vocal**
 
-Framework-neutral TypeScript on top of supabase-js — the same code runs in
-the browser (via the Vite alias `@backend`) and in Node for the integration
-tests. `songs.ts` is the important one: `listLibrary`, `getNotationUrl`
-(signed URL, 1 h), `importMusicXml` (validates the root element, uploads to
-`notation/<user_id>/<uuid>.musicxml` and inserts the `song` row; the app no
-longer calls it, since songs aren't uploaded for copyright reasons), `importMidi`
-(best-effort monophonic MIDI → MusicXML), `uploadRecording` / `getRecordingUrl` (private bucket, owner
-folder, linked to a `run_through`). `attempts.ts` shares attempts:
-`shareAttempt`, `getSharedAttempt` (an RPC, so shares can't be listed),
-`getSharedRecordingUrl`, `listMySharedAttempts`, `deleteSharedAttempt`.
-`progress.ts` holds lesson completion, run-through history, last score and
-tempo preference.
+| Module | Responsibility |
+|---|---|
+| `tabs/vocal/notation/loadNotation.js` | One entry point for every file: detects MIDI / MusicXML / MXL by extension then bytes; MIDI → `midi/midiToMusicXml.js` (quantized, chords, tracks → parts, lyrics, voice-part clefs), MXL unzipped with jszip. Output is always MusicXML. |
+| `tabs/vocal/notation/partFilter.js` | Lists parts; builds "your part alone" or "your part on top of the others". |
+| `tabs/vocal/components/SheetMusicViewer.jsx` | OpenSheetMusicDisplay in a sideways-scrolling strip; cursor API and per-note marking. |
+| `tabs/vocal/notation/scoreModel.js` | Walks OSMD's cursor once and derives notes, cursor timestamps and the playback schedule from the rendered score, so audio, cursor and scoring share one clock. |
+| `tabs/vocal/playback/useMidiPlayback.js` | Tone.js `Transport` + `PolySynth`, cursor stepping in lockstep; play / pause / stop / seek. |
+| `tabs/vocal/practice/*`, `WaitModePlayer`, `TroubleSpotsPlayer` | Wait for me (hold detector) and Trouble spots (per-note hit / miss), octave-agnostic. |
+| `tabs/vocal/audio/*`, `RecordPanel.jsx` | Mic → `AnalyserNode` → pitchy at ~50 frames / s, stamped with the playback clock; dots drawn over the score; `scoreAttempt` (% within 50¢) and per-note sung / missed; `MediaRecorder` webm. |
+| `tabs/vocal/songs/cloudLibrary.js`, `OnlineSongs.jsx` | The public catalog (no sign-in); songs are never uploaded. |
+| `tabs/vocal/share/*`, `ShareAttempt`, `SharedAttemptGate`, `SharedAttemptPanel` | Sharing (section 4): trace compaction, fingerprints, link parsing; the share button; opening a link (sign in, pick your copy, fingerprint check); redrawing someone else's attempt with their recording. |
+| `tabs/vocal/notation/exportNotation.js` | Export MusicXML (or the original MXL) and MIDI. |
+
+**Guitar**
+
+| Module | Responsibility |
+|---|---|
+| `audio/capture/*` | Shared mic capture: `getUserMedia` → AudioWorklet (`pcm-capture.worklet.js`) → frames every hop, level and strum onsets, positioned in samples. |
+| `tabs/guitar/tuner/*` | Tuner (F39): pitchy on capture frames → stabilizer (median of 5, nearest string or a locked one, in tune at ±5¢ held 0.5 s). |
+| `tabs/guitar/practice/chordDetect.js`, `useChordDetection.js` | Chord verification (F16): after each strum onset, FFT → chroma vector → cosine match against the six chord templates; verdict `verified` / `wrong` / `silent`. `muteFor` keeps the app from hearing its own hint. |
+| `tabs/guitar/practice/PracticeScreen.jsx` + state reducers | Learn, Practice and Play modes, chord diagrams with fret / note / finger labels, string states, hint / skip / retry; unlocks in `localStorage` (`unlocks.js`). Detection lights the result; runs still advance on the result buttons. |
+| `tabs/guitar/notation/*`, `tabs/guitar/song/*` | Lazy-loaded Songs view: Guitar Pro 3–8 / alphaTex / MusicXML / MXL / MIDI → alphaTab (tab + standard), alphaSynth playback with cursor and click-to-seek, export MIDI and Guitar Pro 7. |
+
+### Backend layer (`src/lib/`)
+
+Framework-neutral TypeScript over supabase-js; the app imports it as
+`@backend/*` and the integration tests run the same code in Node.
+
+| File | Functions | Used by the app? |
+|---|---|---|
+| `auth.ts` | `signInWithProvider`, `logout`, `getSession`; `register` / `login` (email + password) | OAuth + logout yes; email + password only in tests |
+| `attempts.ts` | `shareAttempt`, `getSharedAttempt` (RPC), `getSharedRecordingUrl`, `listMySharedAttempts`, `deleteSharedAttempt` | share, open and recording URL yes; list / delete not yet |
+| `songs.ts` | `listLibrary`, `getNotationUrl` | yes (catalog) |
+| `songs.ts` | `importMusicXml`, `importMidi`, `uploadRecording`, `getRecordingUrl` | no (tests only; uploads are off for copyright) |
+| `progress.ts` | lesson completion, unlock evaluation, run-throughs, last score, tempo preference | no (tests only) |
 
 ### Supabase
 
-| Table | Purpose | RLS |
-|---|---|---|
-| `profiles` | one row per auth user (trigger-created) | owner read/update |
-| `song` | catalog rows (`user_id NULL`) and per-user imports (only test users have any; the app doesn't upload); `notation_path` points into the `notation` bucket; `instrument` = guitar or voice | catalog readable by anyone, own rows by the owner; insert/update/delete own only |
-| `lesson_progress` | completed lesson-map nodes | owner only |
-| `run_through` | one row per finished attempt with a 0–100 score | owner only |
-| `song_pref` | per-song tempo (50–100 %) | owner only |
-| `recording` | metadata for an uploaded attempt recording | owner only |
-| `shared_attempt` | a shared attempt: song (catalog id or file SHA-256), part, pitch trace `[[s, midi], …]`, accuracy, optional recording path, sharer's name | owner only; any signed-in user reads one row by id through `get_shared_attempt()` |
+| Table / bucket | Holds | Access (RLS) | Used by the app? |
+|---|---|---|---|
+| `shared_attempt` | a shared attempt: song (catalog id or file SHA-256), part, pitch trace `[[s, midi], …]`, accuracy, recording path, sharer's name | owner only; anyone signed in reads one row by id via `get_shared_attempt()` | **yes** |
+| `recordings` bucket | webm per shared attempt, `<user_id>/<id>.webm` | owner only, plus signed-in read of recordings attached to a share | **yes** |
+| `song` (catalog rows) + `notation/seed/` | 6 public-domain catalog songs as MusicXML | readable by anyone | **yes** (read-only) |
+| `profiles` | one row per user (trigger-created) | owner | created on sign-up only |
+| `song` (user rows) + `notation/<user_id>/` | users' own songs | owner | no (only test users have any) |
+| `lesson_progress`, `run_through`, `song_pref`, `recording` | progress, attempts history, tempo, recording metadata | owner | no |
 
-Storage: `notation` is private; anyone can read `seed/` (the catalog),
-signed-in users also their own `<user_id>/` folder, and write only in their
-own folder (`0004`). `recordings` is private and owner-only, except that a
-recording attached to a shared attempt is readable by signed-in users
-(`0005`). Migrations `0001` (schema, RLS, buckets), `0002` (three V1 seed
-songs), `0003` (voice catalog: Ode to Joy, Twinkle Twinkle, C-major warm-up),
-`0004` (public catalog, owner-only notation reads), `0005` (shared attempts) are applied with `supabase db push`; the catalog MusicXML lives in
+Migrations `0001` (schema, RLS, buckets), `0002`–`0003` (catalog rows),
+`0004` (public catalog, owner-only song files), `0005` (shared attempts) are
+applied by CI with `supabase db push`; catalog MusicXML lives in
 `supabase/seed/notation/` and is uploaded with `supabase storage cp`.
-
-## Data flows
-
-1. **Open a song.** Built-in list → `fetch('/midi-files/<file>')`; cloud list
-   → `getNotationUrl` → GET from the storage CDN. Either way the bytes go
-   through `loadNotation` → `SheetMusicViewer` → `extractScoreModel` → the
-   playback hook is (re)built and the cursor sits on the first stop.
-2. **Share an attempt.** After a recorded attempt, `ShareAttempt` sends the
-   pitch trace (rounded, at most 30,000 frames), accuracy, part and song
-   reference to `shareAttempt`, which uploads the webm (if included) to
-   `recordings/<user_id>/<id>.webm` and inserts the `shared_attempt` row. The
-   link `/?attempt=<id>` is offered through the share sheet or clipboard. App
-   keeps a link's id in sessionStorage so it survives the OAuth round trip.
-3. **Record an attempt.** Mic permission → `AudioContext` + analyser →
-   playback starts → each analysed frame becomes `{time, midi, clarity}` and a
-   dot on the staff → when the transport stops, `scoreAttempt` produces
-   `{accuracy, inTune, scoredFrames}`, `judgeNotes` marks each note of the
-   part sung or missed (the Trouble spots rule), and the webm blob is offered
-   for download or sharing (flow 2).
-4. **Sign in.** `signInWithProvider` from `auth.ts` sends the browser to
-   Google or GitHub via Supabase and back with the session in the URL
-   fragment; supabase-js stores it in localStorage and refreshes tokens;
-   `useSession` mirrors it and the cloud lists re-fetch when the user id
-   changes. `register` / `login` (email + password) are used only by the
-   backend tests to create throwaway users.
 
 ## Decisions and constraints
 
-- **MusicXML is the canonical stored form.** MIDI is converted on the way
-  in; MXL is unzipped on the way in. The bucket only ever holds MusicXML, so
-  any renderer can consume it and exports are lossless for XML sources.
-- **Playback timing comes from the rendered score, not from the importer.**
-  This closed a real bug class: the MIDI converter drops notes it cannot
-  notate (overlapping notes in one track) but used to keep them in its audio
-  schedule, so users heard notes that were not on the page.
-- **All real-time audio stays on the device** (README "architecture rules").
-  Live mic audio never reaches Supabase; only scores/progress and optional
-  compressed recordings do. This is also why the cloud load is tiny (see the
-  scaling plan).
-- **RLS default-deny is the API.** There is no custom server in V1; the
-  client talks to PostgREST/Storage directly with the user's JWT, and every
-  table has owner-only policies except the public catalog rows.
-- **Two npm packages, one repo.** The backend layer and its integration
-  tests are at the root; the PWA is in `app/` and imports the root layer via
-  a Vite alias (`@backend`, deduped supabase-js). CI runs both.
-- **One renderer per instrument.** Voice uses OpenSheetMusicDisplay, because
-  its cursor iterator gives us the timing model for free. Guitar uses alphaTab,
-  the only renderer that draws tab; it also plays and exports what it renders.
-  Both read MusicXML. alphaTab is lazy-loaded with the Guitar Songs view and
-  kept out of the install-time precache (cached on first use).
-- **AudioWorklet capture for guitar.** Guitar needs strum onsets to open its
-  chord-detection window. Polling an `AnalyserNode` once per animation frame
-  (as the Vocal prototype does) can miss them; the worklet sees every sample.
-  Vocal can move onto the same capture later.
-- **Guitar tab ↔ MIDI.** alphaTab exports MIDI and Guitar Pro but cannot import
-  MIDI or work out frets from pitch, so MIDI files open as notation only until
-  our fret assignment lands (`openspec/changes/add-guitar-foundation`, task 3.6).
+- **Local-first, server only for sharing.** Everything that can run on the
+  device does; the one thing that can't — a link that works on someone
+  else's phone — is the one thing the app writes to the server.
+- **No song uploads (copyright).** Your files stay on your device. A shared
+  attempt names its song by catalog id or file fingerprint; the catalog holds
+  only public-domain songs the team curates.
+- **All real-time audio stays on the device.** Latency and privacy; only a
+  shared attempt's compressed webm is uploaded, and only when you ask.
+- **RLS is the API.** No custom server: the browser talks to Supabase with
+  the user's JWT, and Postgres policies decide access. Shares are unlisted
+  (read by id through a security-definer function).
+- **Timing comes from the rendered score.** Playback, cursor and pitch
+  scoring all use the score model OSMD rendered, whatever the input format.
+- **One renderer per instrument.** OSMD for voice (its cursor gives the
+  timing model); alphaTab for guitar (the only one that draws tab, and it
+  plays and exports what it renders).
+- **AudioWorklet capture for guitar.** Strum onsets open the chord-check
+  window; polling an `AnalyserNode` per animation frame can miss them. Vocal
+  still uses the `AnalyserNode` path and can move over later.
+- **Two npm packages, one repo.** Backend layer and its tests at the root,
+  PWA in `app/` importing it through the `@backend` alias. CI runs both.
 
 ## Testing
 
 | Layer | Where | What | Runs |
 |---|---|---|---|
-| Unit (app) | `app/tests/*.test.js` (vitest) | converter over the shared MIDI corpus, format detection + MXL unzip, export round trips, pitch detection on sine waves, attempt scoring, staff geometry; capture framing and onsets, tuner string choice / cents / hysteresis, guitar import of every format and MIDI + Guitar Pro round trips | always (`npm --prefix app test`) |
-| Integration (backend) | `tests/backend/*.test.ts` (vitest) | auth round trips, RLS isolation, progress persistence, MIDI + MusicXML import → bucket → signed URL read-back, catalog listing | only with `SUPABASE_URL` / `SUPABASE_ANON_KEY` (`.env.local` or CI secrets); registers throwaway users at `*@harmonic-tests.example.com` |
-| Browser | manual / Playwright scripts (not yet checked in) | every fixture renders, exports download and re-parse, cloud flow end to end, simulated-microphone attempts score 97–98 % | on demand |
-| Load | `tests/load/supabase-baseline.mjs` | ~1.3k requests against the live project, latency percentiles per VU count | on demand, see `docs/scaling-plan.md` |
-
-Shared fixtures live in `tests/fixtures/` (10 MIDI files incl. synthetic
-stress cases, 3 MusicXML/MXL files) and are used by both suites.
+| Unit (app) | `app/tests/*.test.js` | MIDI → MusicXML over the shared corpus, lyrics, parts, format detection, exports; pitch detection, attempt scoring, practice modes; shared-attempt traces, fingerprints, links; capture framing and onsets; tuner; chord detection on synthetic strums; guitar practice / play / unlock reducers; guitar import and exports | every PR (CI) |
+| Integration (backend) | `tests/backend/*.test.ts` | auth, RLS isolation, public catalog, shared attempts (share, open by id, recording access, unlisted, unshare), progress, imports | with `SUPABASE_URL` / `SUPABASE_ANON_KEY` set (locally; CI has no test project yet, so they skip there) |
+| Browser | manual / scripted headless Chrome with a synthetic microphone | sing an attempt, share, open as another user (catalog, built-in, own file with fingerprint check) | on demand |
+| Load | `tests/load/supabase-baseline.mjs` | latency and throughput of the live project | on demand, see `docs/scaling-plan.md` |
 
 ## Repository map
 
 ```
 app/                       React + Vite PWA (the client)
-  src/tabs/vocal/          notation/ midi/ playback/ audio/ components/ songs/
-  src/tabs/guitar/         tuner/ notation/ song/ (alphaTab, lazy-loaded)
+  src/tabs/vocal/          notation/ midi/ playback/ practice/ audio/ share/ songs/ components/
+  src/tabs/guitar/         tuner/ practice/ (chord check) notation/ song/ (alphaTab, lazy)
   src/audio/capture/       shared AudioWorklet mic capture
-  src/auth/, src/lib/      session hook, sign-in panel, supabase client
-  public/midi-files/       built-in songs (any .mid/.midi/.musicxml/.mxl)
-  public/guitar-songs/     built-in guitar songs (MusicXML with string/fret)
+  src/auth/, src/lib/      session hook, sign-in and account cards, supabase client
+  public/midi-files/       built-in vocal songs
+  public/guitar-songs/     built-in guitar songs
   tests/                   unit tests (vitest)
-src/lib/                   shared backend layer (TypeScript, supabase-js)
-supabase/migrations/       schema, RLS, buckets, seed rows (applied by CD)
-supabase/seed/notation/    catalog MusicXML uploaded to the notation bucket
+src/lib/                   backend layer (TypeScript, supabase-js)
+supabase/migrations/       schema, RLS, buckets, catalog rows, sharing (applied by CI)
+supabase/seed/notation/    catalog MusicXML
 tests/backend/             integration tests against a Supabase project
 tests/fixtures/            MIDI + MusicXML corpus shared by both suites
 tests/load/                capacity baseline script
-docs/                      this file, scaling-plan.md, M2-design-and-setup.md
+docs/                      this file, scaling-plan.md, deploy.md, M2-design-and-setup.md
 openspec/                  requirement-linked specs, proposals, design notes
-.github/workflows/ci.yml   CI (backend + app) and CD (db push)
+.github/workflows/ci.yml   CI (lint, typecheck, test, build) and CD (db push, Vercel deploy)
 ```
 
 ## Known gaps
 
-- No HTTPS deployment yet; the build artifact is `app/dist` and any static
-  host works (Vercel/Netlify/GitHub Pages) — tracked in
-  `openspec/changes/add-devops-infrastructure`.
-- Recording upload and `run_through` creation are not wired to the record
-  panel; the backend functions exist and are tested.
-- Overlay assumes a treble clef and takes the first part as the melody; no
-  microphone latency compensation.
-- Timewise MusicXML is rejected with a clear message (partwise only).
-- The `house-of-the-rising-sun` seed file now exists
-  (`supabase/seed/notation/`, generated by `tests/fixtures/guitar/generate.mjs`)
-  but still has to be uploaded to the `notation` bucket.
-- Guitar: no chord verification or scoring yet; alphaSynth plays on its own
-  `AudioContext`, so the one-clock choice for guitar scoring is open; MIDI
-  files show no tab until fret assignment lands; guitar songs can't be saved
-  to the cloud yet (stored-format question in `add-guitar-foundation/design.md`).
-- The tuner and capture worklet are verified in desktop Chrome (fake
-  microphone); the iPhone Safari check is still to do.
+- **Guitar:** chord detection shows its verdict, but Learn / Practice / Play
+  still advance on the result buttons; no strumming-pattern or timing score
+  yet; MIDI files open without tab (no fret assignment); guitar songs can't
+  be shared.
+- **Vocal:** the overlay assumes a treble staff for dot height; no microphone
+  latency compensation; timewise MusicXML is rejected (partwise only).
+- **Sharing:** no "stop sharing" button yet (`deleteSharedAttempt` exists);
+  sharing only from Listen mode; the recording isn't synced to the cursor.
+- **Progress** (unlocks, run-through history, tempo) isn't saved to the
+  server; guitar unlocks live in one browser only.
+- **Backend tests don't run in CI** until a dedicated test Supabase project's
+  URL and key are added as secrets.
+- The tuner, chord check and capture worklet are verified in desktop Chrome;
+  the iPhone Safari check is still to do.
