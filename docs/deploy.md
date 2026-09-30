@@ -42,8 +42,12 @@ vercel env add VITE_SUPABASE_ANON_KEY production
 vercel deploy --prod
 ```
 
-After linking the GitHub repo in the Vercel dashboard, pushes to `main` deploy
-on their own and pull requests get preview URLs.
+After that, the `deploy` job in `.github/workflows/ci.yml` ships every push to
+`main` to production once lint/tests/build pass and migrations are applied. It
+needs three repo secrets: `VERCEL_TOKEN` (vercel.com/account/tokens, scoped to
+the project's team), `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` (both in
+`.vercel/project.json` after `vercel link`). Don't also connect the repo under
+Vercel → Settings → Git, or every push deploys twice.
 
 ## Moving to your own server
 
