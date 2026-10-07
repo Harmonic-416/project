@@ -25,13 +25,14 @@ openspec/
 | Frontend | `specs/notation-rendering` | `add-frontend-experience`  |
 | Frontend | `specs/scoring-engine`     | `add-frontend-experience`  |
 | Frontend | `specs/tuner`              | `add-guitar-foundation`    |
+| Frontend | `specs/ear-training`       | `add-ear-training`         |
 | Backend  | `specs/auth`               | `add-backend-services`     |
 | Backend  | `specs/progress-tracking`  | `add-backend-services`     |
 | Backend  | `specs/song-storage`       | `add-backend-services`     |
 | DevOps   | `specs/pwa-infra`          | `add-devops-infrastructure`|
 | DevOps   | `specs/deployment`         | `add-devops-infrastructure`|
 
-`add-guitar-foundation` (M2) adds the `tuner` capability (F39), the shared AudioWorklet capture, and alphaTab rendering plus tab ↔ MIDI conversion for guitar. The three area `add-*` changes are the active v1 build plan; their `tasks.md` files are the per-area build checklists. (Greenfield: specs were seeded by syncing the pure-ADDED deltas; changes stay open until implemented, then get archived.)
+`add-guitar-foundation` (M2) adds the `tuner` capability (F39), the shared AudioWorklet capture, and alphaTab rendering plus tab ↔ MIDI conversion for guitar. `add-ear-training` adds the `ear-training` capability (F41), the Guitar tab's Exercises view. The three area `add-*` changes are the active v1 build plan; their `tasks.md` files are the per-area build checklists. (Greenfield: specs were seeded by syncing the pure-ADDED deltas; changes stay open until implemented, then get archived.)
 
 ## Workflow
 

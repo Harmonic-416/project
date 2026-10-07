@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import * as Tone from 'tone'
 import CheckBanner from './CheckBanner.jsx'
 import ChordDiagram from './ChordDiagram.jsx'
 import PlayRun from './PlayRun.jsx'
 import PracticeRun from './PracticeRun.jsx'
 import StringStates from './StringStates.jsx'
-import { CHORDS, LABEL_MODES, STRING_NAMES, chordMidi } from './chords.js'
+import { CHORDS, LABEL_MODES, STRING_NAMES } from './chords.js'
 import { initialPlay, playReducer, progressionChords } from './playState.js'
 import { initialPracticeRun, practiceRunReducer } from './practiceRunState.js'
 import { initialPractice, practiceReducer } from './practiceState.js'
 import { chordStatuses, loadCleared, saveCleared, unlockedCount } from './unlocks.js'
 import { useChordDetection } from './useChordDetection.js'
+import { useChordPlayer } from './useChordPlayer.js'
 import '../../../auth/authTheme.css'
 import './PracticeScreen.css'
 
@@ -54,21 +54,6 @@ function demoResult(verdict, chord) {
     })
   }
   return used.map(() => 'idle')
-}
-
-/** Strum the chord once, low to high, so the learner hears the target (F31). */
-async function playChord(chord) {
-  await Tone.start()
-  const synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 0.005, decay: 0.3, sustain: 0.2, release: 1.2 },
-  }).toDestination()
-  synth.volume.value = -10
-  const now = Tone.now()
-  chordMidi(chord).forEach((midi, i) => {
-    synth.triggerAttackRelease(Tone.Frequency(midi, 'midi').toFrequency(), 1.4, now + i * 0.045)
-  })
-  setTimeout(() => synth.dispose(), HINT_SOUND_MS)
 }
 
 /** Six-line tab for one chord, high e on top like real tab (picture item 2). */
@@ -121,6 +106,8 @@ function PracticeScreen() {
   // The mic only lights the result buttons; the lessons still move on clicks.
   const detection = useChordDetection({ chord: expectedChord, onVerdict: showHeard })
   const listening = detection.status === 'listening'
+  // Hint strums the chord once, low to high, so the learner hears the target (F31).
+  const player = useChordPlayer()
 
   // Starting a Practice or Play run turns the mic on too (a tap, so the browser allows it).
   const { start: startListening } = detection
@@ -189,7 +176,7 @@ function PracticeScreen() {
     clearTimeout(hintTimer.current)
     hintTimer.current = setTimeout(() => setHinting(false), 1600)
     try {
-      await playChord(chord)
+      await player.strum(chord)
     } catch (err) {
       console.error('Hint playback failed', err)
     }

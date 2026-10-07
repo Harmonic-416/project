@@ -3,6 +3,7 @@ import './GuitarTab.css'
 import Tuner from './tuner/Tuner.jsx'
 import AccountChip from '../../auth/AccountChip.jsx' // NEW: account button
 import PracticeScreen from './practice/PracticeScreen.jsx' // NEW: practice screen
+import Exercises from './exercises/Exercises.jsx'
 
 // alphaTab is ~1 MB: only download it when the song view is opened.
 const GuitarSong = lazy(() => import('./song/GuitarSong.jsx'))
@@ -10,6 +11,7 @@ const GuitarSong = lazy(() => import('./song/GuitarSong.jsx'))
 const VIEWS = [
   { id: 'tuner', label: 'Tuner' },
   { id: 'practice', label: 'Practice' }, // NEW
+  { id: 'exercises', label: 'Exercises' }, // ear training (F41)
   { id: 'song', label: 'Songs' },
 ]
 
@@ -43,6 +45,8 @@ function GuitarTab({ auth, onNavigate }) {
           <Tuner />
         ) : view === 'practice' ? (
           <PracticeScreen /> // NEW
+        ) : view === 'exercises' ? (
+          <Exercises />
         ) : (
           <Suspense fallback={<p className="guitar-tab__loading">Loading songs…</p>}>
             <GuitarSong />

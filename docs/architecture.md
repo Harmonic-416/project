@@ -134,6 +134,10 @@ flowchart LR
     HINT["Hint<br/>Tone.js strums the chord<br/>mic muted meanwhile"] --> LEARN
     PRACTICE --> UNLOCKS[("Unlocks<br/>localStorage")]
 
+    subgraph EXERCISES["Exercises · ear training · no mic"]
+        EAR["Major or minor? · Which chord?<br/>plucked-string strum · note by note<br/>10 questions · chord shape after each"]
+    end
+
     subgraph SONGS["Songs · lazy-loaded"]
         GFILE["Built-in or your file<br/>Guitar Pro · alphaTex · MusicXML · MXL · MIDI"]
         ALPHA["alphaTab<br/>tab + standard notation<br/>alphaSynth playback · click to seek"]
@@ -219,6 +223,7 @@ and cached on first use).
 | `tabs/guitar/tuner/*` | Tuner (F39): pitchy on capture frames → stabilizer (median of 5, nearest string or a locked one, in tune at ±5¢ held 0.5 s). |
 | `tabs/guitar/practice/chordDetect.js`, `useChordDetection.js` | Chord verification (F16): after each strum onset, FFT → chroma vector → cosine match against the six chord templates; verdict `verified` / `wrong` / `silent`. `muteFor` keeps the app from hearing its own hint. |
 | `tabs/guitar/practice/PracticeScreen.jsx` + state reducers | Learn, Practice and Play modes, chord diagrams with fret / note / finger labels, string states, hint / skip / retry; unlocks in `localStorage` (`unlocks.js`). Detection lights the result; runs still advance on the result buttons. |
+| `tabs/guitar/exercises/*`, `practice/chordSound.js` | Exercises view, ear training (F41): the app strums a chord and you pick it: *Major or minor?*, then *Which chord?* among four; rounds of ten, chord diagram after each answer, compare a wrong pick with the answer. Pure rules in `earTraining.js`; chords (and Hint) play through one `Tone.PluckSynth` per string. No mic, nothing stored. |
 | `tabs/guitar/notation/*`, `tabs/guitar/song/*` | Lazy-loaded Songs view: Guitar Pro 3–8 / alphaTex / MusicXML / MXL / MIDI → alphaTab (tab + standard), alphaSynth playback with cursor and click-to-seek, export MIDI and Guitar Pro 7. |
 
 ### Backend layer (`src/lib/`)
