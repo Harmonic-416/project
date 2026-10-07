@@ -6,13 +6,18 @@ import { useSheetOverlay } from '../audio/useSheetOverlay.js'
 import { centsOff, classifyCents, findActiveNote, midiToNoteName, scoreAttempt } from '../audio/pitchDetector.js'
 import { downloadBlob, safeFilename } from '../notation/exportNotation.js'
 import { judgeNotes } from '../share/sharedAttempt.js'
+import { getScoreSeconds } from '../playback/scoreClock.js'
 import ShareAttempt from './ShareAttempt.jsx'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
 
-/** Playback clock, or null while the transport isn't running (mic warm-up, permission prompt). */
-const getTransportSeconds = () => (Tone.Transport.state === 'started' ? Tone.Transport.seconds : null)
+/**
+ * Playback clock in score seconds (at any tempo, so a slowed attempt still
+ * lines up with the score), or null while the transport isn't running (mic
+ * warm-up, permission prompt, count-in).
+ */
+const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScoreSeconds() : null)
 
 /**
  * "Record attempt": starts the microphone and playback together, plots the
@@ -70,7 +75,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   const finishAttempt = useCallback(async () => {
     setArmed(false)
     const blob = await mic.stop()
-    if (playback.state === 'playing' || playback.state === 'paused') playback.stop()
+    if (playback.state === 'counting' || playback.state === 'playing' || playback.state === 'paused') playback.stop()
     const sung = [...mic.getSamples()]
     const judged = judgeNotes(sung, scoreModel.notes)
     judged.hit.forEach((note) => sheetMusicRef.current?.markNote(note.index, SUNG_CLASS))
@@ -93,7 +98,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     if (!import.meta.env.DEV) return
     window.__harmonic = {
       ...(window.__harmonic ?? {}),
-      getTransportSeconds: () => Tone.Transport.seconds,
+      getTransportSeconds: getScoreSeconds,
       isTransportRunning: () => Tone.Transport.state === 'started',
       lastResult: result,
       lastRecordingSize: recording?.size ?? null,

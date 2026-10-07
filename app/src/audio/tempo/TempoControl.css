@@ -1,0 +1,30 @@
+.tempo-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.tempo-control__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #24242c;
+}
+
+.tempo-control__range {
+  flex: 1;
+  min-width: 80px; /* below the default ~130px so it fits a phone row; wraps instead of vanishing */
+  max-width: 220px;
+  accent-color: #128789;
+}
+
+.tempo-control__range:disabled {
+  opacity: 0.5;
+}
+
+.tempo-control__readout {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: #6c6a72;
+  white-space: nowrap;
+}

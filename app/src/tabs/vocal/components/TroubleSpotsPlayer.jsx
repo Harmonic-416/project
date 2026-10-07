@@ -5,13 +5,14 @@ import PlaybackControls from './PlaybackControls.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { findActiveNote, midiToNoteName } from '../audio/pitchDetector.js'
 import { createTroubleTracker, noteDistanceCents } from '../practice/practiceLogic.js'
+import { getScoreSeconds } from '../playback/scoreClock.js'
 
 const MISSED_CLASS = 'practice-note--missed'
 // Stopping this close to the end counts as finishing, so the last notes still get a verdict.
 const END_SLACK_SECONDS = 0.5
 
-/** Playback clock, or null while the transport isn't running (so paused frames aren't scored). */
-const getTransportSeconds = () => (Tone.Transport.state === 'started' ? Tone.Transport.seconds : null)
+/** Playback clock in score seconds (at any tempo), or null while the transport isn't running (so paused frames aren't scored). */
+const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScoreSeconds() : null)
 
 /**
  * "Trouble spots": normal playback that never waits. The mic runs alongside
@@ -72,7 +73,7 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
 
   const play = useCallback(async () => {
     if (!(await mic.start())) return
-    if (playback.state !== 'paused' || !trackerRef.current) startRun(Tone.Transport.seconds)
+    if (playback.state !== 'paused' || !trackerRef.current) startRun(getScoreSeconds())
     await playback.play()
   }, [mic, playback, startRun])
 
@@ -89,7 +90,7 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
     if (playback.state !== 'playing') return undefined
     let raf
     const tick = () => {
-      const t = Tone.Transport.seconds
+      const t = getScoreSeconds()
       lastTimeRef.current = t
       if (trackerRef.current) applyVerdicts(trackerRef.current.collect(t))
       raf = requestAnimationFrame(tick)
@@ -131,6 +132,7 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
         state={playback.state}
         position={playback.position}
         duration={playback.duration}
+        rate={playback.rate}
         onPlay={play}
         onPause={playback.pause}
         onStop={playback.stop}

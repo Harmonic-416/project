@@ -35,6 +35,26 @@ describe('pitch tracking frames', () => {
     expect(tracker.analyze(sine(20), SAMPLE_RATE)).toBeNull()
   })
 
+  it('ignores a metronome click: a decaying burst of high-passed noise has no pitch', () => {
+    // Seeded so the test never flakes; mirrors createClick() (noise, ~35 ms decay, high-passed).
+    let seed = 416
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) % 2 ** 32
+      return seed / 2 ** 32 - 0.5
+    }
+    for (let frame = 0; frame < 20; frame += 1) {
+      const buffer = new Float32Array(2048)
+      let prev = 0
+      for (let i = 0; i < buffer.length; i += 1) {
+        const white = random()
+        const envelope = Math.exp(-i / (0.035 * SAMPLE_RATE))
+        buffer[i] = 0.8 * envelope * (white - prev) // first difference: crude high-pass
+        prev = white
+      }
+      expect(tracker.analyze(buffer, SAMPLE_RATE)).toBeNull()
+    }
+  })
+
   it('names notes and measures cents', () => {
     expect(midiToNoteName(69)).toBe('A4')
     expect(midiToNoteName(60.4)).toBe('C4')

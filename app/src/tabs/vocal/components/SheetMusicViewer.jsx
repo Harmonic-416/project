@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 import './SheetMusicViewer.css'
 import { extractScoreModel } from '../notation/scoreModel.js'
+import { scaleTempoMarks } from '../notation/tempoMarks.js'
 
 /**
  * Renders notation via OSMD and exposes a small imperative cursor API
@@ -18,6 +19,9 @@ import { extractScoreModel } from '../notation/scoreModel.js'
  * `content` is a MusicXML string (see notation/loadNotation.js). Once
  * rendered, `onReady` receives the score model derived from what is on
  * screen (notation/scoreModel.js).
+ *
+ * `tempoFactor` (the tempo, F37) rescales the printed tempo marks so they
+ * show the tempo being played; the score model keeps the written tempo.
  */
 // Where the cursor sits in the strip, as a fraction of its width.
 const CURSOR_ANCHOR = 0.3
@@ -29,12 +33,18 @@ function zoomFor(width) {
   return 1
 }
 
-const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady, onError }, ref) {
+const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady, onError, tempoFactor = 1 }, ref) {
   const containerRef = useRef(null)
   const osmdRef = useRef(null)
   const stepRef = useRef(0) // cursor position, so goToStep only walks forward when it can
   const sourceNotesRef = useRef([]) // OSMD Notes, aligned with scoreModel.notes
   const marksRef = useRef(new Map()) // note index -> Set of classes we added (re-applied after every render)
+  const tempoFactorRef = useRef(tempoFactor) // re-applied to the tempo marks after every render
+
+  useEffect(() => {
+    tempoFactorRef.current = tempoFactor
+    scaleTempoMarks(containerRef.current, tempoFactor)
+  }, [tempoFactor])
 
   /** The rendered <g> for scoreModel.notes[noteIndex]; a new element after every render. */
   const noteElement = (noteIndex) => {
@@ -133,11 +143,12 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
         osmdRef.current.EngravingRules.PageTopMargin = 1
         osmdRef.current.EngravingRules.PageBottomMargin = 1
         // Re-rendering (autoResize on window resize / phone rotation) replaces every SVG
-        // element, so put the note marks back on the new ones.
+        // element, so put the note marks back on the new ones and rescale the tempo marks.
         const baseRender = osmdRef.current.render.bind(osmdRef.current)
         osmdRef.current.render = () => {
           baseRender()
           for (const [noteIndex, classes] of marksRef.current) noteElement(noteIndex)?.classList.add(...classes)
+          scaleTempoMarks(containerRef.current, tempoFactorRef.current)
         }
       }
       const osmd = osmdRef.current

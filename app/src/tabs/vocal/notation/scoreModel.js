@@ -8,6 +8,8 @@
  * (enrolled timestamps) and tempo changes are honoured per step.
  */
 
+import { beatsFromMeasures } from '../../../audio/metronome/beats.js'
+
 /** OSMD octave 1 == scientific octave 4 (middle C = C4 = MIDI 60). */
 export function osmdPitchToMidi(pitch) {
   return (pitch.Octave + 4) * 12 + pitch.FundamentalNote + (pitch.AccidentalHalfTones ?? 0)
@@ -37,10 +39,12 @@ export function extractScoreModel(osmd, { sourceNotes } = {}) {
 
   const cursorTimestamps = []
   const notes = []
+  const measures = [] // one per enrolled measure, for the metronome's beat grid
   const byOsmdNote = new Map() // OSMD Note -> our note, for tie continuation
   let seconds = 0
   let prevTimestamp = null
   let prevBpm = defaultBpm
+  let measureStart = null
 
   while (!iterator.EndReached) {
     const step = cursorTimestamps.length
@@ -48,6 +52,22 @@ export function extractScoreModel(osmd, { sourceNotes } = {}) {
     const bpm = iterator.CurrentBpm > 0 ? iterator.CurrentBpm : defaultBpm
     if (prevTimestamp !== null) seconds += (timestamp - prevTimestamp) * secondsPerWholeNote(prevBpm)
     cursorTimestamps.push(seconds)
+
+    // A new measure starts whenever the enrolled time of the current one's
+    // start changes (repeats included, since enrolled time keeps growing).
+    const measure = iterator.CurrentMeasure
+    const relative = iterator.CurrentRelativeInMeasureTimestamp?.RealValue ?? 0
+    if (measure && (measureStart === null || Math.abs(timestamp - relative - measureStart) > 1e-9)) {
+      measureStart = timestamp - relative
+      const signature = measure.ActiveTimeSignature
+      measures.push({
+        time: seconds - relative * secondsPerWholeNote(bpm),
+        length: measure.Duration?.RealValue ?? 0, // shorter than the signature in a pickup bar
+        numerator: signature?.Numerator ?? 4,
+        denominator: signature?.Denominator ?? 4,
+        bpm,
+      })
+    }
 
     for (const voiceEntry of iterator.CurrentVoiceEntries) {
       if (voiceEntry.IsGrace) continue
@@ -93,6 +113,8 @@ export function extractScoreModel(osmd, { sourceNotes } = {}) {
     notes,
     playbackSchedule,
     cursorTimestamps,
+    beats: beatsFromMeasures(measures),
+    startBpm: measures[0]?.bpm ?? defaultBpm, // the written tempo at the start, for the tempo readout
     duration,
     bpm: cursorTimestamps.length ? (iterator.CurrentBpm > 0 ? prevBpm : defaultBpm) : defaultBpm,
     partNames: instruments.map((i) => i.Name),

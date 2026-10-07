@@ -3,6 +3,7 @@ import SongLibrary from '../../vocal/components/SongLibrary.jsx'
 import '../../vocal/components/NotationUploader.css'
 import { exportGuitarMidi, exportGuitarPro } from '../notation/exportGuitarNotation.js'
 import { GUITAR_NOTATION_ACCEPT, loadGuitarNotation } from '../notation/loadGuitarNotation.js'
+import { fingerprintBytes } from '../../vocal/share/sharedAttempt.js'
 import GuitarScore from './GuitarScore.jsx'
 import './GuitarSong.css'
 
@@ -31,7 +32,12 @@ function GuitarSong() {
     setStatus('loading')
     setError(null)
     try {
-      setNotation(await loadGuitarNotation(arrayBuffer, filename, options))
+      // The fingerprint names the song for its remembered tempo (same file, same tempo).
+      const [loaded, fingerprint] = await Promise.all([
+        loadGuitarNotation(arrayBuffer, filename, options),
+        fingerprintBytes(arrayBuffer),
+      ])
+      setNotation({ ...loaded, fingerprint })
       setStatus('ready')
     } catch (err) {
       console.error(err)
@@ -106,7 +112,7 @@ function GuitarSong() {
           This file has no string/fret data, so it shows standard notation only. Automatic tab for MIDI files is coming.
         </p>
       )}
-      <GuitarScore score={notation.score} />
+      <GuitarScore score={notation.score} songKey={notation.fingerprint} />
     </div>
   )
 }
