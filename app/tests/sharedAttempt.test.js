@@ -5,6 +5,7 @@ import {
   fromTrace,
   judgeNotes,
   readSharedAttemptId,
+  readSharedAttemptInstrument,
   sampleVerdict,
   shareUrlFor,
   toTrace,
@@ -76,4 +77,14 @@ it('builds and reads share links', () => {
   expect(readSharedAttemptId(url)).toBe(id)
   expect(readSharedAttemptId('https://harmonic.example/?attempt=not-an-id')).toBeNull()
   expect(readSharedAttemptId('https://harmonic.example/')).toBeNull()
+  expect(readSharedAttemptInstrument(url)).toBe('voice')
+})
+
+it('says in a guitar attempt’s link which tab opens it', () => {
+  const id = '0f8fad5b-d9cb-469f-a165-70867728950e'
+  const url = shareUrlFor(id, 'https://harmonic.example', 'guitar')
+  expect(url).toBe(`https://harmonic.example/?attempt=${id}&instrument=guitar`)
+  expect(readSharedAttemptId(url)).toBe(id)
+  expect(readSharedAttemptInstrument(url)).toBe('guitar')
+  expect(readSharedAttemptInstrument('not a url')).toBe('voice')
 })

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@coderline/alphatab": "^1.8.4",
+    "@spotify/basic-pitch": "^1.0.1",
     "@supabase/supabase-js": "^2.109.0",
     "@tonejs/midi": "^2.0.28",
     "jszip": "^3.10.2",

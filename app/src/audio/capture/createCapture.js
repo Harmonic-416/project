@@ -9,7 +9,8 @@ import workletUrl from './pcm-capture.worklet.js?worker&url'
  * Pass `context` to capture on an existing AudioContext (e.g. the one
  * playback runs on, so both share a clock); otherwise one is created and
  * closed again by stop(). Call from a user gesture — iOS only starts audio
- * after a tap.
+ * after a tap. `stream` is the microphone itself, for a MediaRecorder that
+ * should record the same input.
  */
 export async function createCapture({ context, frameSize = 2048, hop = 512, onFrame, onOnset } = {}) {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -53,6 +54,7 @@ export async function createCapture({ context, frameSize = 2048, hop = 512, onFr
   return {
     context: ctx,
     sampleRate: ctx.sampleRate,
+    stream,
     stop() {
       if (stopped) return
       stopped = true

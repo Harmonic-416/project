@@ -11,8 +11,10 @@ import { shareUrlFor, toTrace } from '../share/sharedAttempt.js'
  * itself; for your own file they open their copy, matched by its fingerprint.
  *
  * `song` is { songId, title, format, fingerprint, builtin, partId, partName, withOthers }.
+ * The Guitar tab shares with `instrument="guitar"` and `verdicts` (one per
+ * note of its song timeline) instead of a pitch trace.
  */
-function ShareAttempt({ auth, supabase, song, samples, accuracy, recording }) {
+function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording, instrument = 'voice', verdicts = null }) {
   const [includeRecording, setIncludeRecording] = useState(true)
   const [state, setState] = useState('idle') // idle | sharing | shared | error
   const [link, setLink] = useState(null)
@@ -41,10 +43,12 @@ function ShareAttempt({ auth, supabase, song, samples, accuracy, recording }) {
           withOthers: song.withOthers,
           samples: toTrace(samples),
           accuracy: Math.round(accuracy * 10) / 10,
+          instrument,
+          verdicts,
         },
         includeRecording ? recording : null,
       )
-      const url = shareUrlFor(shared.id, window.location.origin)
+      const url = shareUrlFor(shared.id, window.location.origin, instrument)
       setLink(url)
       setState('shared')
       await offer(url, song.title)

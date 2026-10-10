@@ -45,7 +45,7 @@ function normalize(vector) {
   return vector
 }
 
-function dot(a, b) {
+export function dot(a, b) {
   let sum = 0
   for (let i = 0; i < a.length; i += 1) sum += a[i] * b[i]
   return sum
@@ -130,15 +130,18 @@ export function chromaFromFrame(samples, sampleRate) {
 
 const templateCache = new WeakMap()
 
-/** What a chord should look like as chroma: its sounded notes plus their first overtones. */
-export function chordTemplate(chord) {
-  if (!templateCache.has(chord)) {
-    const template = new Float32Array(12)
-    for (const midi of chordMidi(chord)) {
-      for (const [semitones, weight] of HARMONICS) template[pitchClass(midi + semitones)] += weight
-    }
-    templateCache.set(chord, normalize(template))
+/** What any set of sounded notes should look like as chroma: the notes plus their first overtones. */
+export function templateFromMidi(midis) {
+  const template = new Float32Array(12)
+  for (const midi of midis) {
+    for (const [semitones, weight] of HARMONICS) template[pitchClass(midi + semitones)] += weight
   }
+  return normalize(template)
+}
+
+/** What a chord should look like as chroma (see templateFromMidi). */
+export function chordTemplate(chord) {
+  if (!templateCache.has(chord)) templateCache.set(chord, templateFromMidi(chordMidi(chord)))
   return templateCache.get(chord)
 }
 

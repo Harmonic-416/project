@@ -46,6 +46,7 @@ describe.skipIf(!hasSupabaseEnv)('shared attempts (0005)', () => {
 
     const opened = await getSharedAttempt(viewer.supabase, shared.id)
     expect(opened?.song_id).toBe(CATALOG_SONG)
+    expect(opened?.instrument).toBe('voice')
     expect(opened?.samples).toEqual(attempt.samples)
     expect(Number(opened?.accuracy)).toBeCloseTo(66.7)
 
@@ -68,6 +69,40 @@ describe.skipIf(!hasSupabaseEnv)('shared attempts (0005)', () => {
     expect(opened?.song_id).toBeNull()
     expect(opened?.song_fingerprint).toBe(fingerprint)
     expect(await getSharedRecordingUrl(viewer.supabase, opened!)).toBeNull()
+  }, 30_000)
+
+  it('shares a guitar attempt (0007): a verdict per note instead of a pitch trace', async () => {
+    const verdicts = ['hit', 'close', 'miss', 'skipped', null] as const
+    const shared = await shareAttempt(owner.supabase, {
+      ...attempt,
+      songId: '00000000-0000-4000-8000-000000000002', // House of the Rising Sun (guitar)
+      songTitle: 'House of the Rising Sun',
+      songFormat: 'musicxml',
+      partId: '0',
+      partName: 'Guitar',
+      samples: [],
+      accuracy: 50,
+      instrument: 'guitar',
+      verdicts: [...verdicts],
+    })
+    const opened = await getSharedAttempt(viewer.supabase, shared.id)
+    expect(opened?.instrument).toBe('guitar')
+    expect(opened?.verdicts).toEqual(verdicts)
+    expect(opened?.samples).toEqual([])
+  }, 30_000)
+
+  it('accepts Guitar Pro files by fingerprint', async () => {
+    const shared = await shareAttempt(owner.supabase, {
+      ...attempt,
+      songId: null,
+      songTitle: 'My riff',
+      songFormat: 'guitar-pro',
+      songFingerprint: 'cd'.repeat(32),
+      instrument: 'guitar',
+      samples: [],
+      verdicts: ['hit'],
+    })
+    expect(shared.song_format).toBe('guitar-pro')
   }, 30_000)
 
   it('needs a catalog song or a fingerprint', async () => {

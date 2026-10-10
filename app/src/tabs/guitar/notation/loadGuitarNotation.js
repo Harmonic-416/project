@@ -2,6 +2,7 @@ import * as alphaTab from '@coderline/alphatab'
 import { midiToMusicXml } from '../../vocal/midi/midiToMusicXml.js'
 import { parseMidiFile } from '../../vocal/midi/parseMidi.js'
 import { titleFromFilename, unzipMxl } from '../../vocal/notation/loadNotation.js'
+import { addGuitarTab } from './fretAssign.js'
 
 /**
  * Guitar notation import. Everything the Guitar tab opens comes out as
@@ -10,9 +11,10 @@ import { titleFromFilename, unzipMxl } from '../../vocal/notation/loadNotation.j
  *
  *   Guitar Pro 3–8, alphaTex, MusicXML → alphaTab's ScoreLoader
  *   MXL   → unzipped (Vocal's unzipMxl) → ScoreLoader
- *   MIDI  → Vocal's midiToMusicXml → ScoreLoader. alphaTab can't read MIDI
- *           or derive frets from pitch, so MIDI songs have notation but no
- *           tab until fret assignment lands (hasTab: false).
+ *   MIDI  → Vocal's midiToMusicXml → fretAssign's addGuitarTab → ScoreLoader.
+ *           alphaTab can't read MIDI or derive frets from pitch, so every
+ *           part that fits on the neck gets strings and frets chosen for it;
+ *           a part with notes out of range stays notation only.
  *
  * alphaTab shows tab only when the file carries string/fret data; `hasTab`
  * says whether this one does.
@@ -90,7 +92,7 @@ export async function loadGuitarNotation(arrayBuffer, filename, { title, setting
   const format = detectGuitarFormat(filename, arrayBuffer)
   let score
   if (format === 'midi') {
-    const { musicXml } = midiToMusicXml(await parseMidiFile(arrayBuffer))
+    const { musicXml } = addGuitarTab(midiToMusicXml(await parseMidiFile(arrayBuffer)).musicXml)
     score = loadBytes(new TextEncoder().encode(musicXml), settings)
   } else if (format === 'mxl') {
     score = loadBytes(new TextEncoder().encode(await unzipMxl(arrayBuffer)), settings)

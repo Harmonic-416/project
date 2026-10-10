@@ -1,0 +1,169 @@
+/* Practice modes on a guitar song (GuitarSong.jsx, follow/). */
+
+.guitar-follow {
+  /* StringStates (practice/StringStates.css) reads the chord lessons' colours. */
+  --practice-good: #6a9f4e;
+  --practice-good-strong: #4f7d38;
+  --practice-bad: #c8553d;
+}
+
+/* Marks on the tab and notation (useTabOverlay.js): a box per note head. */
+.tab-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tab-overlay__mark {
+  fill-opacity: 0.18;
+  stroke-width: 1.5;
+}
+
+.tab-overlay__mark--target { fill: #128789; stroke: #128789; fill-opacity: 0.25; stroke-width: 2; }
+.tab-overlay__mark--hit { fill: #2e9e5b; stroke: #2e9e5b; }
+.tab-overlay__mark--close { fill: #e0a100; stroke: #e0a100; }
+.tab-overlay__mark--miss { fill: #cf4b36; stroke: #cf4b36; fill-opacity: 0.25; }
+.tab-overlay__mark--skipped { fill: #9a9a9a; stroke: #9a9a9a; fill-opacity: 0.1; stroke-dasharray: 3 2; }
+
+.guitar-follow__strings {
+  padding: 0 4px;
+}
+
+/* Wait for me after a few wrong tries: Hint and Skip stand out (GuitarWaitMode.jsx). */
+.guitar-follow .practice-status__link--nudge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #128789;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* Speed, count-in, metronome, loop (SongTransportExtras.jsx). */
+.song-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 0 4px;
+  font-size: 0.85rem;
+  color: #24242c;
+}
+
+.song-extras__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.song-extras__item select {
+  font: inherit;
+  padding: 2px 4px;
+  border: 1px solid #e2dfd8;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.song-extras__hint {
+  color: #6c6a72;
+  font-size: 0.8rem;
+}
+
+.song-extras__link {
+  border: none;
+  background: none;
+  color: #128789;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.song-extras__button {
+  border: 1px solid #128789;
+  border-radius: 8px;
+  padding: 6px 14px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.song-extras__button:disabled,
+.song-extras__link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* LatencyCalibration.jsx */
+.latency-calibration {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.85rem;
+}
+
+.latency-calibration p {
+  margin: 0;
+}
+
+.latency-calibration__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* GuitarSharedPanel.jsx: someone else's attempt on this copy of the song. */
+.guitar-shared {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.9rem;
+}
+
+.guitar-shared__score {
+  margin: 0;
+}
+
+.guitar-shared__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.guitar-shared__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.guitar-shared__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1.5px solid currentColor;
+}
+
+.guitar-shared__swatch--hit { color: #2e9e5b; background: rgba(46, 158, 91, 0.25); }
+.guitar-shared__swatch--close { color: #e0a100; background: rgba(224, 161, 0, 0.25); }
+.guitar-shared__swatch--miss { color: #cf4b36; background: rgba(207, 75, 54, 0.25); }
+.guitar-shared__swatch--skipped { color: #9a9a9a; border-style: dashed; }

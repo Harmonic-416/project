@@ -15,10 +15,14 @@ const VIEWS = [
   { id: 'song', label: 'Songs' },
 ]
 
-/** Guitar: tune first (sound check, F39), then open a song as tab + notation. */
+/**
+ * Guitar: tune first (sound check, F39), then open a song as tab + notation.
+ * A shared guitar attempt (`sharedAttemptId`, from a share link via App.jsx)
+ * opens straight into Songs.
+ */
 // NEW: takes auth + onNavigate (App.jsx already passes them) for the account button
-function GuitarTab({ auth, onNavigate }) {
-  const [view, setView] = useState('tuner')
+function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
+  const [view, setView] = useState(sharedAttemptId ? 'song' : 'tuner')
 
   return (
     <div className="guitar-tab">
@@ -49,7 +53,12 @@ function GuitarTab({ auth, onNavigate }) {
           <Exercises />
         ) : (
           <Suspense fallback={<p className="guitar-tab__loading">Loading songs…</p>}>
-            <GuitarSong />
+            <GuitarSong
+              auth={auth}
+              onNavigate={onNavigate}
+              sharedAttemptId={sharedAttemptId}
+              onSharedAttemptDone={onSharedAttemptDone}
+            />
           </Suspense>
         )}
       </div>

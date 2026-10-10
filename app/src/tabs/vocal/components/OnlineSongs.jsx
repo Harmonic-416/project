@@ -35,15 +35,16 @@ function SongList({ items, onSelectSong, icon }) {
  * Browse the shared song catalog (public-domain songs the team curates in
  * Supabase), filtered by a search box. No sign-in needed: the catalog is
  * public, and the app doesn't store anyone's own songs in the cloud.
+ * `instrument` picks the catalog: 'voice' (the default) or 'guitar'.
  */
-function OnlineSongs({ configured, supabase, onSelectSong }) {
+function OnlineSongs({ configured, supabase, onSelectSong, instrument = 'voice' }) {
   const [query, setQuery] = useState('')
   const [result, setResult] = useState(null) // { songs } | { error }
 
   useEffect(() => {
     if (!supabase) return undefined
     let cancelled = false
-    fetchCloudSongs(supabase).then(
+    fetchCloudSongs(supabase, instrument).then(
       (songs) => {
         if (!cancelled) setResult({ songs })
       },
@@ -55,7 +56,7 @@ function OnlineSongs({ configured, supabase, onSelectSong }) {
     return () => {
       cancelled = true
     }
-  }, [supabase])
+  }, [supabase, instrument])
 
   const catalog = useMemo(() => filterSongs(result?.songs, query), [result, query])
 

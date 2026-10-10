@@ -26,3 +26,6 @@ dist-ssr
 # alphaTab assets, copied in by @coderline/alphatab-vite on dev start / build
 public/font/
 public/soundfont/
+
+# basic-pitch's model, copied in by vite.config.js on dev start / build
+public/basic-pitch/
