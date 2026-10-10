@@ -31,7 +31,7 @@ export const ACCOMPANIMENTS = [
     label: 'With all parts',
     hint: {
       listen: 'Every part plays; yours is on top.',
-      wait: 'The other parts hold their chord while you find your note.',
+      wait: 'The other parts hold their chord while you find your note. Use headphones so the mic only hears you.',
       trouble: 'The other parts play; your part is left for you to sing.',
     },
   },

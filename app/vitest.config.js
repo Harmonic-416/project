@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  define: { __SONG_FILES__: '[]' },
+  define: { __SONG_FILES__: '[]', __GUITAR_SONG_FILES__: '[]' },
   test: {
     include: ['tests/**/*.test.js'],
     environment: 'node',

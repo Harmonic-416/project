@@ -8,8 +8,8 @@ import { getNotationUrl, listLibrary } from '@backend/songs'
  * is readable without signing in.
  */
 
-/** Vocal catalog songs. */
-export async function fetchCloudSongs(supabase) {
+/** Catalog songs for one instrument: 'voice' (the Vocal tab) or 'guitar'. */
+export async function fetchCloudSongs(supabase, instrument = 'voice') {
   const [songs, seedFiles] = await Promise.all([
     listLibrary(supabase),
     supabase.storage
@@ -18,7 +18,7 @@ export async function fetchCloudSongs(supabase) {
       .then(({ data }) => new Set((data ?? []).map((object) => `seed/${object.name}`))),
   ])
   return songs
-    .filter((song) => song.user_id === null && song.instrument === 'voice')
+    .filter((song) => song.user_id === null && song.instrument === instrument)
     .map((song) => ({
       id: song.id,
       title: song.title,

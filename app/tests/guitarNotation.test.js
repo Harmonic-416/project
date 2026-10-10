@@ -63,11 +63,11 @@ describe('built-in song: House of the Rising Sun', () => {
 })
 
 describe('other sources', () => {
-  it('opens a MIDI file as notation without tab and exports its original bytes', async () => {
+  it('opens a MIDI file with tab chosen for it and exports its original bytes', async () => {
     const source = bytesOf('../../tests/fixtures/midi/twinkle.mid')
     const notation = await loadGuitarNotation(source, 'twinkle.mid')
     expect(notation.format).toBe('midi')
-    expect(notation.hasTab).toBe(false)
+    expect(notation.hasTab).toBe(true) // strings and frets from fretAssign.js
     expect(scoreNotes(notation.score).length).toBeGreaterThan(0)
     expect(guitarMidiBytes(notation)).toEqual(new Uint8Array(source))
   })

@@ -1,22 +1,38 @@
-import { readdirSync } from 'node:fs'
+import { cpSync, existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { alphaTab } from '@coderline/alphatab-vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Song library file list, discovered from public/midi-files/ at config-load
-// time (dev server start / build) and baked into the app via `define` below.
-// Drop a .mid/.midi/.musicxml/.xml/.mxl file in there and restart the dev
-// server (or rebuild) to pick it up — public/ is copied through verbatim, so
-// no separate asset pipeline step is needed to serve the files themselves.
-function listSongFiles() {
+// Song library file lists, discovered from public/midi-files/ (Vocal) and
+// public/guitar-songs/ (Guitar) at config-load time (dev server start /
+// build) and baked into the app via `define` below. Drop a file in there and
+// restart the dev server (or rebuild) to pick it up — public/ is copied
+// through verbatim, so no separate asset pipeline step is needed to serve the
+// files themselves.
+function listSongFiles(dir, pattern) {
   try {
-    return readdirSync(new URL('./public/midi-files/', import.meta.url))
-      .filter((name) => /\.(mid|midi|musicxml|xml|mxl)$/i.test(name))
+    return readdirSync(new URL(`./public/${dir}/`, import.meta.url))
+      .filter((name) => pattern.test(name))
       .sort()
   } catch {
     return []
+  }
+}
+
+// Guitar Songs' after-the-run check runs Spotify's basic-pitch model in the
+// browser (src/tabs/guitar/song/follow/refineWithBasicPitch.js). Its model
+// ships inside the npm package; copy it into public/basic-pitch/ (gitignored)
+// on every dev start / build, the way alphaTab's plugin copies its assets.
+function basicPitchModel() {
+  const from = fileURLToPath(new URL('./node_modules/@spotify/basic-pitch/model/', import.meta.url))
+  const to = fileURLToPath(new URL('./public/basic-pitch/', import.meta.url))
+  return {
+    name: 'harmonic:basic-pitch-model',
+    buildStart() {
+      if (existsSync(from)) cpSync(from, to, { recursive: true })
+    },
   }
 }
 
@@ -35,7 +51,10 @@ export default defineConfig({
     dedupe: ['@supabase/supabase-js', '@tonejs/midi'],
   },
   define: {
-    __SONG_FILES__: JSON.stringify(listSongFiles()),
+    __SONG_FILES__: JSON.stringify(listSongFiles('midi-files', /\.(mid|midi|musicxml|xml|mxl)$/i)),
+    __GUITAR_SONG_FILES__: JSON.stringify(
+      listSongFiles('guitar-songs', /\.(gp|gp3|gp4|gp5|gpx|alphatex|atex|musicxml|xml|mxl|mid|midi)$/i),
+    ),
   },
   // Workers and worklets (alphaTab's, and our mic capture worklet) are ES
   // modules: AudioWorklet.addModule loads modules, and alphaTab reads
@@ -47,6 +66,7 @@ export default defineConfig({
     // the build and copies its music font and soundfont into public/font and
     // public/soundfont (gitignored) on every dev start / build.
     alphaTab(),
+    basicPitchModel(),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
@@ -54,14 +74,21 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Guitar songs (alphaTab: ~1 MB view chunk, ~2 MB worker and worklet,
         // ~1 MB soundfont, music font) stay out of the install-time precache;
-        // they're cached the first time the Songs view opens.
-        globIgnores: ['**/alphaTab.*.js', '**/GuitarSong-*.{js,css}'],
+        // they're cached the first time the Songs view opens. So does the
+        // after-the-run check (TensorFlow.js + basic-pitch's model), cached the
+        // first time someone runs it.
+        globIgnores: ['**/alphaTab.*.js', '**/GuitarSong-*.{js,css}', '**/refineWithBasicPitch-*.js', '**/basic-pitch/**'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
               /\/(soundfont|font)\//.test(url.pathname) || /\/assets\/(alphaTab\.|GuitarSong-)/.test(url.pathname),
             handler: 'CacheFirst',
             options: { cacheName: 'alphatab-assets', expiration: { maxEntries: 32 } },
+          },
+          {
+            urlPattern: ({ url }) => /\/basic-pitch\//.test(url.pathname) || /\/assets\/refineWithBasicPitch-/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'basic-pitch', expiration: { maxEntries: 8 } },
           },
         ],
       },

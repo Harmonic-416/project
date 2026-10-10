@@ -1,12 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Shared attempts: send a sung attempt to someone as a link. The song is
- * never uploaded — a catalog song is referenced by id, anything else by the
- * SHA-256 of the file, and the viewer opens their own copy of it.
+ * Shared attempts: send a sung (Vocal) or played (Guitar) attempt to
+ * someone as a link. The song is never uploaded — a catalog song is
+ * referenced by id, anything else by the SHA-256 of the file, and the viewer
+ * opens their own copy of it. A sung attempt carries its pitch trace; a
+ * guitar attempt carries the verdict on every note (migration 0007).
  */
 
-export type SongFormat = 'midi' | 'musicxml' | 'mxl'
+export type SongFormat = 'midi' | 'musicxml' | 'mxl' | 'guitar-pro' | 'alphatex'
+
+export type Instrument = 'voice' | 'guitar'
+
+/** A guitar attempt's verdict on one note of its song timeline, or null where the run didn't reach. */
+export type NoteVerdict = 'hit' | 'close' | 'miss' | 'skipped' | null
 
 /** One pitch frame: [seconds on the playback clock, fractional MIDI note]. */
 export type TraceSample = [number, number]
@@ -25,6 +32,8 @@ export interface SharedAttempt {
   samples: TraceSample[]
   accuracy: number
   recording_path: string | null
+  instrument: Instrument
+  verdicts: NoteVerdict[] | null
   created_at: string
 }
 
@@ -41,6 +50,10 @@ export interface NewSharedAttempt {
   withOthers?: boolean
   samples: TraceSample[]
   accuracy: number
+  /** 'voice' (the default) or 'guitar'. */
+  instrument?: Instrument
+  /** Guitar: the verdict on every note of the practised track, by timeline index. */
+  verdicts?: NoteVerdict[] | null
 }
 
 export const MAX_TRACE_SAMPLES = 30000
@@ -58,7 +71,9 @@ export async function shareAttempt(
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) throw userError ?? new Error('Sign in to share an attempt')
   if (!attempt.songId && !attempt.songFingerprint) throw new Error('A shared attempt needs a catalog song or a file fingerprint')
-  if (attempt.samples.length > MAX_TRACE_SAMPLES) throw new Error('That attempt is too long to share')
+  if (attempt.samples.length > MAX_TRACE_SAMPLES || (attempt.verdicts?.length ?? 0) > MAX_TRACE_SAMPLES) {
+    throw new Error('That attempt is too long to share')
+  }
 
   const id = crypto.randomUUID()
   let recordingPath: string | null = null
@@ -86,6 +101,8 @@ export async function shareAttempt(
       samples: attempt.samples,
       accuracy: attempt.accuracy,
       recording_path: recordingPath,
+      instrument: attempt.instrument ?? 'voice',
+      verdicts: attempt.verdicts ?? null,
     })
     .select()
     .single()

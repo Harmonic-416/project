@@ -1,13 +1,16 @@
 import './PracticeModes.css'
 import { ACCOMPANIMENTS } from '../practice/practiceLogic.js'
 
-/** "By myself" / "With all parts", for scores with several parts. The hint depends on the practice mode. */
-function AccompanimentToggle({ value, mode, onChange, disabled }) {
-  const current = ACCOMPANIMENTS.find((a) => a.id === value)
+/**
+ * "By myself" / "With all parts", for scores with several parts. The hint depends on the practice mode.
+ * `options` defaults to the Vocal tab's wording; Guitar passes its own.
+ */
+function AccompanimentToggle({ value, mode, onChange, disabled, options = ACCOMPANIMENTS }) {
+  const current = options.find((a) => a.id === value)
   return (
     <div className="practice-modes">
       <div className="practice-modes__options" role="group" aria-label="Practise with">
-        {ACCOMPANIMENTS.map((a) => (
+        {options.map((a) => (
           <button
             key={a.id}
             type="button"
@@ -20,10 +23,7 @@ function AccompanimentToggle({ value, mode, onChange, disabled }) {
           </button>
         ))}
       </div>
-      <span className="practice-modes__hint">
-        {current?.hint[mode]}
-        {value === 'all' && mode === 'wait' && ' Use headphones so the mic only hears you.'}
-      </span>
+      <span className="practice-modes__hint">{current?.hint[mode]}</span>
     </div>
   )
 }

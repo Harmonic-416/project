@@ -5,7 +5,7 @@ import GuitarTab from './tabs/guitar/GuitarTab.jsx'
 import VocalTab from './tabs/vocal/VocalTab.jsx'
 import { useSession } from './auth/useSession.js'
 import { GuitarIcon, HomeIcon, MicIcon } from './nav/TabIcons.jsx'
-import { readSharedAttemptId } from './tabs/vocal/share/sharedAttempt.js'
+import { readSharedAttemptId, readSharedAttemptInstrument } from './tabs/vocal/share/sharedAttempt.js'
 
 const TABS = [
   { id: 'home', label: 'Home', Icon: HomeIcon, Component: HomeTab },
@@ -13,28 +13,35 @@ const TABS = [
   { id: 'vocal', label: 'Vocal', Icon: MicIcon, Component: VocalTab },
 ]
 
-// A share link (/?attempt=<id>) is kept in sessionStorage until the attempt
-// has been opened, so it survives the Google / GitHub sign-in round trip,
-// which comes back to the bare site address.
+// A share link (/?attempt=<id>, plus &instrument=guitar for a guitar attempt)
+// is kept in sessionStorage until the attempt has been opened, so it survives
+// the Google / GitHub sign-in round trip, which comes back to the bare site
+// address.
 const PENDING_ATTEMPT_KEY = 'harmonic.pendingSharedAttempt'
+const PENDING_INSTRUMENT_KEY = 'harmonic.pendingSharedAttemptInstrument'
 
-function takeSharedAttemptId() {
+/** { id, tab } for a share link being opened, or null. */
+function takeSharedAttempt() {
   const fromLink = readSharedAttemptId(window.location.href)
+  const tabFor = (instrument) => (instrument === 'guitar' ? 'guitar' : 'vocal')
+  const instrument = readSharedAttemptInstrument(window.location.href)
   try {
     if (fromLink) {
       sessionStorage.setItem(PENDING_ATTEMPT_KEY, fromLink)
+      sessionStorage.setItem(PENDING_INSTRUMENT_KEY, instrument)
       window.history.replaceState(null, '', window.location.pathname)
-      return fromLink
+      return { id: fromLink, tab: tabFor(instrument) }
     }
-    return sessionStorage.getItem(PENDING_ATTEMPT_KEY)
+    const pending = sessionStorage.getItem(PENDING_ATTEMPT_KEY)
+    return pending ? { id: pending, tab: tabFor(sessionStorage.getItem(PENDING_INSTRUMENT_KEY)) } : null
   } catch {
-    return fromLink
+    return fromLink ? { id: fromLink, tab: tabFor(instrument) } : null
   }
 }
 
 function App() {
-  const [sharedAttemptId, setSharedAttemptId] = useState(takeSharedAttemptId)
-  const [activeTab, setActiveTab] = useState(sharedAttemptId ? 'vocal' : 'home')
+  const [sharedAttempt, setSharedAttempt] = useState(takeSharedAttempt)
+  const [activeTab, setActiveTab] = useState(sharedAttempt?.tab ?? 'home')
   // One session for the whole app: Home owns the sign-in UI, the instrument
   // tabs only read `auth.user` to decide what they may save.
   const auth = useSession()
@@ -43,10 +50,11 @@ function App() {
   const sharedAttemptDone = useCallback(() => {
     try {
       sessionStorage.removeItem(PENDING_ATTEMPT_KEY)
+      sessionStorage.removeItem(PENDING_INSTRUMENT_KEY)
     } catch {
       // storage blocked: nothing was kept
     }
-    setSharedAttemptId(null)
+    setSharedAttempt(null)
   }, [])
 
   return (
@@ -55,7 +63,7 @@ function App() {
         <ActiveComponent
           auth={auth}
           onNavigate={setActiveTab}
-          sharedAttemptId={sharedAttemptId}
+          sharedAttemptId={sharedAttempt?.tab === activeTab ? sharedAttempt.id : null}
           onSharedAttemptDone={sharedAttemptDone}
         />
       </main>

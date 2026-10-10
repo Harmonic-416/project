@@ -1,14 +1,24 @@
 import './ShareAttempt.css'
 import NotationUploader from './NotationUploader.jsx'
 
-const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
+const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL', 'guitar-pro': 'Guitar Pro', alphatex: 'alphaTex' }
 
 /**
  * What a shared-attempt link shows before the score can open: sign in first,
  * then (for a song that isn't in the catalog) open your own copy of the file.
- * `shared` is VocalTab's shared-attempt state.
+ * `shared` is VocalTab's (or GuitarSong's) shared-attempt state; the Guitar
+ * tab passes `verb="played"` and its own `accept` / `uploadLabel`.
  */
-function SharedAttemptGate({ shared, onNavigateHome, onFileSelected, onOpenAnyway, onClose }) {
+function SharedAttemptGate({
+  shared,
+  onNavigateHome,
+  onFileSelected,
+  onOpenAnyway,
+  onClose,
+  verb = 'sang',
+  accept,
+  uploadLabel,
+}) {
   const { phase, attempt, error } = shared
   const song = attempt ? `${attempt.song_title}${attempt.song_format ? ` (${FORMAT_LABEL[attempt.song_format]})` : ''}` : ''
 
@@ -30,7 +40,7 @@ function SharedAttemptGate({ shared, onNavigateHome, onFileSelected, onOpenAnywa
       {(phase === 'need-file' || phase === 'mismatch') && (
         <>
           <p>
-            <strong>{attempt.sharer_name || 'Someone'}</strong> sang {song}. The song isn’t stored online, so open
+            <strong>{attempt.sharer_name || 'Someone'}</strong> {verb} {song}. The song isn’t stored online, so open
             your own copy of the same file to see their attempt on it.
           </p>
           {phase === 'mismatch' && (
@@ -38,7 +48,12 @@ function SharedAttemptGate({ shared, onNavigateHome, onFileSelected, onOpenAnywa
               That file isn’t the same as theirs, so the dots may not line up with the notes.
             </p>
           )}
-          <NotationUploader onFileSelected={onFileSelected} disabled={false} />
+          <NotationUploader
+            onFileSelected={onFileSelected}
+            disabled={false}
+            {...(accept ? { accept } : {})}
+            {...(uploadLabel ? { label: uploadLabel } : {})}
+          />
           {phase === 'mismatch' && (
             <button type="button" className="share-attempt__button" onClick={onOpenAnyway}>
               Open it anyway

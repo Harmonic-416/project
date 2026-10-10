@@ -53,8 +53,16 @@ export async function fingerprintBytes(bytes) {
 const ATTEMPT_PARAM = 'attempt'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export function shareUrlFor(id, origin) {
-  return `${origin}/?${ATTEMPT_PARAM}=${id}`
+const INSTRUMENT_PARAM = 'instrument'
+
+/**
+ * The share link. A guitar attempt says so in the link, so the app opens
+ * the Guitar tab for it before anyone has signed in; a sung attempt's link
+ * stays as it always was.
+ */
+export function shareUrlFor(id, origin, instrument = 'voice') {
+  const url = `${origin}/?${ATTEMPT_PARAM}=${id}`
+  return instrument === 'guitar' ? `${url}&${INSTRUMENT_PARAM}=guitar` : url
 }
 
 /** The shared-attempt id in a link, or null. */
@@ -64,5 +72,14 @@ export function readSharedAttemptId(href) {
     return id && UUID.test(id) ? id.toLowerCase() : null
   } catch {
     return null
+  }
+}
+
+/** Which tab a share link is for: 'guitar' or 'voice'. */
+export function readSharedAttemptInstrument(href) {
+  try {
+    return new URL(href).searchParams.get(INSTRUMENT_PARAM) === 'guitar' ? 'guitar' : 'voice'
+  } catch {
+    return 'voice'
   }
 }

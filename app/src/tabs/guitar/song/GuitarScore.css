@@ -16,6 +16,11 @@
   background: #ffffff;
 }
 
+/* The element alphaTab renders into; the practice marks layer is placed inside it. */
+.guitar-score__surface {
+  position: relative;
+}
+
 /* alphaTab's playback cursor and beat highlight. */
 .guitar-score .at-cursor-bar {
   background: rgba(18, 135, 137, 0.08);
