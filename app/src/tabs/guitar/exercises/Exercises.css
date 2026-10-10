@@ -1,0 +1,372 @@
+.exercises {
+  /* Same greens and reds as the practice screen; ChordDiagram's dots use them too. */
+  --practice-good: #6a9f4e;
+  --practice-good-strong: #4f7d38;
+  --practice-bad: #c8553d;
+  --practice-ink: #1f1c1a;
+
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  color: var(--hm-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .exercises {
+    --practice-ink: #0f0f12;
+  }
+}
+
+.exercises__card {
+  overflow: hidden;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
+}
+
+.exercises__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--practice-ink);
+  color: #f2f1ee;
+  font-size: 0.95rem;
+}
+
+.exercises__count {
+  color: #d99a5b;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.exercises__intro,
+.exercises__question,
+.exercises__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.exercises__lead {
+  max-width: 360px;
+  margin: 0;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── level cards (like the Learn / Practice / Play cards) ───── */
+.exercises__levels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+}
+
+@media (max-width: 480px) {
+  .exercises__levels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.exercises__level {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--hm-border);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.exercises__level.is-active {
+  border: 2px solid #c07a3e;
+  background: color-mix(in srgb, #c07a3e 14%, var(--hm-surface));
+}
+
+.exercises__level-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.exercises__level-top strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+}
+
+.exercises__level-top small {
+  color: #c07a3e;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.exercises__level-text {
+  color: var(--hm-text-muted);
+  font-size: 0.8rem;
+}
+
+/* ── buttons ─────────────────────────────────────────────────── */
+.exercises__primary {
+  min-width: 140px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 22px;
+  background: var(--hm-accent);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exercises__secondary,
+.exercises__quit {
+  padding: 6px 14px;
+  border: 1px solid var(--hm-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--hm-text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.exercises__secondary:hover,
+.exercises__level:hover,
+.exercises__choice:enabled:hover {
+  border-color: var(--hm-accent);
+}
+
+.exercises__quit {
+  border-style: dashed;
+  color: var(--hm-text-muted);
+}
+
+/* ── a question ──────────────────────────────────────────────── */
+.exercises__dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exercises__dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--hm-border);
+  border-radius: 50%;
+}
+
+.exercises__dot.is-current {
+  border-color: var(--hm-accent);
+}
+
+.exercises__dot.is-correct {
+  border-color: var(--practice-good-strong);
+  background: var(--practice-good);
+}
+
+.exercises__dot.is-wrong {
+  border-color: var(--practice-bad);
+  background: var(--practice-bad);
+}
+
+.exercises__listen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.exercises__play {
+  padding: 12px 26px;
+  border: 2px solid var(--hm-accent);
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--hm-accent) 12%, var(--hm-surface));
+  color: var(--hm-accent);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exercises__prompt {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.exercises__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.exercises__choice {
+  min-height: 56px;
+  padding: 10px;
+  border: 2px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exercises__choice:disabled {
+  cursor: default;
+}
+
+.exercises__choice.is-correct {
+  border-color: var(--practice-good-strong);
+  background: var(--practice-good);
+  color: #ffffff;
+}
+
+.exercises__choice.is-wrong {
+  border-color: var(--practice-bad);
+  background: var(--practice-bad);
+  color: #ffffff;
+}
+
+.exercises__choice.is-dim {
+  opacity: 0.45;
+}
+
+/* ── after an answer ─────────────────────────────────────────── */
+.exercises__reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  animation: exercises-reveal 0.25s ease-out;
+}
+
+@keyframes exercises-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.exercises__verdict {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.exercises__verdict.is-correct {
+  color: var(--practice-good-strong);
+}
+
+.exercises__verdict.is-wrong {
+  color: var(--practice-bad);
+}
+
+@media (prefers-color-scheme: dark) {
+  .exercises__verdict.is-correct {
+    color: var(--practice-good);
+  }
+}
+
+.exercises__shape {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 180px;
+  color: var(--hm-text-muted);
+  font-size: 0.8rem;
+}
+
+.exercises__compare,
+.exercises__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ── end of a round ──────────────────────────────────────────── */
+.exercises__score {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.exercises__score strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.2rem;
+}
+
+.exercises__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exercises__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border: 2px solid var(--practice-bad);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--hm-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.exercises__chip small {
+  color: var(--hm-text-muted);
+  font-size: 0.75rem;
+}
+
+.exercises__error {
+  margin: 0;
+  padding: 0 16px 16px;
+  color: var(--practice-bad);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.exercises__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exercises__reveal {
+    animation: none;
+  }
+}

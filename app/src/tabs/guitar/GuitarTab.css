@@ -58,10 +58,26 @@
 
 
 
-/* Three views + the account button: tighten the switch on phones so it all fits. */
+/* Four views + the account button: tighten the switch on phones so it all fits. */
 @media (max-width: 480px) {
   .guitar-tab__top .guitar-tab__view {
-    padding: 6px 12px;
+    padding: 6px 7px;
+    font-size: 0.9rem;
+  }
+
+  .guitar-tab__top .account-chip {
+    max-width: 30%;
+  }
+}
+
+/* Small phones: signed in, the account button shows just the picture ("Sign in" still fits). */
+@media (max-width: 440px) {
+  .guitar-tab__top .account-chip:has(.hm-avatar) {
+    padding: 0 4px;
+  }
+
+  .guitar-tab__top .account-chip:has(.hm-avatar) .account-chip__name {
+    display: none;
   }
 }
 

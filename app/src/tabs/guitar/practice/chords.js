@@ -6,6 +6,7 @@
  * index 0 = low E (6th string) … index 5 = high e (1st string).
  * Fret -1 = don't play the string (✕), 0 = open string (○).
  * Finger 1 = index … 4 = pinky, 0 = no finger.
+ * Quality is what the ear-training exercises ask about (major or minor third).
  */
 
 export const STRING_NAMES = ['E', 'A', 'D', 'G', 'B', 'E']
@@ -16,12 +17,12 @@ export const OPEN_STRING_MIDI = [40, 45, 50, 55, 59, 64]
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 export const CHORDS = [
-  { id: 'Em', name: 'E minor', frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] },
-  { id: 'Am', name: 'A minor', frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0] },
-  { id: 'C', name: 'C major', frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] },
-  { id: 'G', name: 'G major', frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3] },
-  { id: 'D', name: 'D major', frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2] },
-  { id: 'E', name: 'E major', frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0] },
+  { id: 'Em', name: 'E minor', quality: 'minor', frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] },
+  { id: 'Am', name: 'A minor', quality: 'minor', frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0] },
+  { id: 'C', name: 'C major', quality: 'major', frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] },
+  { id: 'G', name: 'G major', quality: 'major', frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3] },
+  { id: 'D', name: 'D major', quality: 'major', frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2] },
+  { id: 'E', name: 'E major', quality: 'major', frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0] },
 ]
 
 /** Note name ("G", "F#") of a string at a fret, or null for a string that isn't played. */
@@ -30,7 +31,7 @@ export function noteAt(stringIndex, fret) {
   return NOTE_NAMES[(OPEN_STRING_MIDI[stringIndex] + fret) % 12]
 }
 
-/** MIDI notes the chord sounds, low to high (muted strings left out). Used by Hint. */
+/** MIDI notes the chord sounds, low to high (muted strings left out). Used by the chord sound and chord detection. */
 export function chordMidi(chord) {
   return chord.frets.flatMap((fret, i) => (fret < 0 ? [] : [OPEN_STRING_MIDI[i] + fret]))
 }
