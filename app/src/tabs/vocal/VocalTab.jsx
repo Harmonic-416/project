@@ -12,6 +12,10 @@ import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
+import MetronomeControl from '../../audio/metronome/MetronomeControl.jsx'
+import { useMetronomeSettings } from '../../audio/metronome/useMetronomeSettings.js'
+import TempoControl from '../../audio/tempo/TempoControl.jsx'
+import { useSongTempo } from '../../audio/tempo/useSongTempo.js'
 import SharedAttemptGate from './components/SharedAttemptGate.jsx'
 import SharedAttemptPanel from './components/SharedAttemptPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
@@ -27,6 +31,7 @@ import { supabase } from '../../lib/supabaseClient.js'
 const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
 const NO_SCHEDULE = []
 const NO_TIMESTAMPS = []
+const NO_BEATS = []
 const OTHER_PART_CLASS = 'practice-note--other-part'
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
@@ -252,11 +257,18 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
     return scoreModel.playbackSchedule
   }, [scoreModel, otherPartNotes, practiceMode])
 
+  const [metronome, setMetronome] = useMetronomeSettings()
+  // Per song (by file fingerprint), remembered in this browser.
+  const [tempo, setTempo] = useSongTempo(notation?.fingerprint)
+
   const playback = useMidiPlayback({
     playbackSchedule,
     cursorTimestamps: scoreModel?.cursorTimestamps ?? NO_TIMESTAMPS,
     sheetMusicRef,
     minDuration: scoreModel?.duration ?? 0,
+    beats: scoreModel?.beats ?? NO_BEATS,
+    metronome,
+    rate: tempo / 100,
   })
 
   const melody = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
@@ -414,6 +426,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
             content={viewerContent}
             onReady={handleSheetReady}
             onError={handleSheetError}
+            tempoFactor={tempo / 100}
           />
           {!viewingShared && (
             <PracticeModeToggle mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
@@ -425,6 +438,18 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
               onChange={handleAccompanimentChange}
               disabled={!scoreModel}
             />
+          )}
+          {/* Wait for me has no transport to click along with or slow down. */}
+          {scoreModel && practiceMode !== 'wait' && (
+            <>
+              <MetronomeControl settings={metronome} onChange={setMetronome} beat={playback.beat} />
+              <TempoControl
+                pct={tempo}
+                onChange={setTempo}
+                bpm={scoreModel.startBpm}
+                disabled={playback.state === 'counting'}
+              />
+            </>
           )}
           {scoreModel && practiceMode === 'wait' ? (
             // Keyed by part so switching parts starts the mode fresh on the new line.
@@ -442,6 +467,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
               state={playback.state}
               position={playback.position}
               duration={playback.duration}
+              rate={playback.rate}
               onPlay={playback.play}
               onPause={playback.pause}
               onStop={playback.stop}

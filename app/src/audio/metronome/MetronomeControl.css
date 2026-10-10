@@ -1,0 +1,84 @@
+.metronome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.metronome__light {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e2dfd8;
+}
+
+.metronome__light--beat {
+  --metronome-flash: #7cc4c5;
+  --metronome-scale: 1.2;
+  animation: metronome-flash 0.3s ease-out forwards;
+}
+
+.metronome__light--downbeat {
+  --metronome-flash: #128789;
+  --metronome-scale: 1.5;
+  animation: metronome-flash 0.3s ease-out forwards;
+}
+
+@keyframes metronome-flash {
+  from {
+    background: var(--metronome-flash);
+    transform: scale(var(--metronome-scale));
+  }
+  to {
+    background: #e2dfd8;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metronome__light--beat,
+  .metronome__light--downbeat {
+    animation: none;
+    background: var(--metronome-flash);
+  }
+}
+
+.metronome__options {
+  display: inline-flex;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.metronome__option {
+  border: none;
+  background: #ffffff;
+  color: #24242c;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.metronome__option + .metronome__option {
+  border-left: 1px solid #e2dfd8;
+}
+
+.metronome__option[aria-pressed='true'] {
+  background: #128789;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.metronome__option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.metronome__volume {
+  flex: 1;
+  min-width: 80px; /* below the default ~130px so it fits a phone row; wraps instead of vanishing */
+  max-width: 180px;
+  accent-color: #128789;
+}
