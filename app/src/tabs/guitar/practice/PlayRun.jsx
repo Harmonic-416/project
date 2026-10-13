@@ -8,8 +8,8 @@ const RESULT_TEXT = { verified: 'heard it', wrong: 'something else', silent: 'to
 
 /**
  * Play mode screen: Start → 3-2-1 → each chord of the progression stays up
- * for SECONDS_PER_CHORD with a progress bar, then the next one comes on its
- * own. Ends with a score and one chip per chord. `state`/`dispatch` come from
+ * until it's strummed cleanly, or for SECONDS_PER_CHORD at most, with a
+ * progress bar; then the next one comes on its own. Ends with a score and one chip per chord. `state`/`dispatch` come from
  * playReducer (owned by PracticeScreen so the demo buttons can reach it).
  */
 function PlayRun({ chords, state, dispatch, labelMode }) {
@@ -67,7 +67,8 @@ function PlayRun({ chords, state, dispatch, labelMode }) {
       <div className="play-run play-run--idle">
         <p className="play-run__progression">{progressionText}</p>
         <p className="play-run__hint">
-          {chords.length} chords, {SECONDS_PER_CHORD} seconds each. The app keeps going even if you miss one.
+          {chords.length} chords. Strum each one cleanly and the next comes up; after {SECONDS_PER_CHORD} seconds it
+          comes anyway, so the app keeps going even if you miss one.
         </p>
         <button type="button" className="play-run__primary" onClick={() => dispatch({ type: 'start' })}>
           Start

@@ -3,8 +3,11 @@ import { COUNTDOWN_FROM } from './playState.js'
 /**
  * Practice mode: the checkpoint that unlocks the next chord. Laid out like
  * Play, but only the chord being learned is up: play it cleanly
- * STRUMS_TO_PASS times in a row before PRACTICE_SECONDS run out to pass.
- * A wrong chord resets the streak; too quiet does not (F21). After
+ * STRUMS_TO_PASS times in a row to pass, each strum within
+ * PRACTICE_SECONDS. A clean strum moves on to the next one at once and
+ * starts its timer again (`turn` counts them, for the component's timer);
+ * if a strum's time runs out, the run fails. A wrong chord resets the
+ * streak without restarting the timer; too quiet does neither (F21). After
  * MAX_FAILED_RUNS timed-out runs the screen offers "Unlock anyway" — the
  * soft gate (F28), so imperfect detection never walls a learner in.
  * Pure reducer, unit-tested in app/tests/practiceRun.test.js. The component
@@ -13,14 +16,15 @@ import { COUNTDOWN_FROM } from './playState.js'
  *
  *   status: 'idle' → 'countdown' → 'running' → 'passed' | 'failed'
  *   verdict: last result heard this run, or null
+ *   turn: clean strums so far this run; each one restarts the timer
  */
 
 export const STRUMS_TO_PASS = 3
-export const PRACTICE_SECONDS = 10
+export const PRACTICE_SECONDS = 5 // for each strum
 export const MAX_FAILED_RUNS = 3
 
 export function initialPracticeRun(failedRuns = 0) {
-  return { status: 'idle', count: COUNTDOWN_FROM, streak: 0, verdict: null, failedRuns }
+  return { status: 'idle', count: COUNTDOWN_FROM, streak: 0, turn: 0, verdict: null, failedRuns }
 }
 
 export function practiceRunReducer(state, action) {
@@ -39,13 +43,13 @@ export function practiceRunReducer(state, action) {
       const { verdict } = action
       if (verdict === 'verified') {
         const streak = state.streak + 1
-        return { ...state, streak, verdict, status: streak >= STRUMS_TO_PASS ? 'passed' : 'running' }
+        return { ...state, streak, turn: state.turn + 1, verdict, status: streak >= STRUMS_TO_PASS ? 'passed' : 'running' }
       }
       if (verdict === 'wrong') return { ...state, streak: 0, verdict }
       return { ...state, verdict } // 'silent': couldn't hear, streak stands
     }
 
-    case 'timeout': // the window ran out before the streak was reached
+    case 'timeout': // a strum's time ran out before it was played cleanly
       if (state.status !== 'running') return state
       return { ...state, status: 'failed', failedRuns: state.failedRuns + 1 }
 
