@@ -11,14 +11,15 @@ const STATUS_TEXT = {
 }
 
 /**
- * Practice mode screen: Start → 3-2-1 → the one chord being learned stays up
- * for PRACTICE_SECONDS; STRUMS_TO_PASS clean strums in a row pass it and
- * unlock `nextChord`. Same layout and classes as PlayRun. `state`/`dispatch`
+ * Practice mode screen: Start → 3-2-1 → the one chord being learned stays up;
+ * each of STRUMS_TO_PASS clean strums in a row must come within
+ * PRACTICE_SECONDS, and each one starts the next strum's timer at once.
+ * The last passes it and unlocks `nextChord`. Same layout and classes as PlayRun. `state`/`dispatch`
  * come from practiceRunReducer (owned by PracticeScreen so the demo buttons
  * and the unlock bookkeeping can reach it).
  */
 function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext, onBackToLearn, onUnlockAnyway }) {
-  const { status, count, streak, verdict } = state
+  const { status, count, streak, turn, verdict } = state
 
   // Countdown: one tick per second.
   useEffect(() => {
@@ -27,12 +28,12 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
     return () => clearTimeout(id)
   }, [status, count, dispatch])
 
-  // Running: one window for the whole streak.
+  // Running: each strum has PRACTICE_SECONDS; a clean one starts the next strum's timer.
   useEffect(() => {
     if (status !== 'running') return undefined
     const id = setTimeout(() => dispatch({ type: 'timeout' }), PRACTICE_SECONDS * 1000)
     return () => clearTimeout(id)
-  }, [status, dispatch])
+  }, [status, turn, dispatch])
 
   if (status === 'passed') {
     return (
@@ -99,8 +100,8 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
       <div className="play-run play-run--idle">
         <p className="play-run__progression">{chord.name}</p>
         <p className="play-run__hint">
-          Play {chord.name} cleanly {STRUMS_TO_PASS} times in a row within {PRACTICE_SECONDS} seconds
-          {nextChord ? ` to unlock ${nextChord.name}.` : '.'}
+          Play {chord.name} cleanly {STRUMS_TO_PASS} times in a row, each within {PRACTICE_SECONDS} seconds,
+          {nextChord ? ` to unlock ${nextChord.name}.` : ' to pass.'}
         </p>
         <button type="button" className="play-run__primary" onClick={() => dispatch({ type: 'start' })}>
           Start
@@ -126,9 +127,9 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
         )}
       </div>
 
-      {/* one bar for the whole window */}
+      {/* key restarts the bar's CSS animation for every strum */}
       <div className="play-run__bar" aria-hidden="true">
-        {status === 'running' && <span style={{ animationDuration: `${PRACTICE_SECONDS}s` }} />}
+        {status === 'running' && <span key={turn} style={{ animationDuration: `${PRACTICE_SECONDS}s` }} />}
       </div>
 
       <ol className="play-run__dots" aria-label={`Streak: ${streak} of ${STRUMS_TO_PASS}`}>

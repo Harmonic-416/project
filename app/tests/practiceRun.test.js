@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { COUNTDOWN_FROM } from '../src/tabs/guitar/practice/playState.js'
 import {
   MAX_FAILED_RUNS,
+  PRACTICE_SECONDS,
   STRUMS_TO_PASS,
   canUnlockAnyway,
   initialPracticeRun,
@@ -30,6 +31,18 @@ describe('practice mode (unlock checkpoint)', () => {
       expect(s).toMatchObject({ status: 'running', streak: i })
     }
     expect(run([verified], s)).toMatchObject({ status: 'passed', streak: STRUMS_TO_PASS })
+  })
+
+  it(`gives each strum its own ${PRACTICE_SECONDS} seconds: a clean one starts the next timer`, () => {
+    expect(PRACTICE_SECONDS).toBe(5)
+    let s = started()
+    expect(s.turn).toBe(0)
+    s = run([verified], s)
+    expect(s.turn).toBe(1)
+    s = run([wrong, silent], s) // neither restarts the timer
+    expect(s.turn).toBe(1)
+    s = run([verified, verified], s)
+    expect(s).toMatchObject({ turn: 3, status: 'running', streak: 2 })
   })
 
   it('a wrong chord resets the streak', () => {
