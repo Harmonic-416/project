@@ -5,6 +5,7 @@ import { midiToNoteName } from '../../../vocal/audio/pitchDetector.js'
 import { entryIndexAtTime, fingeringLabel } from './songTimeline.js'
 import { useGuitarListener } from './useGuitarListener.js'
 import { seekToTick } from './playerControls.js'
+import { useTuningReport } from '../../tuner/tuningReport.js'
 import { createWaitAttempts } from './waitListening.js'
 import { NUDGE_AFTER, initialWait, isDone, waitReducer, waitSummary } from './waitState.js'
 
@@ -37,6 +38,7 @@ function GuitarWaitMode({ api, timeline, overlay, ready }) {
   const reducer = useMemo(() => waitReducer(entries), [entries])
   const [state, dispatch] = useReducer(reducer, entries, initialWait)
   const [attempts] = useState(() => createWaitAttempts())
+  const reportTuning = useTuningReport()
   const [lastResult, setLastResult] = useState(null) // { index, result }
   const stateRef = useRef(state)
   const done = isDone(entries, state)
@@ -77,10 +79,11 @@ function GuitarWaitMode({ api, timeline, overlay, ready }) {
       }
       for (const action of actions) {
         setLastResult({ index, result: action.result })
+        if (action.result.verdict === 'hit') reportTuning(action.result.cents) // single notes carry cents
         apply(action)
       }
     },
-    [apply, attempts, entries],
+    [apply, attempts, entries, reportTuning],
   )
 
   const listener = useGuitarListener({ onWindow: handleWindow })

@@ -1,0 +1,205 @@
+/* Strum on the beat (StrumDrill.jsx, StrumLane.jsx). */
+.strum-drill__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.strum-drill__steps button {
+  padding: 4px 10px;
+  border: 1px solid var(--hm-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--hm-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.strum-drill__steps button.is-active {
+  border-color: var(--hm-accent);
+  color: var(--hm-accent);
+  font-weight: 600;
+}
+
+.strum-drill__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
+}
+
+.strum-drill__text,
+.strum-drill__result p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.strum-drill__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.strum-drill__primary,
+.strum-drill__secondary {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.strum-drill__primary {
+  border: none;
+  background: var(--hm-accent, #128789);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.strum-drill__secondary {
+  border: 1px solid var(--hm-border);
+  background: none;
+  color: var(--hm-text);
+  font-size: 0.85rem;
+}
+
+.strum-drill__live {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.strum-drill__hint {
+  margin: 0;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+}
+
+.strum-drill__error {
+  margin: 0;
+  color: var(--practice-bad, #c8553d);
+}
+
+.strum-drill__result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.strum-drill__beats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.strum-drill__beat {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.strum-drill__beat--on {
+  background: var(--practice-good, #6a9f4e);
+}
+
+.strum-drill__beat--early,
+.strum-drill__beat--late {
+  background: #e0a100;
+}
+
+.strum-drill__beat--missed {
+  background: var(--hm-border, #e2dfd8);
+  color: var(--hm-text-muted);
+}
+
+/* The strumming hand, swinging down and up once per beat. */
+.strum-lane {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.strum-lane__track {
+  position: relative;
+  width: 36px;
+  height: 120px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--hm-border, #e2dfd8) 60%, transparent);
+}
+
+.strum-lane__hand {
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--hm-accent, #128789);
+  transform: rotate(-45deg);
+}
+
+.strum-lane__hand--moving {
+  animation-name: strum-swing;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: backwards;
+}
+
+/* Down on the beat (the first half), back up for the "and". */
+@keyframes strum-swing {
+  0% {
+    top: 8px;
+  }
+  50% {
+    top: 88px;
+  }
+  100% {
+    top: 8px;
+  }
+}
+
+.strum-lane__arrows {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  flex: 1;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+  font-size: 1.6rem;
+}
+
+.strum-lane__arrows small {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--hm-text-muted);
+}
+
+.strum-lane__arrow--hit {
+  color: var(--hm-text);
+  font-weight: 700;
+}
+
+.strum-lane__arrow--ghost {
+  color: var(--hm-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strum-lane__hand--moving {
+    animation: none;
+  }
+}

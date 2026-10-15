@@ -1,0 +1,52 @@
+/* "Tune first?" banner above Songs (TuneUpPrompt.jsx). */
+.tune-up-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 10px 16px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--hm-border, #e2dfd8);
+  border-left: 4px solid var(--hm-accent, #128789);
+  border-radius: 10px;
+  background: var(--hm-surface, #ffffff);
+  color: var(--hm-text, #24242c);
+  font-size: 0.9rem;
+}
+
+.tune-up-prompt__icon {
+  font-size: 1.2rem;
+  color: var(--hm-accent, #128789);
+}
+
+.tune-up-prompt__text {
+  flex: 1;
+  min-width: 12em;
+  margin: 0;
+}
+
+.tune-up-prompt__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tune-up-prompt__actions button {
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tune-up-prompt__tune {
+  border: none;
+  background: var(--hm-accent, #128789);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.tune-up-prompt__dismiss {
+  border: 1px solid var(--hm-border, #e2dfd8);
+  background: none;
+  color: var(--hm-text-muted, #6c6a72);
+}

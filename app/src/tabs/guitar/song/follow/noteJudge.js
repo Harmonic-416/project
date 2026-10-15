@@ -1,6 +1,6 @@
 import { centsOff } from '../../../vocal/audio/pitchDetector.js'
 import { dot, fft, templateFromMidi } from '../../practice/chordDetect.js'
-import { UNSCORED_TECHNIQUES } from './songTimeline.js'
+import { isScored } from './songTimeline.js'
 
 /**
  * Did the guitarist play the expected note or chord? Score-informed, like
@@ -33,11 +33,18 @@ export const CHORD_HIT = 0.8 // share of a chord's notes that must sound for a h
 export const CHORD_CLOSE = 0.5 // … and for a close
 export const CHROMA_MATCH = 0.7 // how closely the whole sound must match the chord for a hit
 
-// Wait for me (waitListening.js): the player can always strum again, so a
-// chord is a hit only when every one of its notes sounds; with fewer, E major
-// passes for E minor (one fret on the G string). A gentler per-string
-// threshold keeps quieter strings of a good strum counting.
-export const EVERY_STRING = { chordPresent: 0.15, chordHit: 1 }
+// Wait for me: the player can always strum again, so a chord is a hit only
+// when every one of its notes sounds, nothing else does, and each note above
+// `fundamentalAbove` Hz is heard at its own pitch rather than only through
+// its octave. Without these, E major passes for E minor
+// (one fret on the G string), A7 for A (its G hides nothing, but A's top A
+// "sounds" as the low A's octave), C for Cmaj7. A gentler per-string
+// threshold keeps the quieter strings of a good strum counting; below
+// `fundamentalAbove` a phone mic often loses the fundamental, so the octave
+// still counts there. `extraPeak`: a peak this share of the loudest that no
+// expected note explains is a note that shouldn't be there. `chordFrame`:
+// judge on an 8192-sample frame (~6 Hz bins), fine enough for these checks.
+export const EVERY_STRING = { chordPresent: 0.15, chordHit: 1, fundamentalAbove: 150, extraPeak: 0.2, chordFrame: 8192 }
 
 const PARTIALS = [
   [1, 1],
@@ -91,7 +98,7 @@ export function averageSpectrum(spectra) {
  * Spectral peaks at their interpolated frequencies: { peaks: [{ frequency,
  * magnitude }], loudest }. Counting each peak once at its true frequency
  * keeps the window's leakage into neighbouring bins from passing for a
- * different note (the same idea as chordDetect.chromaFromFrame).
+ * different note.
  */
 export function spectralPeaks(spectrum, sampleRate) {
   const n = (spectrum.length - 1) * 2
@@ -119,23 +126,50 @@ function peakNear({ peaks }, frequency) {
   return best
 }
 
-/** Weighted sum of a note's partial peaks, discounted when only its upper partials are there. */
-function partialSum(peakInfo, midi) {
+/**
+ * Weighted sum of a note's partial peaks, discounted when only its upper
+ * partials are there — or, for a note above `fundamentalAbove` Hz, when its
+ * fundamental isn't.
+ */
+function partialSum(peakInfo, midi, fundamentalAbove = Infinity) {
   const f0 = midiToFrequency(midi)
+  const lowest = f0 >= fundamentalAbove ? 1 : 2
   let sum = 0
   let low = false
   for (const [k, weight] of PARTIALS) {
     if (k * f0 > MAX_FREQUENCY) continue
     const peak = peakNear(peakInfo, k * f0)
-    if (peak > 0 && k <= 2) low = true
+    if (peak > 0 && k <= lowest) low = true
     sum += weight * peak
   }
   return low ? sum : sum * UPPER_ONLY
 }
 
-/** 0 … 1: how strongly `midi` sounds, relative to the loudest peak. */
-export function noteEvidence(peakInfo, midi) {
-  return peakInfo.loudest > 0 ? partialSum(peakInfo, midi) / (PARTIAL_WEIGHT * peakInfo.loudest) : 0
+/** 0 … 1: how strongly `midi` sounds, relative to the loudest peak. `options.fundamentalAbove`: see EVERY_STRING. */
+export function noteEvidence(peakInfo, midi, { fundamentalAbove } = {}) {
+  return peakInfo.loudest > 0 ? partialSum(peakInfo, midi, fundamentalAbove) / (PARTIAL_WEIGHT * peakInfo.loudest) : 0
+}
+
+// A peak counts as explained if it sits on one of an expected note's first EXPLAINED_PARTIALS partials.
+const EXPLAINED_PARTIALS = 12
+
+/**
+ * Peaks at least `share` of the loudest that none of `midis` explains (no
+ * partial within PEAK_CENTS), as rounded MIDI notes: something played that
+ * the chord doesn't have.
+ */
+export function unexplainedNotes({ peaks, loudest }, midis, share) {
+  const extra = new Set()
+  for (const { frequency, magnitude } of peaks) {
+    if (magnitude < loudest * share) continue
+    const explained = midis.some((midi) => {
+      const f0 = midiToFrequency(midi)
+      const k = Math.round(frequency / f0)
+      return k >= 1 && k <= EXPLAINED_PARTIALS && Math.abs(1200 * Math.log2(frequency / (k * f0))) <= PEAK_CENTS
+    })
+    if (!explained) extra.add(Math.round(69 + 12 * Math.log2(frequency / 440)))
+  }
+  return [...extra].sort((a, b) => a - b)
 }
 
 /**
@@ -201,18 +235,34 @@ function chromaOf({ peaks }) {
   return chroma
 }
 
-function judgeChord(after, notes, { chordPresent = PRESENT, chordHit = CHORD_HIT } = {}) {
+// An extra note counts only if it was played now — this much louder than
+// before the strum. A string still ringing from the last chord (Em's low E
+// under a C) is the previous chord dying away, not a wrong note.
+const EXTRA_FRESH = 1.3
+
+/**
+ * `extra`: notes heard that the chord doesn't have and that were freshly
+ * played (only with `extraPeak`); any of them keeps the verdict from being a
+ * hit. `fresh`: the window's usual spectrum and the one from before the
+ * strum, both at the same frame length, to tell played from still ringing.
+ */
+function judgeChord(after, notes, { chordPresent = PRESENT, chordHit = CHORD_HIT, fundamentalAbove, extraPeak } = {}, fresh = null) {
   const strings = {}
   let sounding = 0
   for (const { midi, string } of notes) {
-    const present = noteEvidence(after, midi) >= chordPresent
+    const present = noteEvidence(after, midi, { fundamentalAbove }) >= chordPresent
     if (present) sounding += 1
     strings[string] = present ? 'good' : 'bad'
   }
-  const match = dot(chromaOf(after), templateFromMidi(notes.map((n) => n.midi)))
+  const midis = notes.map((n) => n.midi)
+  const match = dot(chromaOf(after), templateFromMidi(midis))
+  const extra = extraPeak
+    ? unexplainedNotes(after, midis, extraPeak).filter((midi) => !fresh?.before || noteGain(fresh.after, fresh.before, midi) >= EXTRA_FRESH)
+    : []
   const share = sounding / notes.length
-  const verdict = share >= chordHit && match >= CHROMA_MATCH ? 'hit' : share >= CHORD_CLOSE ? 'close' : 'miss'
-  return { verdict, strings, sounding, total: notes.length, match }
+  const full = share >= chordHit && match >= CHROMA_MATCH && !extra.length
+  const verdict = full ? 'hit' : share >= CHORD_CLOSE ? 'close' : 'miss'
+  return { verdict, strings, sounding, total: notes.length, match, extra }
 }
 
 /**
@@ -220,11 +270,13 @@ function judgeChord(after, notes, { chordPresent = PRESENT, chordHit = CHORD_HIT
  * `spectra`: magnitude spectra of the frames after the onset (or `frames`,
  * time-domain, to compute them); `beforeSpectrum` / `before`: the frame just
  * before it, or null; `pitches`: pitch-tracker readings (MIDI) in the window.
- * `options` tightens the chord rule ({ chordPresent, chordHit }, e.g.
- * EVERY_STRING); the defaults are PRESENT and CHORD_HIT.
+ * `options` tightens the chord rule (e.g. EVERY_STRING); the defaults are
+ * PRESENT and CHORD_HIT. With `options.chordFrame`, a chord is judged on one
+ * frame that long, stitched from the window's overlapping frames (`hop`
+ * apart), when the window is long enough.
  */
-export function judgeWindow({ spectra, frames, beforeSpectrum, before = null, sampleRate, pitches = [] }, entry, options) {
-  if (UNSCORED_TECHNIQUES.has(entry.technique)) return { verdict: 'skipped' }
+export function judgeWindow({ spectra, frames, beforeSpectrum, before = null, sampleRate, pitches = [], hop }, entry, options) {
+  if (!isScored(entry)) return { verdict: 'skipped' }
   const afterSpectra = spectra ?? (frames ?? []).map(magnitudeSpectrum)
   if (!afterSpectra.length) return { verdict: 'miss' }
   const after = spectralPeaks(averageSpectrum(afterSpectra), sampleRate)
@@ -232,7 +284,28 @@ export function judgeWindow({ spectra, frames, beforeSpectrum, before = null, sa
   const previous = beforeSpectrum ?? (before ? magnitudeSpectrum(before) : null)
   const beforePeaks = previous ? spectralPeaks(previous, sampleRate) : null
   if (entry.kind === 'single') return judgeSingle(after, beforePeaks, pitches, entry.notes[0].midi)
-  return judgeChord(after, entry.notes, options)
+  const long = options?.chordFrame ? stitchFrames(frames, hop, options.chordFrame) : null
+  return judgeChord(long ? spectralPeaks(magnitudeSpectrum(long), sampleRate) : after, entry.notes, options, { after, before: beforePeaks })
+}
+
+/**
+ * The first `length` samples of a window's audio, rebuilt from its frames:
+ * consecutive analysis frames `hop` apart, each the last frame-size samples.
+ * Null when there are too few frames (a window cut short) or no hop.
+ * Twice the frame length halves the spectrum's bin width, so close chord
+ * tones (C7's B♭3 and C4, two bins apart at 4096) stop pulling each other's
+ * peaks off pitch.
+ */
+export function stitchFrames(frames, hop, length) {
+  if (!frames?.length || !hop) return null
+  const size = frames[0].length
+  if (size + (frames.length - 1) * hop < length) return null
+  const out = new Float32Array(length)
+  out.set(frames[0].subarray(0, Math.min(size, length)))
+  for (let i = 1, at = size; at < length; i += 1, at += hop) {
+    out.set(frames[i].subarray(size - hop, size - hop + Math.min(hop, length - at)), at)
+  }
+  return out
 }
 
 /** Better-of for one entry heard more than once (a re-pick, a second strum). */

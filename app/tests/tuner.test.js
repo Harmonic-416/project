@@ -1,6 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import { createPitchTracker } from '../src/tabs/vocal/audio/pitchDetector.js'
 import { STANDARD_TUNING, centsFrom, createStabilizer, nearestString } from '../src/tabs/guitar/tuner/tuner.js'
+import { createTuningWatch, dismissTunePrompt, isTunePromptDismissed, isTunedThisSession, markTuned } from '../src/tabs/guitar/tuner/tuneSession.js'
+
+describe('tune-up prompt (F39)', () => {
+  it('is tuned once marked, and dismissed once dismissed, for the session', () => {
+    const store = new Map()
+    globalThis.sessionStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }
+    expect(isTunedThisSession()).toBe(false)
+    expect(isTunePromptDismissed()).toBe(false)
+    markTuned()
+    dismissTunePrompt()
+    expect(isTunedThisSession()).toBe(true)
+    expect(isTunePromptDismissed()).toBe(true)
+    delete globalThis.sessionStorage
+    expect(isTunedThisSession()).toBe(false) // no storage: never throws
+  })
+
+  it('notices notes sitting consistently flat or sharp, and ignores scattered ones', () => {
+    const watch = createTuningWatch({ size: 8, limit: 25 })
+    for (let i = 0; i < 7; i += 1) expect(watch.push(-35)).toBeNull() // not enough notes yet
+    expect(watch.push(-30)).toBeLessThan(-25)
+    watch.reset()
+    for (const cents of [-30, 20, -10, 35, 5, -25, 15, 0]) watch.push(cents)
+    expect(watch.drift()).toBeNull()
+    expect(watch.push(900)).toBeNull() // an octave slip isn't tuning
+  })
+})
 
 const withCents = (frequency, cents) => frequency * 2 ** (cents / 1200)
 const byId = (id) => STANDARD_TUNING.find((s) => s.id === id)

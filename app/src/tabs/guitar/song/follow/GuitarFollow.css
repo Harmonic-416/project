@@ -1,7 +1,7 @@
 /* Practice modes on a guitar song (GuitarSong.jsx, follow/). */
 
 .guitar-follow {
-  /* StringStates (practice/StringStates.css) reads the chord lessons' colours. */
+  /* StringStates (practice/StringStates.css) reads these colours. */
   --practice-good: #6a9f4e;
   --practice-good-strong: #4f7d38;
   --practice-bad: #c8553d;

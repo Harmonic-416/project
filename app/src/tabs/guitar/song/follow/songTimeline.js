@@ -26,6 +26,13 @@ const DEFAULT_BPM = 120
 // the pitch change, since they have no pick attack.
 export const UNSCORED_TECHNIQUES = new Set(['bend', 'dead', 'harmonic'])
 
+/**
+ * Whether the live judge scores an entry: not a technique it can't hear yet
+ * (UNSCORED_TECHNIQUES), and not left out by a song's Easy version
+ * (easyMode.js marks those `optional`). Others are shown but passed over.
+ */
+export const isScored = (entry) => !UNSCORED_TECHNIQUES.has(entry.technique) && !entry.optional
+
 const plain = (text) => (text ?? '').replace(/ /g, ' ').trim()
 
 /**

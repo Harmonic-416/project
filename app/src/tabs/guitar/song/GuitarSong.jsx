@@ -15,11 +15,14 @@ import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../../lib/supabaseClient.js'
 import { exportGuitarMidi, exportGuitarPro } from '../notation/exportGuitarNotation.js'
 import { GUITAR_NOTATION_ACCEPT, loadGuitarNotation } from '../notation/loadGuitarNotation.js'
+import { chordNamesOf, saveSongChords } from '../practice/chordNames.js'
 import GuitarScore from './GuitarScore.jsx'
+import EasyToggle from './follow/EasyToggle.jsx'
 import GuitarSharedPanel from './follow/GuitarSharedPanel.jsx'
 import GuitarTroubleMode from './follow/GuitarTroubleMode.jsx'
 import GuitarWaitMode from './follow/GuitarWaitMode.jsx'
 import SongTransportExtras from './follow/SongTransportExtras.jsx'
+import { loadEasy, saveEasy, withEasy } from './follow/easyMode.js'
 import { GUITAR_ACCOMPANIMENTS, GUITAR_MODES, applyMix } from './follow/modes.js'
 import { seekToTick } from './follow/playerControls.js'
 import { createSongClock, loadLatency } from './follow/songClock.js'
@@ -56,6 +59,10 @@ const FORMAT_LABEL = {
  * Export as MIDI or Guitar Pro. Lazy-loaded by GuitarTab because alphaTab
  * is large.
  *
+ * Any song can be practised in an Easy version that scores just the first
+ * note of each bar and each chord change (follow/easyMode.js, F45); the
+ * player chooses, and the choice is remembered per song.
+ *
  * The practice modes share one timeline (follow/songTimeline.js: every note
  * the practised track plays, with its tick and time), one song clock
  * (follow/songClock.js, fed by alphaTab's position events) and one layer of
@@ -76,6 +83,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
   const [accompaniment, setAccompaniment] = useState('solo')
   const [latencyMs, setLatencyMs] = useState(loadLatency)
   const [speed, setSpeed] = useState(1) // the tempo control's playback speed, for the time readouts
+  const [easy, setEasy] = useState(false)
   // A shared attempt being opened: { phase, attempt, error, pendingFile }, where
   // phase is signin | loading | need-file | mismatch | error | open.
   const [shared, setShared] = useState(null)
@@ -95,6 +103,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
       setTrackIndex(part?.index ?? null)
       if (part) setAccompaniment(part.withOthers ? 'all' : 'solo')
       setMode('listen')
+      setEasy(loadEasy(fingerprint))
+      saveSongChords(loaded.title, chordNamesOf(loaded.score)) // for ear training's "Chords from my song"
       setNotation({ ...loaded, fingerprint, catalogSongId, builtin })
       setStatus('ready')
     } catch (err) {
@@ -226,6 +236,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
     [score, practised],
   )
   const entries = timeline && practised ? timeline.entries : []
+  // What the practice modes score: everything, or the Easy version's notes.
+  const scoredTimeline = useMemo(() => withEasy(timeline, easy), [timeline, easy])
   const clock = useMemo(() => (timeline ? createSongClock(timeline.tempoMap) : null), [timeline])
 
   const onPosition = useCallback(
@@ -256,8 +268,20 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
     api?.stop()
     setAccompaniment(value)
   }
+  const changeEasy = (value) => {
+    api?.stop()
+    setEasy(value)
+    saveEasy(notation?.fingerprint, value)
+  }
 
   const viewingShared = shared?.phase === 'open' && notation
+
+  // Listening to the Easy version: what it leaves out is grey on the tab.
+  useEffect(() => {
+    if (!easy || mode !== 'listen' || viewingShared || !scoredTimeline) return undefined
+    for (const entry of scoredTimeline.entries) if (entry.optional) overlay.mark(entry.index, 'skipped')
+    return () => overlay.clear()
+  }, [easy, mode, viewingShared, scoredTimeline, overlay])
   const sharedGate =
     shared ??
     (!auth?.ready
@@ -404,16 +428,19 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
           options={GUITAR_ACCOMPANIMENTS}
         />
       )}
+      {entries.length > 0 && !viewingShared && (
+        <EasyToggle easy={easy} onChange={changeEasy} disabled={!ready || (mode === 'trouble' && player.state === 'playing')} />
+      )}
       {timeline && !viewingShared && mode === 'wait' && entries.length > 0 ? (
-        // Keyed by track so switching parts starts the mode fresh on the new line.
-        <GuitarWaitMode key={practised.index} api={api} timeline={timeline} overlay={overlay} ready={ready} />
+        // Keyed by track and version so switching either starts the mode fresh.
+        <GuitarWaitMode key={`${practised.index}-${easy}`} api={api} timeline={scoredTimeline} overlay={overlay} ready={ready} />
       ) : timeline && !viewingShared && mode === 'trouble' && entries.length > 0 ? (
         <>
           <GuitarTroubleMode
-            key={practised.index}
+            key={`${practised.index}-${easy}`}
             api={api}
             score={score}
-            timeline={timeline}
+            timeline={scoredTimeline}
             overlay={overlay}
             player={player}
             clock={clock}

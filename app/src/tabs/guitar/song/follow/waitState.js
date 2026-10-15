@@ -1,12 +1,12 @@
-import { UNSCORED_TECHNIQUES } from './songTimeline.js'
+import { isScored } from './songTimeline.js'
 
 /**
  * "Wait for me" on a guitar song (pure, unit-tested): the song stops on each
  * note or chord until it's played, like the Vocal tab's Wait for me (F13).
  * Wrong tries are counted but never move on; only the right note, or Skip,
- * does. Unlike the chord lessons (practice/practiceState.js), there is no
- * auto-skip. Retry clears the count. Notes the live judge can't score
- * (UNSCORED_TECHNIQUES) are passed over and marked 'skipped'.
+ * does; there is no auto-skip. Retry clears the count. Notes the live judge
+ * can't score (UNSCORED_TECHNIQUES), and those an Easy version leaves out,
+ * are passed over and marked 'skipped' (songTimeline.isScored).
  *
  *   results[i]: 'hit'     – played first try
  *               'close'   – played after a wrong try
@@ -27,7 +27,7 @@ export function initialWait(entries) {
 function advance(entries, state, index) {
   const results = [...state.results]
   let i = index
-  while (i < entries.length && UNSCORED_TECHNIQUES.has(entries[i].technique)) {
+  while (i < entries.length && !isScored(entries[i])) {
     results[i] = 'skipped'
     i += 1
   }
