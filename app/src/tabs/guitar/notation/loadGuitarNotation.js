@@ -1,23 +1,28 @@
 import * as alphaTab from '@coderline/alphatab'
 import { midiToMusicXml } from '../../vocal/midi/midiToMusicXml.js'
+import { readLyricStreams } from '../../vocal/midi/lyrics.js'
 import { parseMidiFile } from '../../vocal/midi/parseMidi.js'
 import { titleFromFilename, unzipMxl } from '../../vocal/notation/loadNotation.js'
 import { addGuitarTab } from './fretAssign.js'
+import { tidyMidiForTab } from './tidyMidi.js'
 
 /**
  * Guitar notation import. Everything the Guitar tab opens comes out as
- * `{ format, title, score, sourceBytes, hasTab }`, where `score` is an
+ * `{ format, title, score, sourceBytes, hasTab, tab }`, where `score` is an
  * alphaTab Score — what GuitarScore renders and exportGuitarNotation writes.
  *
- *   Guitar Pro 3–8, alphaTex, MusicXML → alphaTab's ScoreLoader
- *   MXL   → unzipped (Vocal's unzipMxl) → ScoreLoader
- *   MIDI  → Vocal's midiToMusicXml → fretAssign's addGuitarTab → ScoreLoader.
- *           alphaTab can't read MIDI or derive frets from pitch, so every
- *           part that fits on the neck gets strings and frets chosen for it;
- *           a part with notes out of range stays notation only.
+ *   Guitar Pro 3–8, alphaTex → alphaTab's ScoreLoader (they carry tab)
+ *   MusicXML → fretAssign's addGuitarTab → ScoreLoader
+ *   MXL   → unzipped (Vocal's unzipMxl) → addGuitarTab → ScoreLoader
+ *   MIDI  → tidyMidi (one note at a time per track, single written lengths)
+ *           → Vocal's midiToMusicXml → addGuitarTab → ScoreLoader
  *
- * alphaTab shows tab only when the file carries string/fret data; `hasTab`
- * says whether this one does.
+ * alphaTab shows tab only when the file carries string/fret data and can't
+ * derive frets from pitch, so every pitched part without tab gets strings
+ * and frets chosen for it, fitted to the guitar where it doesn't fit as
+ * written. A part's own tab, percussion and MIDI drum tracks are left alone.
+ * `tab` says what was done ({ generated, parts }, see addGuitarTab);
+ * `hasTab` whether every note now has a string and fret.
  */
 
 const EXTENSION_FORMATS = {
@@ -84,6 +89,27 @@ function showTabAndNotation(score) {
   return score
 }
 
+/** Part ids midiToMusicXml gives drum tracks (P1, P2… over the tracks with notes), so they're never fretted. */
+function drumParts(midi) {
+  return midi.tracks
+    .filter((track) => track.notes.length > 0)
+    .flatMap((track, i) => (track.instrument?.percussion ? [`P${i + 1}`] : []))
+}
+
+/** MusicXML with tab added where it has none: { musicXml, tab }. Timewise scores are passed through. */
+function withTab(musicXml, options) {
+  if (!/<score-partwise[\s>]/.test(musicXml)) return { musicXml, tab: { generated: false, parts: [] } }
+  const { musicXml: tabbed, tabbedParts, parts } = addGuitarTab(musicXml, options)
+  return { musicXml: tabbed, tab: { generated: tabbedParts > 0, parts } }
+}
+
+/** MusicXML bytes as text: UTF-8, or UTF-16 when the file starts with a byte-order mark. */
+function decodeXml(bytes) {
+  const head = new Uint8Array(bytes, 0, Math.min(2, bytes.byteLength))
+  const encoding = head[0] === 0xff && head[1] === 0xfe ? 'utf-16le' : head[0] === 0xfe && head[1] === 0xff ? 'utf-16be' : 'utf-8'
+  return new TextDecoder(encoding).decode(bytes)
+}
+
 function loadBytes(bytes, settings) {
   return showTabAndNotation(alphaTab.importer.ScoreLoader.loadScoreFromBytes(new Uint8Array(bytes), settings))
 }
@@ -91,14 +117,21 @@ function loadBytes(bytes, settings) {
 export async function loadGuitarNotation(arrayBuffer, filename, { title, settings = new alphaTab.Settings() } = {}) {
   const format = detectGuitarFormat(filename, arrayBuffer)
   let score
+  let tab = { generated: false, parts: [] }
+  const loadXml = (xml, options) => {
+    const converted = withTab(xml, options)
+    tab = converted.tab
+    return loadBytes(new TextEncoder().encode(converted.musicXml), settings)
+  }
   if (format === 'midi') {
-    const { musicXml } = addGuitarTab(midiToMusicXml(await parseMidiFile(arrayBuffer)).musicXml)
-    score = loadBytes(new TextEncoder().encode(musicXml), settings)
+    const midi = tidyMidiForTab(await parseMidiFile(arrayBuffer))
+    const { musicXml } = midiToMusicXml(midi, { lyricStreams: readLyricStreams(arrayBuffer) })
+    score = loadXml(musicXml, { skipParts: drumParts(midi) })
   } else if (format === 'mxl') {
-    score = loadBytes(new TextEncoder().encode(await unzipMxl(arrayBuffer)), settings)
+    score = loadXml(await unzipMxl(arrayBuffer))
   } else {
     try {
-      score = loadBytes(arrayBuffer, settings)
+      score = format === 'musicxml' ? loadXml(decodeXml(arrayBuffer)) : loadBytes(arrayBuffer, settings)
     } catch (err) {
       throw new Error(`Could not read this file as guitar notation (${err.message}).`)
     }
@@ -111,5 +144,6 @@ export async function loadGuitarNotation(arrayBuffer, filename, { title, setting
     score,
     sourceBytes: arrayBuffer,
     hasTab: hasTablature(score),
+    tab,
   }
 }

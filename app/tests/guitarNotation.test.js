@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import * as alphaTab from '@coderline/alphatab'
 import { Midi } from '@tonejs/midi'
 import { describe, expect, it } from 'vitest'
 import { guitarMidiBytes, guitarProBytes } from '../src/tabs/guitar/notation/exportGuitarNotation.js'
@@ -89,5 +90,50 @@ describe('other sources', () => {
 
   it('reports a file it cannot read', async () => {
     await expect(loadGuitarNotation(encode('not a score'), 'broken.gp')).rejects.toThrow(/guitar notation/)
+    await expect(loadGuitarNotation(encode('<score-partwise><part'), 'broken.xml')).rejects.toThrow(/guitar notation/)
+  })
+})
+
+describe('tab generated on open', () => {
+  /** Every note's pitch as the file writes it, read by alphaTab with no tab added. */
+  const pitchesAsWritten = (xml) =>
+    scoreNotes(alphaTab.importer.ScoreLoader.loadScoreFromBytes(new TextEncoder().encode(xml), new alphaTab.Settings())).map(
+      (n) => n.realValue,
+    )
+
+  // [file, format, the MusicXML it holds] — the MXL is ode-to-joy.musicxml zipped.
+  it.each([
+    ['amazing-grace.musicxml', 'musicxml', 'amazing-grace.musicxml'],
+    ['ode-to-joy.musicxml', 'musicxml', 'ode-to-joy.musicxml'],
+    ['ode-to-joy.mxl', 'mxl', 'ode-to-joy.musicxml'],
+  ])('%s opens as tab, every note at the pitch the file wrote', async (file, format, source) => {
+    const notation = await loadGuitarNotation(bytesOf(`../../tests/fixtures/musicxml/${file}`), file)
+    expect(notation.format).toBe(format)
+    expect(notation.hasTab).toBe(true)
+    expect(notation.tab.generated).toBe(true)
+    expect(notation.tab.parts.map((p) => p.status)).toEqual(['tabbed'])
+    const xml = readFileSync(new URL(`../../tests/fixtures/musicxml/${source}`, import.meta.url), 'utf8')
+    expect(scoreNotes(notation.score).map((n) => n.realValue)).toEqual(pitchesAsWritten(xml))
+  })
+
+  it('tabs a MIDI file’s instruments but never its drums', async () => {
+    const notation = await loadGuitarNotation(bytesOf('../../tests/fixtures/midi/synth_long_800notes_drums.mid'), 'drums.mid')
+    expect(notation.tab.parts.map((p) => [p.name, p.status])).toEqual([
+      ['Part 1', 'tabbed'],
+      ['Part 2', 'tabbed'],
+      ['Drums', 'skipped'],
+    ])
+    expect(notation.hasTab).toBe(false) // the drums stay notation
+  })
+
+  it('keeps a MIDI file’s lyrics', async () => {
+    const notation = await loadGuitarNotation(bytesOf('../../tests/fixtures/midi/synth_satb_lyrics.mid'), 'satb.mid')
+    expect(notation.hasTab).toBe(true)
+    expect(scoreNotes(notation.score).some((n) => n.beat.lyrics?.some(Boolean))).toBe(true)
+  })
+
+  it('leaves the built-in songs’ own tab as it is', async () => {
+    const notation = await loadGuitarNotation(bytesOf('../public/guitar-songs/four-chord-strum.musicxml'), 'four-chord-strum.musicxml')
+    expect(notation.tab).toMatchObject({ generated: false, parts: [{ status: 'kept' }] })
   })
 })

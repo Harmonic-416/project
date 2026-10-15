@@ -80,6 +80,21 @@
   font-size: 0.85rem;
 }
 
+.guitar-song__notice p,
+.guitar-song__notice ul {
+  margin: 0;
+}
+
+.guitar-song__notice ul {
+  padding-left: 1.2em;
+}
+
+/* Tab made from the notes: worth knowing, not a warning. */
+.guitar-song__notice--info {
+  background: #e3f3f3;
+  color: #0d6466;
+}
+
 .guitar-song__search {
   display: flex;
   align-items: center;

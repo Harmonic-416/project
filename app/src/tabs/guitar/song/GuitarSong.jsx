@@ -17,6 +17,7 @@ import { exportGuitarMidi, exportGuitarPro } from '../notation/exportGuitarNotat
 import { GUITAR_NOTATION_ACCEPT, loadGuitarNotation } from '../notation/loadGuitarNotation.js'
 import { chordNamesOf, saveSongChords } from '../practice/chordNames.js'
 import GuitarScore from './GuitarScore.jsx'
+import TabNotice from './TabNotice.jsx'
 import EasyToggle from './follow/EasyToggle.jsx'
 import GuitarSharedPanel from './follow/GuitarSharedPanel.jsx'
 import GuitarTroubleMode from './follow/GuitarTroubleMode.jsx'
@@ -395,11 +396,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
           </button>
         </div>
       </div>
-      {!notation.hasTab && (
-        <p className="guitar-song__notice">
-          This file has no string/fret data for every note, so some notes show as standard notation only.
-        </p>
-      )}
+      <TabNotice tab={notation.tab} hasTab={notation.hasTab} />
       <PartTabs
         parts={tracks.map((t) => ({ id: t.index, name: t.name }))}
         selected={practised?.index}
