@@ -41,7 +41,7 @@ export function matchTranscription(entries, songNotes, { from = 0, to = Infinity
   const verdicts = new Array(entries.length)
   for (const entry of entries) {
     if (entry.time < from - 1e-6 || entry.time > to + 1e-6) continue
-    if (entry.technique === 'dead' || entry.technique === 'harmonic') {
+    if (entry.technique === 'dead' || entry.technique === 'harmonic' || entry.optional) {
       verdicts[entry.index] = 'skipped'
       continue
     }

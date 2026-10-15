@@ -10,6 +10,7 @@ import { judgeWindow } from './noteJudge.js'
 import { secondsToTicks, ticksToSeconds } from './songTimeline.js'
 import { createGuitarTroubleTracker, troubleSummary } from './troubleTracker.js'
 import { useGuitarListener } from './useGuitarListener.js'
+import { useTuningReport } from '../../tuner/tuningReport.js'
 
 // A listening window closes ~0.3 s after its onset; settle a note only once its verdict can have arrived.
 const JUDGE_LAG_SECONDS = 0.45
@@ -54,6 +55,7 @@ function GuitarTroubleMode({
   const trackerRef = useRef(null)
   const runRef = useRef(null) // { from, lastTime, anchors, lastAnchorWall, speed, recordingStartWall }
   const latencyRef = useRef(latencyMs)
+  const reportTuning = useTuningReport()
   const [runFrom, setRunFrom] = useState(null)
   const [summary, setSummary] = useState(null) // { from, to, finished, recording, anchors, recordingStartWall, speed }
   const [refine, setRefine] = useState({ status: 'idle', progress: 0, error: null })
@@ -89,13 +91,14 @@ function GuitarTroubleMode({
       const time = clock.secondsAt(w.wall - latencyRef.current)
       if (time === null) return
       const judged = tracker.addOnset(time, (entry) => judgeWindow(w, entry))
+      if (judged?.result.verdict === 'hit') reportTuning(judged.result.cents) // single notes carry cents
       if (import.meta.env.DEV) {
         // For tuning against real playing: every judgement, in the console's window.__harmonic.
         const harmonic = (window.__harmonic ??= {})
         ;(harmonic.guitarJudgements ??= []).push({ mode: 'trouble', time, source: w.source, entry: judged?.entry.index ?? null, ...judged?.result })
       }
     },
-    [clock],
+    [clock, reportTuning],
   )
 
   const listener = useGuitarListener({ onWindow: handleWindow, record: true })

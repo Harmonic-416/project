@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createCapture } from '../../../audio/capture/createCapture.js'
 import { createPitchTracker } from '../../vocal/audio/pitchDetector.js'
+import { TUNED_STRINGS_NEEDED, markTuned } from './tuneSession.js'
 import { createStabilizer } from './tuner.js'
 
 // 4096 samples ≈ 85 ms at 48 kHz: several periods of low E (82 Hz).
@@ -11,7 +12,8 @@ const UI_INTERVAL_MS = 33 // ≥ 20 readout updates per second (F39)
  * Microphone → tuner reading, entirely on the device. Frames come from the
  * shared AudioWorklet capture; Pitchy finds the pitch; the stabilizer turns
  * it into { string, cents, frequency, inTune } or null ("play a string").
- * `tuned` collects the ids of strings that have reached in-tune this session.
+ * `tuned` collects the ids of strings that have reached in-tune this session;
+ * once enough have, the session counts as tuned (tuneSession.js).
  */
 export function useTuner() {
   const [status, setStatus] = useState('idle') // idle | requesting | listening | error
@@ -22,6 +24,10 @@ export function useTuner() {
   const captureRef = useRef(null)
   const stabilizerRef = useRef(createStabilizer())
   const lastUiRef = useRef(0)
+
+  useEffect(() => {
+    if (tuned.size >= TUNED_STRINGS_NEEDED) markTuned()
+  }, [tuned])
 
   const stop = useCallback(() => {
     captureRef.current?.stop()

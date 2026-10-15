@@ -1,4 +1,4 @@
-import { UNSCORED_TECHNIQUES } from './songTimeline.js'
+import { isScored } from './songTimeline.js'
 import { betterVerdict } from './noteJudge.js'
 
 /**
@@ -37,7 +37,7 @@ export function createGuitarTroubleTracker(entries, { graceSeconds = 0.2, minWin
      */
     addOnset(time, judge) {
       const entry = this.entryFor(time)
-      if (!entry || UNSCORED_TECHNIQUES.has(entry.technique)) return null
+      if (!entry || !isScored(entry)) return null
       const result = judge(entry)
       best[entry.index] = betterVerdict(best[entry.index], result.verdict)
       return { entry, result }
@@ -48,7 +48,7 @@ export function createGuitarTroubleTracker(entries, { graceSeconds = 0.2, minWin
       const settled = []
       while (first < entries.length && windowEnd(entries[first]) < time) {
         const entry = entries[first]
-        const verdict = UNSCORED_TECHNIQUES.has(entry.technique) ? 'skipped' : best[first] ?? 'miss'
+        const verdict = isScored(entry) ? best[first] ?? 'miss' : 'skipped'
         settled.push({ entry, verdict })
         first += 1
       }
