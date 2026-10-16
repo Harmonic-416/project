@@ -55,6 +55,12 @@
   color: #24242c;
 }
 
+/* A transcription: a best guess until it's checked. */
+.guitar-song__format--draft {
+  background: #fbeccc;
+  color: #7a5300;
+}
+
 .guitar-song__actions {
   display: flex;
   gap: 8px;

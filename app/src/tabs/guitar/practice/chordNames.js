@@ -16,7 +16,8 @@ const ROOTS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 const ACCIDENTALS = { '': 0, '#': 1, b: -1 }
 
 // Each kind with the ways songs spell it after the root. Case matters: M is major, m minor.
-const KINDS = [
+// Exported for chord recognition (song/transcribe/chords.js), which matches their intervals.
+export const KINDS = [
   { quality: 'major', suffix: '', word: 'major', intervals: [0, 4, 7], spellings: ['', 'maj', 'M', 'major'] },
   { quality: 'minor', suffix: 'm', word: 'minor', intervals: [0, 3, 7], spellings: ['m', 'min', 'mi', '-', 'minor'] },
   { quality: '7', suffix: '7', word: 'seventh', intervals: [0, 4, 7, 10], spellings: ['7', 'dom7'] },

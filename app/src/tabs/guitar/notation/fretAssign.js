@@ -277,7 +277,8 @@ export function playableChord(pitches, { tuning = STANDARD_TUNING } = {}) {
   return kept
 }
 
-function staffDetails(tuning) {
+/** A six-string staff's <staff-details> for `tuning` (open strings, string 1 first), with a capo on fret `capo`. */
+export function staffDetails(tuning = STANDARD_TUNING, { capo = 0 } = {}) {
   const lines = [...tuning]
     .reverse() // staff-tuning line 1 is the lowest string
     .map(
@@ -287,10 +288,10 @@ function staffDetails(tuning) {
         }<tuning-octave>${Math.floor(midi / 12) - 1}</tuning-octave></staff-tuning>`,
     )
     .join('')
-  return `<staff-details><staff-lines>${tuning.length}</staff-lines>${lines}</staff-details>`
+  return `<staff-details><staff-lines>${tuning.length}</staff-lines>${lines}${capo ? `<capo>${capo}</capo>` : ''}</staff-details>`
 }
 
-const GUITAR_CLEF = '<clef><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>'
+export const GUITAR_CLEF = '<clef><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>'
 
 /** A dropped note that leaves its voice empty at that moment: a rest of the same length. */
 function asRest(noteXml) {
