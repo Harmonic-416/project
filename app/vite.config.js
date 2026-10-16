@@ -56,6 +56,10 @@ export default defineConfig({
       listSongFiles('guitar-songs', /\.(gp|gp3|gp4|gp5|gpx|alphatex|atex|musicxml|xml|mxl|mid|midi)$/i),
     ),
   },
+  // ONNX Runtime (Beat This!, src/tabs/guitar/song/transcribe/beats.js) finds
+  // its .wasm next to its own module (new URL(…, import.meta.url)); dev
+  // pre-bundling moves the module and breaks that, so it's served as is.
+  optimizeDeps: { exclude: ['onnxruntime-web'] },
   // Workers and worklets (alphaTab's, and our mic capture worklet) are ES
   // modules: AudioWorklet.addModule loads modules, and alphaTab reads
   // import.meta.url, which an iife bundle would blank out.
@@ -76,8 +80,21 @@ export default defineConfig({
         // ~1 MB soundfont, music font) stay out of the install-time precache;
         // they're cached the first time the Songs view opens. So does the
         // after-the-run check (TensorFlow.js + basic-pitch's model), cached the
-        // first time someone runs it.
-        globIgnores: ['**/alphaTab.*.js', '**/GuitarSong-*.{js,css}', '**/refineWithBasicPitch-*.js', '**/basic-pitch/**'],
+        // first time someone runs it, and tabbing a song's guitar (the
+        // pipeline, Beat This!, YAMNet, the separator and ONNX Runtime's
+        // ~28 MB WebGPU .wasm; the separator's 55 MB model comes from
+        // Hugging Face and is cached on first use).
+        globIgnores: [
+          '**/alphaTab.*.js',
+          '**/GuitarSong-*.{js,css}',
+          '**/refineWithBasicPitch-*.js',
+          '**/basic-pitch/**',
+          '**/{pipeline,beats,separate}-*.js',
+          '**/ort.*.js',
+          '**/ort-wasm-*.wasm',
+          '**/beat-this/**',
+          '**/yamnet/**',
+        ],
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
@@ -89,6 +106,18 @@ export default defineConfig({
             urlPattern: ({ url }) => /\/basic-pitch\//.test(url.pathname) || /\/assets\/refineWithBasicPitch-/.test(url.pathname),
             handler: 'CacheFirst',
             options: { cacheName: 'basic-pitch', expiration: { maxEntries: 8 } },
+          },
+          {
+            urlPattern: ({ url }) =>
+              /\/(beat-this|yamnet)\//.test(url.pathname) || /\/assets\/(pipeline-|beats-|separate-|ort\.|ort-wasm-)/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'transcribe', expiration: { maxEntries: 16 } },
+          },
+          {
+            // The guitar separator's model (separate.js), pinned to one revision.
+            urlPattern: ({ url }) => url.hostname === 'huggingface.co' && url.pathname.startsWith('/Andremi/audioweb-models/resolve/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'separator', expiration: { maxEntries: 2 }, cacheableResponse: { statuses: [200] } },
           },
         ],
       },

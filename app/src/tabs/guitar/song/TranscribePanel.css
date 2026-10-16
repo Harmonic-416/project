@@ -1,0 +1,138 @@
+.transcribe {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.transcribe p {
+  margin: 0;
+}
+
+.transcribe__note,
+.transcribe__hint {
+  color: #6c6a72;
+  font-size: 0.85rem;
+}
+
+.transcribe__file {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transcribe__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #e2dfd8;
+  overflow: hidden;
+}
+
+.transcribe__bar span {
+  display: block;
+  height: 100%;
+  background: #128789;
+  transition: width 0.3s ease;
+}
+
+.transcribe__stage {
+  font-size: 0.9rem;
+}
+
+.transcribe__cancel {
+  align-self: flex-start;
+  border: 1px solid #cf4b36;
+  border-radius: 8px;
+  padding: 6px 14px;
+  background: #ffffff;
+  color: #cf4b36;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* "My transcriptions" in the song list. */
+.my-transcriptions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.my-transcriptions h3 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+}
+
+.my-transcriptions__row {
+  display: flex;
+  gap: 8px;
+}
+
+.my-transcriptions__row .song-library__item {
+  flex: 1;
+  min-width: 0;
+}
+
+.my-transcriptions__row .song-library__item span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.my-transcriptions__row small {
+  color: #6c6a72;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.my-transcriptions__delete {
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #ffffff;
+  color: #6c6a72;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.my-transcriptions__delete:hover {
+  border-color: #cf4b36;
+  color: #cf4b36;
+}
+
+/* "Guitar doesn't seem to be part of this song." */
+.transcribe__verdict {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.transcribe__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.transcribe__primary {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  background: #128789;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The override for a misheard song: there, but quiet. */
+.transcribe__anyway {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #6c6a72;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -17,6 +17,10 @@ import { exportGuitarMidi, exportGuitarPro } from '../notation/exportGuitarNotat
 import { GUITAR_NOTATION_ACCEPT, loadGuitarNotation } from '../notation/loadGuitarNotation.js'
 import { chordNamesOf, saveSongChords } from '../practice/chordNames.js'
 import GuitarScore from './GuitarScore.jsx'
+import MyTranscriptions from './MyTranscriptions.jsx'
+import TabNotice from './TabNotice.jsx'
+import TranscribePanel from './TranscribePanel.jsx'
+import { deleteDraft, draftsAvailable, listDrafts, loadDraft, saveDraft } from './drafts.js'
 import EasyToggle from './follow/EasyToggle.jsx'
 import GuitarSharedPanel from './follow/GuitarSharedPanel.jsx'
 import GuitarTroubleMode from './follow/GuitarTroubleMode.jsx'
@@ -50,6 +54,28 @@ const FORMAT_LABEL = {
 }
 
 /**
+ * Over a transcription: how it was made (`about`, from the pipeline: whether
+ * the guitar was separated from a band, and how much of the song it plays
+ * in). Older drafts don't say.
+ */
+function DraftNotice({ about }) {
+  let text = 'Draft from a recording: the notes, rhythm and fingering are a best guess, so check it by ear.'
+  if (about?.isolated) {
+    const share = Math.round((about.heard ?? 0) * 100)
+    text =
+      `The guitar part, isolated from the full song${share ? ` (the guitar plays in about ${share}% of it)` : ''}. ` +
+      'Other instruments can bleed into it, so check stray notes by ear.'
+  } else if (about) {
+    text = 'Transcribed from a recording of a guitar on its own: a best guess, so check it by ear.'
+  }
+  return (
+    <div className="guitar-song__notice guitar-song__notice--info">
+      <p>{text}</p>
+    </div>
+  )
+}
+
+/**
  * Guitar songs: pick a built-in or catalog song, or upload Guitar Pro /
  * alphaTex / MusicXML / MXL / MIDI, see it as tab + notation, and practise
  * it the way the Vocal tab practises a score:
@@ -58,6 +84,10 @@ const FORMAT_LABEL = {
  *   - Trouble spots: play along in time; every note is judged and marked
  * Export as MIDI or Guitar Pro. Lazy-loaded by GuitarTab because alphaTab
  * is large.
+ *
+ * Or transcribe a recording (TranscribePanel, transcribe/pipeline.js): an
+ * audio file becomes a draft score, opened like any song and kept on this
+ * device under "My transcriptions" (drafts.js).
  *
  * Any song can be practised in an Easy version that scores just the first
  * note of each bar and each chord change (follow/easyMode.js, F45); the
@@ -73,8 +103,9 @@ const FORMAT_LABEL = {
  * `sharedAttemptId` opens one someone sent (App.jsx reads the link).
  */
 function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
-  const [browse, setBrowse] = useState('library') // library | search
-  const [notation, setNotation] = useState(null) // loadGuitarNotation's result + { fingerprint, catalogSongId, builtin }
+  const [browse, setBrowse] = useState('library') // library | search | transcribe
+  const [notation, setNotation] = useState(null) // loadGuitarNotation's result + { fingerprint, catalogSongId, builtin, draft }
+  const [drafts, setDrafts] = useState([]) // My transcriptions: [{ id, title, updated }]
   const [status, setStatus] = useState('idle') // idle | loading | ready | error
   const [error, setError] = useState(null)
   const [api, setApi] = useState(null)
@@ -89,9 +120,10 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
   const [shared, setShared] = useState(null)
   const scoreRef = useRef(null)
 
-  // `catalogSongId` / `builtin` say where the song came from (for sharing);
+  // `catalogSongId` / `builtin` say where the song came from (for sharing),
+  // `draft` ({ id }) that it's a transcription kept on this device;
   // `part` preselects a track and accompaniment (opening a shared attempt).
-  const open = useCallback(async (arrayBuffer, filename, { title, catalogSongId = null, builtin = false, part = null } = {}) => {
+  const open = useCallback(async (arrayBuffer, filename, { title, catalogSongId = null, builtin = false, draft = null, part = null } = {}) => {
     setStatus('loading')
     setError(null)
     try {
@@ -105,7 +137,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
       setMode('listen')
       setEasy(loadEasy(fingerprint))
       saveSongChords(loaded.title, chordNamesOf(loaded.score)) // for ear training's "Chords from my song"
-      setNotation({ ...loaded, fingerprint, catalogSongId, builtin })
+      setNotation({ ...loaded, fingerprint, catalogSongId, builtin, draft })
       setStatus('ready')
     } catch (err) {
       console.error(err)
@@ -145,6 +177,68 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
   )
 
   const openUpload = useCallback(async (file) => open(await file.arrayBuffer(), file.name), [open])
+
+  // ── My transcriptions ──────────────────────────────────────────────────
+  const inLibrary = !notation && browse === 'library'
+  useEffect(() => {
+    if (!inLibrary || !draftsAvailable()) return undefined
+    let cancelled = false
+    listDrafts()
+      .then((list) => {
+        if (!cancelled) setDrafts(list)
+      })
+      .catch((err) => console.error(err))
+    return () => {
+      cancelled = true
+    }
+  }, [inLibrary])
+
+  const openDraft = useCallback(
+    async (draft) => {
+      setStatus('loading')
+      try {
+        const saved = await loadDraft(draft.id)
+        if (!saved) throw new Error('That transcription isn’t on this device anymore.')
+        const extension = saved.format === 'guitar-pro' ? 'gp' : 'musicxml'
+        await open(saved.bytes, `${saved.title}.${extension}`, { title: saved.title, draft: { id: saved.id, about: saved.about ?? null } })
+      } catch (err) {
+        console.error(err)
+        setError(err.message || 'Could not open that transcription.')
+        setStatus('error')
+      }
+    },
+    [open],
+  )
+
+  const removeDraft = useCallback(async (draft) => {
+    if (!window.confirm(`Delete the draft “${draft.title}”? This can’t be undone.`)) return
+    try {
+      await deleteDraft(draft.id)
+      setDrafts((list) => list.filter((d) => d.id !== draft.id))
+    } catch (err) {
+      console.error(err)
+    }
+  }, [])
+
+  // A finished transcription: keep it (keyed by the recording, so the same
+  // file again replaces it), then open it.
+  const finishTranscription = useCallback(
+    async (file, result) => {
+      const bytes = new TextEncoder().encode(result.musicXml).buffer
+      const id = await fingerprintBytes(await file.arrayBuffer())
+      const about = { isolated: result.isolated, heard: result.heard }
+      if (draftsAvailable()) {
+        try {
+          await saveDraft({ id, title: result.title, format: 'musicxml', bytes, about })
+        } catch (err) {
+          console.error(err) // it still opens; it just isn't kept
+        }
+      }
+      setBrowse('library')
+      await open(bytes, `${result.title}.musicxml`, { title: result.title, draft: { id, about } })
+    },
+    [open],
+  )
 
   // ── Shared attempts ────────────────────────────────────────────────────
   const openShared = useCallback(
@@ -310,6 +404,19 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
   }
 
   if (!notation) {
+    if (browse === 'transcribe') {
+      return (
+        <div className="guitar-song">
+          <div className="guitar-song__toolbar">
+            <button type="button" className="guitar-song__back" onClick={() => setBrowse('library')}>
+              ← Songs
+            </button>
+            <span className="guitar-song__title">Tab the guitar from a song</span>
+          </div>
+          <TranscribePanel onTranscribed={finishTranscription} />
+        </div>
+      )
+    }
     if (browse === 'search') {
       return (
         <div className="guitar-song">
@@ -340,7 +447,15 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
             </span>
           </button>
         )}
+        <button type="button" className="guitar-song__search" onClick={() => setBrowse('transcribe')}>
+          <span aria-hidden="true">🎙️</span>
+          <span>
+            <strong>Tab the guitar from a song</strong>
+            <small>Upload an MP3 or WAV: Harmonic isolates its guitar part and tabs it, on this device</small>
+          </span>
+        </button>
         <SongLibrary songs={BUILT_IN_SONGS} onSelectSong={openBuiltIn} />
+        <MyTranscriptions drafts={drafts} onOpen={openDraft} onDelete={removeDraft} />
         <label className={`notation-uploader ${status === 'loading' ? 'notation-uploader--disabled' : ''}`}>
           <input
             type="file"
@@ -385,7 +500,9 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
           {viewingShared ? '← Close' : '← Songs'}
         </button>
         <span className="guitar-song__title">{notation.title}</span>
-        <span className="guitar-song__format">{FORMAT_LABEL[notation.format]}</span>
+        <span className={`guitar-song__format ${notation.draft ? 'guitar-song__format--draft' : ''}`}>
+          {notation.draft ? 'Draft' : FORMAT_LABEL[notation.format]}
+        </span>
         <div className="guitar-song__actions" role="group" aria-label="Export">
           <button type="button" onClick={() => exportGuitarMidi(notation)}>
             Export MIDI
@@ -395,10 +512,10 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
           </button>
         </div>
       </div>
-      {!notation.hasTab && (
-        <p className="guitar-song__notice">
-          This file has no string/fret data for every note, so some notes show as standard notation only.
-        </p>
+      {notation.draft ? (
+        <DraftNotice about={notation.draft.about} />
+      ) : (
+        <TabNotice tab={notation.tab} hasTab={notation.hasTab} />
       )}
       <PartTabs
         parts={tracks.map((t) => ({ id: t.index, name: t.name }))}
