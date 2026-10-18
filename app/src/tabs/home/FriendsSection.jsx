@@ -19,7 +19,7 @@ const REQUEST_MESSAGES = {
   already_friends: (name) => `You and ${name} are already friends.`,
 }
 
-/** Add by name#tag, answer requests, see and remove friends. */
+/** Add by name#tag; your friends, requests asking you, and requests you sent. */
 function FriendsSection({ me, friends, error, onChanged }) {
   const [busy, setBusy] = useState(null) // id of the row being changed
   const [rowError, setRowError] = useState(null)
@@ -43,53 +43,43 @@ function FriendsSection({ me, friends, error, onChanged }) {
     }
   }
 
+  const requestRow = (f) => (
+    <li key={f.friendship_id} className="home-list__item">
+      <Person person={f} detail={`asked ${timeAgo(f.since)}`} />
+      <div className="home-row">
+        <button
+          type="button"
+          className="home-button"
+          disabled={busy === f.friendship_id}
+          onClick={() => act(f.friendship_id, () => acceptFriendRequest(supabase, f.friendship_id))}
+        >
+          Accept
+        </button>
+        <button
+          type="button"
+          className="home-link-button"
+          disabled={busy === f.friendship_id}
+          onClick={() => act(f.friendship_id, () => declineFriendRequest(supabase, f.friendship_id))}
+        >
+          Decline
+        </button>
+      </div>
+    </li>
+  )
+
+  const loading = friends === null
+
   return (
     <div className="home-friends">
       <AddFriendForm me={me} onAdded={onChanged} />
 
       {rowError && <p className="home-tab__error">{rowError}</p>}
 
-      {incoming.length > 0 && (
-        <div className="home-card">
-          <h3 className="home-card__title">Friend requests</h3>
-          <ul className="home-list">
-            {incoming.map((f) => (
-              <li key={f.friendship_id} className="home-list__item">
-                <Person person={f} detail={`asked ${timeAgo(f.since)}`} />
-                <div className="home-row">
-                  <button
-                    type="button"
-                    className="home-button"
-                    disabled={busy === f.friendship_id}
-                    onClick={() => act(f.friendship_id, () => acceptFriendRequest(supabase, f.friendship_id))}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    className="home-link-button"
-                    disabled={busy === f.friendship_id}
-                    onClick={() => act(f.friendship_id, () => declineFriendRequest(supabase, f.friendship_id))}
-                  >
-                    Decline
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="home-card">
-        <h3 className="home-card__title">
-          Friends{accepted.length > 0 && <span className="home-card__count">{accepted.length}</span>}
-        </h3>
-        {friends === null ? (
+      <FriendsCard title="Friends" count={accepted.length}>
+        {loading ? (
           <p className="home-tab__hint">Loading…</p>
         ) : accepted.length === 0 ? (
-          <p className="home-tab__hint">
-            No friends yet. Add someone with their name#tag above, or send them your invite link.
-          </p>
+          <p className="home-tab__hint">No friends yet. Add someone with their name#tag above, or send them your invite link.</p>
         ) : (
           <ul className="home-list">
             {accepted.map((f) => (
@@ -110,28 +100,54 @@ function FriendsSection({ me, friends, error, onChanged }) {
             ))}
           </ul>
         )}
+      </FriendsCard>
 
-        {outgoing.length > 0 && (
-          <>
-            <h4 className="home-card__subtitle">Waiting for them</h4>
-            <ul className="home-list">
-              {outgoing.map((f) => (
-                <li key={f.friendship_id} className="home-list__item">
-                  <Person person={f} detail={`asked ${timeAgo(f.since)}`} />
-                  <button
-                    type="button"
-                    className="home-link-button"
-                    disabled={busy === f.friendship_id}
-                    onClick={() => act(f.friendship_id, () => removeFriend(supabase, f.user_id))}
-                  >
-                    Cancel
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
+      <FriendsCard title="Requests" count={incoming.length} hint="People asking to be your friend" highlight={incoming.length > 0}>
+        {loading ? (
+          <p className="home-tab__hint">Loading…</p>
+        ) : incoming.length === 0 ? (
+          <p className="home-tab__hint">No one is asking right now.</p>
+        ) : (
+          <ul className="home-list">{incoming.map(requestRow)}</ul>
         )}
-      </div>
+      </FriendsCard>
+
+      <FriendsCard title="Sent" count={outgoing.length} hint="Requests you sent that haven’t been accepted yet">
+        {loading ? (
+          <p className="home-tab__hint">Loading…</p>
+        ) : outgoing.length === 0 ? (
+          <p className="home-tab__hint">Nothing waiting.</p>
+        ) : (
+          <ul className="home-list">
+            {outgoing.map((f) => (
+              <li key={f.friendship_id} className="home-list__item">
+                <Person person={f} detail={`asked ${timeAgo(f.since)}`} />
+                <button
+                  type="button"
+                  className="home-link-button"
+                  disabled={busy === f.friendship_id}
+                  onClick={() => act(f.friendship_id, () => removeFriend(supabase, f.user_id))}
+                >
+                  Cancel
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </FriendsCard>
+    </div>
+  )
+}
+
+function FriendsCard({ title, count, hint, highlight = false, children }) {
+  return (
+    <div className={`home-card ${highlight ? 'home-card--highlight' : ''}`}>
+      <h3 className="home-card__title">
+        {title}
+        {count > 0 && <span className="home-card__count">{count}</span>}
+      </h3>
+      {hint && <p className="home-card__hint">{hint}</p>}
+      {children}
     </div>
   )
 }

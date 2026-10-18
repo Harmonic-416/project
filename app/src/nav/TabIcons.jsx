@@ -71,3 +71,14 @@ export function MicIcon() {
     </svg>
   )
 }
+/** Social: two people, one in front of the other. */
+export function SocialIcon() {
+  return (
+    <svg {...svgProps}>
+      <circle cx="21.5" cy="10" r="4.2" fill="currentColor" opacity="0.55" />
+      <path d="M14.6 25.6c.4-5 3.2-8 6.9-8s6.6 3 7 8c0 .7-.5 1.2-1.2 1.2H15.8c-.7 0-1.2-.5-1.2-1.2z" fill="currentColor" opacity="0.55" />
+      <circle cx="12" cy="11" r="5" fill="currentColor" />
+      <path d="M3.2 27.2c.5-6 3.9-9.6 8.8-9.6s8.3 3.6 8.8 9.6c.1.8-.6 1.5-1.4 1.5H4.6c-.8 0-1.5-.7-1.4-1.5z" fill="currentColor" />
+    </svg>
+  )
+}

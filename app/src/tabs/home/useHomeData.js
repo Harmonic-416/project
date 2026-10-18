@@ -11,6 +11,8 @@ import { supabase } from '../../lib/supabaseClient.js'
  *   data: { profile, friends, inbox, sent, recent, latest } — each null while loading
  *   errors: { [part]: message }
  *   reload(part?) — one part, or all of them
+ *
+ * `parts` limits what's loaded (Social only needs profile + friends).
  */
 const LOADERS = {
   profile: () => getMyProfile(supabase),
@@ -22,9 +24,11 @@ const LOADERS = {
   latest: async () => (await getLatestAttempt(supabase)) ?? false,
 }
 
+const ALL_PARTS = Object.keys(LOADERS)
+
 const EMPTY = { profile: null, friends: null, inbox: null, sent: null, recent: null, latest: null }
 
-export function useHomeData(userId) {
+export function useHomeData(userId, parts = ALL_PARTS) {
   const [data, setData] = useState(EMPTY)
   const [errors, setErrors] = useState({})
 
@@ -43,8 +47,8 @@ export function useHomeData(userId) {
     if (!userId || !supabase) return undefined
     // Home mounts this per signed-in user, so there's nothing stale to clear.
     let live = true
-    for (const [part, loader] of Object.entries(LOADERS)) {
-      loader().then(
+    for (const part of parts) {
+      LOADERS[part]().then(
         (value) => live && setData((previous) => ({ ...previous, [part]: value })),
         (err) => {
           console.error(err)
@@ -55,11 +59,11 @@ export function useHomeData(userId) {
     return () => {
       live = false
     }
-  }, [userId])
+  }, [userId, parts]) // pass `parts` as a constant (defined outside the component)
 
   const reload = useCallback(
-    (...parts) => Promise.all((parts.length ? parts : Object.keys(LOADERS)).map((part) => load(part))),
-    [load],
+    (...which) => Promise.all((which.length ? which : parts).map((part) => load(part))),
+    [load, parts],
   )
 
   return { data, errors, reload }
