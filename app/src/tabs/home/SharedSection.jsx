@@ -4,11 +4,13 @@ import { supabase } from '../../lib/supabaseClient.js'
 import AttemptThread from './AttemptThread.jsx'
 import { Person } from './FriendsSection.jsx'
 import { namesList, percent, songMeta, timeAgo } from './homeFormat.js'
+import { CommentIcon } from './homeIcons.jsx'
+import { InstrumentArt } from './ProgressSection.jsx'
 
 const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
 
-/** Attempts friends sent you: open them, and leave feedback. */
-export function InboxSection({ inbox, error, myId, onOpenAttempt, onChanged }) {
+/** Attempts friends sent you: open them, and leave feedback. `limit`: only the newest few. */
+export function InboxSection({ inbox, error, myId, limit = null, onOpenAttempt, onChanged }) {
   if (error) return <p className="home-tab__error">{error}</p>
   if (inbox === null) return <p className="home-tab__hint">Loading…</p>
   if (inbox.length === 0) {
@@ -17,11 +19,12 @@ export function InboxSection({ inbox, error, myId, onOpenAttempt, onChanged }) {
 
   return (
     <ul className="home-attempts">
-      {inbox.map((item) => (
+      {(limit === null ? inbox : inbox.slice(0, limit)).map((item) => (
         <AttemptItem
           key={item.attempt_id}
           title={item.song_title}
-          meta={`${songMeta(item.instrument, item.part_name)} · ${percent(item.accuracy)}`}
+          instrument={item.instrument}
+          meta={`${songMeta(item.instrument, item.part_name)} • ${percent(item.accuracy)} • ${timeAgo(item.sent_at)}`}
           header={<Person person={{ display_name: item.sender_name, tag: item.sender_tag, avatar_url: item.sender_avatar_url }} detail={`sent ${timeAgo(item.sent_at)}`} size={32} />}
           isNew={!item.seen_at}
           commentCount={item.comment_count}
@@ -45,8 +48,8 @@ export function InboxSection({ inbox, error, myId, onOpenAttempt, onChanged }) {
   )
 }
 
-/** Attempts you sent: who has seen them, and what they said. */
-export function SentSection({ sent, error, friends, myId, onOpenAttempt }) {
+/** Attempts you sent: who has seen them, and what they said. `limit`: only the newest few. */
+export function SentSection({ sent, error, friends, myId, limit = null, onOpenAttempt }) {
   if (error) return <p className="home-tab__error">{error}</p>
   if (sent === null) return <p className="home-tab__hint">Loading…</p>
   if (sent.length === 0) {
@@ -61,13 +64,14 @@ export function SentSection({ sent, error, friends, myId, onOpenAttempt }) {
 
   return (
     <ul className="home-attempts">
-      {sent.map((item) => {
+      {(limit === null ? sent : sent.slice(0, limit)).map((item) => {
         const seen = item.recipients.filter((r) => r.seen_at).length
         return (
           <AttemptItem
             key={item.attempt_id}
             title={item.song_title}
-            meta={`${INSTRUMENT[item.instrument]} · ${percent(item.accuracy)} · ${timeAgo(item.created_at)}`}
+            instrument={item.instrument}
+            meta={`${INSTRUMENT[item.instrument]} • ${percent(item.accuracy)} • ${timeAgo(item.created_at)}`}
             header={
               <p className="home-attempt__to">
                 To {namesList(item.recipients.map((r) => nameOf(r.recipient_id)))}
@@ -89,34 +93,38 @@ export function SentSection({ sent, error, friends, myId, onOpenAttempt }) {
   )
 }
 
-function AttemptItem({ title, meta, header, isNew, commentCount, attemptId, myId, isOwner, openLabel, onOpen, onThreadOpened, onChanged }) {
+function AttemptItem({ title, instrument, meta, header, isNew, commentCount, attemptId, myId, isOwner, openLabel, onOpen, onThreadOpened, onChanged }) {
   const [threadOpen, setThreadOpen] = useState(false)
 
   return (
-    <li className={`home-card home-attempt ${isNew ? 'home-attempt--new' : ''}`}>
+    <li className={`hp-activity ${isNew ? 'hp-activity--new' : ''}`}>
       <div className="home-attempt__top">
         {header}
         {isNew && <span className="home-badge">New</span>}
       </div>
-      <div className="home-attempt__song">
-        <strong>{title}</strong>
-        <small>{meta}</small>
-      </div>
-      <div className="home-row">
-        <button type="button" className="home-button" onClick={onOpen}>
-          {openLabel}
-        </button>
-        <button
-          type="button"
-          className="home-link-button"
-          aria-expanded={threadOpen}
-          onClick={() => {
-            setThreadOpen((open) => !open)
-            if (!threadOpen) onThreadOpened?.()
-          }}
-        >
-          {threadOpen ? 'Hide comments' : commentCount ? `Comments (${commentCount})` : 'Comments'}
-        </button>
+      <div className="hp-activity__box">
+        <InstrumentArt instrument={instrument} />
+        <div className="hp-activity__body">
+          <strong className="hp-activity__title">{title}</strong>
+          <span className="hp-meta">{meta}</span>
+          <div className="home-row">
+            <button type="button" className="hp-button hp-button--small" onClick={onOpen}>
+              {openLabel}
+            </button>
+            <button
+              type="button"
+              className="hp-link"
+              aria-expanded={threadOpen}
+              onClick={() => {
+                setThreadOpen((open) => !open)
+                if (!threadOpen) onThreadOpened?.()
+              }}
+            >
+              <CommentIcon />
+              {threadOpen ? 'Hide comments' : commentCount ? `Comments (${commentCount})` : 'Comments'}
+            </button>
+          </div>
+        </div>
       </div>
       {threadOpen && <AttemptThread attemptId={attemptId} myId={myId} isOwner={isOwner} onChanged={onChanged} />}
     </li>
