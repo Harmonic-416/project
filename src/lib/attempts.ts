@@ -286,3 +286,76 @@ export async function deleteAttemptComment(supabase: SupabaseClient, commentId: 
   const { error } = await supabase.from('attempt_comment').delete().eq('id', commentId)
   if (error) throw new Error(error.message)
 }
+
+// ── homepage extras ─────────────────────────────────────────────────────
+
+/**
+ * Add a recording to one of your saved attempts (saveAttempt stores none),
+ * e.g. when you share it with "Include my recording" ticked. Returns the
+ * attempt with its recording_path; one that already has a recording is
+ * left as it is.
+ */
+export async function attachRecording(
+  supabase: SupabaseClient,
+  attempt: SharedAttempt,
+  recording: Blob,
+): Promise<SharedAttempt> {
+  if (attempt.recording_path) return attempt
+  const path = `${attempt.user_id}/${attempt.id}.webm`
+  const { error: uploadError } = await supabase.storage
+    .from('recordings')
+    .upload(path, recording, { contentType: recording.type || 'audio/webm', upsert: true })
+  if (uploadError) throw uploadError
+  const { error } = await supabase.from('shared_attempt').update({ recording_path: path }).eq('id', attempt.id)
+  if (error) {
+    await supabase.storage.from('recordings').remove([path]).catch(() => {})
+    throw error
+  }
+  return { ...attempt, recording_path: path }
+}
+
+/** One of your attempts you sent to friends, with who got it. */
+export interface SentAttempt {
+  attempt_id: string
+  song_title: string
+  instrument: Instrument
+  accuracy: number
+  created_at: string
+  recipients: AttemptRecipient[]
+}
+
+/** Your attempts you've sent to friends, most recently sent first. */
+export async function listSentAttempts(supabase: SupabaseClient, limit = 50): Promise<SentAttempt[]> {
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) return []
+  const { data, error } = await supabase
+    .from('attempt_recipient')
+    .select('attempt_id, recipient_id, sent_at, seen_at, shared_attempt(song_title, instrument, accuracy, created_at)')
+    .eq('sender_id', userData.user.id)
+    .order('sent_at', { ascending: false })
+    .limit(limit * 5)
+  if (error) throw error
+
+  type Row = AttemptRecipient & {
+    attempt_id: string
+    shared_attempt: { song_title: string; instrument: Instrument; accuracy: number; created_at: string } | null
+  }
+  const byAttempt = new Map<string, SentAttempt>()
+  for (const row of (data ?? []) as unknown as Row[]) {
+    if (!row.shared_attempt) continue
+    let entry = byAttempt.get(row.attempt_id)
+    if (!entry) {
+      entry = {
+        attempt_id: row.attempt_id,
+        song_title: row.shared_attempt.song_title,
+        instrument: row.shared_attempt.instrument,
+        accuracy: Number(row.shared_attempt.accuracy),
+        created_at: row.shared_attempt.created_at,
+        recipients: [],
+      }
+      byAttempt.set(row.attempt_id, entry)
+    }
+    entry.recipients.push({ recipient_id: row.recipient_id, sent_at: row.sent_at, seen_at: row.seen_at })
+  }
+  return [...byAttempt.values()].slice(0, limit)
+}

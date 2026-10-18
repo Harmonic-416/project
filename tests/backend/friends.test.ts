@@ -13,11 +13,13 @@ import {
 } from '../../src/lib/friends'
 import {
   addAttemptComment,
+  attachRecording,
   deleteAttemptComment,
   getSharedAttempt,
   listAttemptComments,
   listAttemptRecipients,
   listAttemptsSharedWithMe,
+  listSentAttempts,
   markAttemptSeen,
   saveAttempt,
   sendAttemptToFriends,
@@ -122,6 +124,15 @@ describe.skipIf(!schemaReady)('homepage helpers (friends, sending, comments)', (
     expect(comments.map((x) => [x.display_name, x.body])).toEqual([['Ben', 'watch the second bar']])
     await deleteAttemptComment(a.supabase, comments[0]!.id) // owner may delete
     expect(await listAttemptComments(b.supabase, saved.id)).toEqual([])
+
+    // The sender's "Sent" list, and adding a recording the friend can play.
+    expect(await listSentAttempts(a.supabase)).toMatchObject([
+      { attempt_id: saved.id, song_title: 'Riff', recipients: [{ recipient_id: b.id }] },
+    ])
+    const withAudio = await attachRecording(a.supabase, saved, new Blob(['fake audio'], { type: 'audio/webm' }))
+    expect(withAudio.recording_path).toBe(`${a.id}/${saved.id}.webm`)
+    const { error: playError } = await b.supabase.storage.from('recordings').createSignedUrl(withAudio.recording_path!, 60)
+    expect(playError).toBeNull()
 
     // Unsend, then share by link instead.
     await unsendAttempt(a.supabase, saved.id, b.id)

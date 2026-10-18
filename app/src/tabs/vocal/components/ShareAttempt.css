@@ -119,3 +119,52 @@
   background: #fbeccc;
   color: #7a5300 !important;
 }
+
+/* "Send to friends" (ShareAttempt): a quieter button and the friend picker. */
+.share-attempt__button--quiet {
+  border: 1px solid #128789;
+  background: transparent;
+  color: #128789;
+}
+
+.share-attempt__button--quiet:disabled {
+  cursor: default;
+}
+
+.share-attempt__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d6d3cc;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.share-attempt__friends {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.share-attempt__picker-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .share-attempt__button--quiet {
+    border-color: #3fb6b8;
+    color: #3fb6b8;
+  }
+
+  .share-attempt__picker {
+    border-color: #3a3a42;
+  }
+}
