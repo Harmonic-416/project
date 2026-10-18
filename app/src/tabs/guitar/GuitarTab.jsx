@@ -3,6 +3,7 @@ import './GuitarTab.css'
 import Tuner from './tuner/Tuner.jsx'
 import AccountChip from '../../auth/AccountChip.jsx'
 import Exercises from './exercises/Exercises.jsx'
+import Fretboard from './fretboard/Fretboard.jsx'
 import TuneUpPrompt from './tuner/TuneUpPrompt.jsx'
 import { createTuningWatch, dismissTunePrompt, isTunePromptDismissed, isTunedThisSession } from './tuner/tuneSession.js'
 import { TuningReportContext } from './tuner/tuningReport.js'
@@ -13,12 +14,13 @@ const GuitarSong = lazy(() => import('./song/GuitarSong.jsx'))
 const VIEWS = [
   { id: 'song', label: 'Songs' },
   { id: 'exercises', label: 'Exercises' }, // ear training (F41), strum on the beat (F18)
+  { id: 'fretboard', label: 'Fretboard' }, // every note on the neck, per tuning
   { id: 'tuner', label: 'Tuner' },
 ]
 
 /**
  * Guitar: Songs (tab + notation, played along and scored), Exercises to
- * practise on your own, and the Tuner. Opens on Songs; a shared guitar
+ * practise on your own, the Fretboard (every note on the neck), and the Tuner. Opens on Songs; a shared guitar
  * attempt (`sharedAttemptId`, from a share link via App.jsx) opens there too.
  * Until the guitar has been tuned this session, Songs shows a "Tune first?"
  * prompt, and the songs' single notes keep an ear out for it drifting
@@ -95,6 +97,8 @@ function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fil
             </>
           ) : view === 'exercises' ? (
             <Exercises />
+          ) : view === 'fretboard' ? (
+            <Fretboard />
           ) : (
             <Suspense fallback={<p className="guitar-tab__loading">Loading songs…</p>}>
               <GuitarSong
