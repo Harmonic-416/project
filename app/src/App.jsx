@@ -6,6 +6,7 @@ import VocalTab from './tabs/vocal/VocalTab.jsx'
 import { useSession } from './auth/useSession.js'
 import { GuitarIcon, HomeIcon, MicIcon } from './nav/TabIcons.jsx'
 import { readSharedAttemptId, readSharedAttemptInstrument } from './tabs/vocal/share/sharedAttempt.js'
+import { readInviteCode } from '@backend/friends'
 
 const TABS = [
   { id: 'home', label: 'Home', Icon: HomeIcon, Component: HomeTab },
@@ -39,9 +40,29 @@ function takeSharedAttempt() {
   }
 }
 
+// An invite link (/?invite=<code>) is kept the same way until Home has
+// signed the visitor in and made them friends with whoever sent it.
+const PENDING_INVITE_KEY = 'harmonic.pendingInvite'
+
+/** The invite code being opened, or null. */
+function takeInvite() {
+  const fromLink = readInviteCode(window.location.href)
+  try {
+    if (fromLink) {
+      sessionStorage.setItem(PENDING_INVITE_KEY, fromLink)
+      window.history.replaceState(null, '', window.location.pathname)
+      return fromLink
+    }
+    return sessionStorage.getItem(PENDING_INVITE_KEY)
+  } catch {
+    return fromLink
+  }
+}
+
 function App() {
   const [sharedAttempt, setSharedAttempt] = useState(takeSharedAttempt)
-  const [activeTab, setActiveTab] = useState(sharedAttempt?.tab ?? 'home')
+  const [invite, setInvite] = useState(takeInvite)
+  const [activeTab, setActiveTab] = useState(invite ? 'home' : (sharedAttempt?.tab ?? 'home'))
   // One session for the whole app: Home owns the sign-in UI, the instrument
   // tabs only read `auth.user` to decide what they may save.
   const auth = useSession()
@@ -57,6 +78,15 @@ function App() {
     setSharedAttempt(null)
   }, [])
 
+  const inviteDone = useCallback(() => {
+    try {
+      sessionStorage.removeItem(PENDING_INVITE_KEY)
+    } catch {
+      // storage blocked: nothing was kept
+    }
+    setInvite(null)
+  }, [])
+
   return (
     <div className="app">
       <main className="content">
@@ -65,6 +95,8 @@ function App() {
           onNavigate={setActiveTab}
           sharedAttemptId={sharedAttempt?.tab === activeTab ? sharedAttempt.id : null}
           onSharedAttemptDone={sharedAttemptDone}
+          inviteCode={invite}
+          onInviteDone={inviteDone}
         />
       </main>
 
