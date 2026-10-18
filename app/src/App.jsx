@@ -59,6 +59,8 @@ function takeInvite() {
   }
 }
 
+const tabForInstrument = (instrument) => (instrument === 'guitar' ? 'guitar' : 'vocal')
+
 function App() {
   const [sharedAttempt, setSharedAttempt] = useState(takeSharedAttempt)
   const [invite, setInvite] = useState(takeInvite)
@@ -87,6 +89,13 @@ function App() {
     setInvite(null)
   }, [])
 
+  // Home: open an attempt a friend sent (or one of yours) in its instrument's tab.
+  const openAttempt = useCallback(({ id, instrument }) => {
+    const tab = tabForInstrument(instrument)
+    setSharedAttempt({ id, tab })
+    setActiveTab(tab)
+  }, [])
+
   return (
     <div className="app">
       <main className="content">
@@ -97,6 +106,7 @@ function App() {
           onSharedAttemptDone={sharedAttemptDone}
           inviteCode={invite}
           onInviteDone={inviteDone}
+          onOpenAttempt={openAttempt}
         />
       </main>
 

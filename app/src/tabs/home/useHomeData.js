@@ -1,21 +1,28 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getMyProfile, listFriends } from '@backend/friends'
+import { listAttemptsSharedWithMe, listSentAttempts } from '@backend/attempts'
+import { getLatestAttempt, listRecentAttempts } from '@backend/home'
 import { supabase } from '../../lib/supabaseClient.js'
 
 /**
  * Everything the signed-in Home page shows, loaded together and reloadable
  * by part after a change (a friend accepted, a comment posted…).
  *
- *   data: { profile, friends } — each null while loading
+ *   data: { profile, friends, inbox, sent, recent, latest } — each null while loading
  *   errors: { [part]: message }
  *   reload(part?) — one part, or all of them
  */
 const LOADERS = {
   profile: () => getMyProfile(supabase),
   friends: () => listFriends(supabase),
+  inbox: () => listAttemptsSharedWithMe(supabase),
+  sent: () => listSentAttempts(supabase),
+  recent: () => listRecentAttempts(supabase),
+  // false = no attempts yet (null means still loading).
+  latest: async () => (await getLatestAttempt(supabase)) ?? false,
 }
 
-const EMPTY = { profile: null, friends: null }
+const EMPTY = { profile: null, friends: null, inbox: null, sent: null, recent: null, latest: null }
 
 export function useHomeData(userId) {
   const [data, setData] = useState(EMPTY)

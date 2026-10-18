@@ -8,6 +8,8 @@ import { supabase } from '../../lib/supabaseClient.js'
 import { GuitarIcon, MicIcon } from '../../nav/TabIcons.jsx'
 import FriendsSection from './FriendsSection.jsx'
 import ProfileCard from './ProfileCard.jsx'
+import { LatestAttempt, WorkingOn } from './ProgressSection.jsx'
+import { InboxSection, SentSection } from './SharedSection.jsx'
 import { useHomeData } from './useHomeData.js'
 
 const PRACTICE = [
@@ -17,12 +19,15 @@ const PRACTICE = [
 
 /**
  * Home: the account, and while signed in your own page: your name#tag and
- * invite link, and your friends and requests.
+ * invite link, how your latest attempt went, the songs you're working on,
+ * attempts friends sent you (with comments), your friends and requests, and
+ * what you've sent.
  *
  * `inviteCode` is an invite link being opened (App.jsx): once signed in it
- * makes you friends with whoever sent it.
+ * makes you friends with whoever sent it. `onOpenAttempt` opens an attempt
+ * in its instrument's tab.
  */
-function HomeTab({ auth, onNavigate, inviteCode, onInviteDone }) {
+function HomeTab({ auth, onNavigate, inviteCode, onInviteDone, onOpenAttempt }) {
   const { user, configured, ready } = auth
 
   // A failed sign-in or "Connect" comes back to the app with the reason in
@@ -59,7 +64,7 @@ function HomeTab({ auth, onNavigate, inviteCode, onInviteDone }) {
       )}
 
       {signedIn ? (
-        <SignedInHome user={user} onNavigate={onNavigate} inviteCode={inviteCode} />
+        <SignedInHome user={user} onNavigate={onNavigate} onOpenAttempt={onOpenAttempt} inviteCode={inviteCode} />
       ) : (
         <>
           <Section id="home-account" title="Account">
@@ -92,8 +97,9 @@ function HomeTab({ auth, onNavigate, inviteCode, onInviteDone }) {
   )
 }
 
-function SignedInHome({ user, onNavigate, inviteCode }) {
+function SignedInHome({ user, onNavigate, onOpenAttempt, inviteCode }) {
   const { data, errors, reload } = useHomeData(user.id)
+  const unseen = data.inbox?.filter((item) => !item.seen_at).length ?? 0
   const requests = data.friends?.filter((f) => f.kind === 'incoming').length ?? 0
 
   // Accepting an invite (InviteBanner) changes the friends list.
@@ -107,6 +113,24 @@ function SignedInHome({ user, onNavigate, inviteCode }) {
     <>
       <ProfileCard user={user} profile={data.profile} error={errors.profile} onChanged={() => reload('profile')} />
 
+      <Section id="home-progress" title="Your latest attempt">
+        <LatestAttempt latest={data.latest} recent={data.recent} error={errors.latest ?? errors.recent} onOpenAttempt={onOpenAttempt} />
+      </Section>
+
+      <Section id="home-working-on" title="Working on">
+        <WorkingOn recent={data.recent} error={errors.recent} onOpenAttempt={onOpenAttempt} />
+      </Section>
+
+      <Section id="home-inbox" title="Shared with you" count={unseen} countLabel="new">
+        <InboxSection
+          inbox={data.inbox}
+          error={errors.inbox}
+          myId={user.id}
+          onOpenAttempt={onOpenAttempt}
+          onChanged={() => reload('inbox')}
+        />
+      </Section>
+
       <Section id="home-friends" title="Friends" count={requests} countLabel={requests === 1 ? 'request' : 'requests'}>
         <FriendsSection
           me={data.profile}
@@ -114,6 +138,10 @@ function SignedInHome({ user, onNavigate, inviteCode }) {
           error={errors.friends}
           onChanged={() => reload('friends')}
         />
+      </Section>
+
+      <Section id="home-sent" title="Sent by you">
+        <SentSection sent={data.sent} error={errors.sent} friends={data.friends} myId={user.id} onOpenAttempt={onOpenAttempt} />
       </Section>
 
       <PracticeLinks onNavigate={onNavigate} />
