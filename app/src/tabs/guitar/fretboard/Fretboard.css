@@ -1,0 +1,297 @@
+@import '../../../auth/authTheme.css';
+
+.fretboard {
+  --fb-wood: #e9dcc6;
+  --fb-wire: #b9ab93;
+  --fb-nut: #6c6a72;
+  --fb-string: #8a8478;
+  --fb-note: #ffffff;
+  --fb-note-text: #24242c;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  box-sizing: border-box;
+  color: var(--hm-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .fretboard {
+    --fb-wood: #3a3128;
+    --fb-wire: #6f6455;
+    --fb-nut: #cfc8bb;
+    --fb-string: #a49c8e;
+    --fb-note: #26262d;
+    --fb-note-text: #f2f1ee;
+  }
+}
+
+/* ── controls ─────────────────────────────────────────────────────────── */
+.fretboard__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+}
+
+.fretboard__control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fretboard__control-label {
+  color: var(--hm-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fretboard__select {
+  padding: 8px 10px;
+  border: 1px solid var(--hm-border);
+  border-radius: 8px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font: inherit;
+}
+
+.fretboard__toggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--hm-border);
+  border-radius: 10px;
+  background: var(--hm-surface);
+}
+
+.fretboard__toggle-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--hm-text-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fretboard__toggle-button.is-on {
+  background: var(--hm-accent);
+  color: #ffffff;
+}
+
+.fretboard__select:focus-visible,
+.fretboard__toggle-button:focus-visible,
+.fretboard__clear:focus-visible {
+  outline: 2px solid var(--hm-accent);
+  outline-offset: 2px;
+}
+
+.fretboard__tuning-note {
+  margin: 0;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+}
+
+.fretboard__tuning-note strong {
+  color: var(--hm-text);
+  letter-spacing: 0.04em;
+}
+
+/* ── the neck ─────────────────────────────────────────────────────────── */
+/* Full size; scrolls instead of shrinking. */
+.fretboard__scroll {
+  overflow: auto;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+.fretboard__scroll--vertical {
+  align-self: center;
+  max-width: 100%;
+}
+
+.fretboard__neck {
+  display: block;
+  margin: 0 auto;
+}
+
+.fb-wood {
+  fill: var(--fb-wood);
+}
+
+.fb-wire {
+  stroke: var(--fb-wire);
+  stroke-width: 2;
+}
+
+.fb-nut {
+  stroke: var(--fb-nut);
+  stroke-width: 6;
+}
+
+.fb-string {
+  stroke: var(--fb-string);
+}
+
+.fb-fret-number {
+  fill: var(--hm-text-muted);
+  font-size: 11px;
+}
+
+.fb-fret-number.is-marked {
+  fill: var(--hm-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fb-link {
+  fill: none;
+  stroke: var(--hm-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 6 5;
+  opacity: 0.55;
+}
+
+.fb-link.is-chosen {
+  stroke-dasharray: none;
+  opacity: 0.9;
+}
+
+.fb-note {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.fb-note circle {
+  fill: var(--fb-note);
+  stroke: var(--fb-wire);
+  stroke-width: 1;
+}
+
+.fb-note text {
+  fill: var(--fb-note-text);
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.fb-note.is-open circle {
+  stroke-dasharray: 3 2;
+}
+
+.fb-note:hover circle {
+  stroke: var(--hm-accent);
+  stroke-width: 2;
+}
+
+.fb-note:focus {
+  outline: none;
+}
+
+.fb-note:focus-visible circle {
+  stroke: var(--hm-accent);
+  stroke-width: 3;
+}
+
+/* tapped: everything else fades to 20% */
+.fb-note.is-faded {
+  opacity: 0.2;
+}
+
+.fb-note.is-match circle {
+  fill: color-mix(in srgb, var(--hm-accent) 25%, var(--fb-note));
+  stroke: var(--hm-accent);
+  stroke-width: 2;
+}
+
+.fb-note.is-chosen circle {
+  fill: var(--hm-accent);
+  stroke: var(--hm-accent);
+  stroke-width: 4;
+  stroke-opacity: 0.35;
+}
+
+.fb-note.is-chosen text {
+  fill: #ffffff;
+}
+
+/* ── info ─────────────────────────────────────────────────────────────── */
+.fretboard__info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  background: var(--hm-surface);
+}
+
+.fretboard__info-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fretboard__info-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.fretboard__info-title small {
+  margin-left: 6px;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.fretboard__clear {
+  border: none;
+  background: none;
+  color: var(--hm-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fretboard__hint {
+  margin: 0;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+}
+
+.fretboard__moves,
+.fretboard__octaves {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fretboard__moves li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 10px;
+  border-left: 3px solid var(--hm-accent);
+  border-radius: 0;
+}
+
+.fretboard__moves li span {
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+}
+
+.fretboard__octaves li {
+  font-size: 0.9rem;
+}
