@@ -27,6 +27,7 @@ import { fetchCatalogSong, fetchCloudNotation } from './songs/cloudLibrary.js'
 import { fingerprintBytes } from './share/sharedAttempt.js'
 import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
+import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
 
 const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
 const NO_SCHEDULE = []
@@ -41,8 +42,9 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 // attempt names its song by catalog id or by the file's fingerprint.
 //
 // `sharedAttemptId` comes from a share link (App.jsx); `onSharedAttemptDone`
-// tells App it has been opened or dismissed.
-function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
+// tells App it has been opened or dismissed. `fileToOpenId` is a file from
+// Home's "My files" (kept on this device, myFiles.js) to open straight away.
+function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened }) {
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | shared | detail
   // Where the back button goes: a cloud song opens from the search view, a
   // built-in song or an upload from the library view.
@@ -130,10 +132,35 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
   const handleFileSelected = useCallback(
     (file) => {
       setReturnTo('library')
-      file.arrayBuffer().then((buf) => loadFromArrayBuffer(buf, file.name))
+      file.arrayBuffer().then(async (buf) => {
+        // Listed on Home under "My files" (this device only).
+        fingerprintBytes(buf)
+          .then((id) => rememberMyFile({ id, name: file.name, instrument: 'voice', bytes: buf }))
+          .catch((err) => console.error(err))
+        await loadFromArrayBuffer(buf, file.name)
+      })
     },
     [loadFromArrayBuffer],
   )
+
+  // A file picked from Home's "My files".
+  useEffect(() => {
+    if (!fileToOpenId) return undefined
+    let cancelled = false
+    loadMyFile(fileToOpenId)
+      .then(async (file) => {
+        if (cancelled) return
+        onFileOpened?.()
+        if (!file) throw new Error('That file isn’t on this device anymore.')
+        setReturnTo('library')
+        rememberMyFile(file).catch(() => {})
+        await loadFromArrayBuffer(file.bytes, file.name)
+      })
+      .catch((err) => fail(err, 'Could not open that file.'))
+    return () => {
+      cancelled = true
+    }
+  }, [fileToOpenId, onFileOpened, loadFromArrayBuffer, fail])
 
   // ── Shared attempts ────────────────────────────────────────────────────
   const openShared = useCallback(
@@ -178,6 +205,12 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
             if (!cancelled) await openShared(attempt, bytes, song.filename, { builtin: true })
             return
           }
+        }
+        // A file of yours on this device (Home's "My files").
+        const mine = await loadMyFile(attempt.song_fingerprint)
+        if (mine) {
+          if (!cancelled) await openShared(attempt, mine.bytes, mine.name)
+          return
         }
         if (!cancelled) setShared({ phase: 'need-file', attempt })
       } catch (err) {

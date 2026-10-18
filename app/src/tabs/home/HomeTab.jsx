@@ -7,6 +7,7 @@ import { firstNameFor, friendlyAuthError, readOAuthError } from '../../auth/auth
 import { supabase } from '../../lib/supabaseClient.js'
 import { GuitarIcon, MicIcon } from '../../nav/TabIcons.jsx'
 import FriendsSection from './FriendsSection.jsx'
+import MyFilesSection from './MyFilesSection.jsx'
 import ProfileCard from './ProfileCard.jsx'
 import { LatestAttempt, WorkingOn } from './ProgressSection.jsx'
 import { InboxSection, SentSection } from './SharedSection.jsx'
@@ -20,14 +21,14 @@ const PRACTICE = [
 /**
  * Home: the account, and while signed in your own page: your name#tag and
  * invite link, how your latest attempt went, the songs you're working on,
- * attempts friends sent you (with comments), your friends and requests, and
- * what you've sent.
+ * attempts friends sent you (with comments), your friends and requests,
+ * what you've sent, and the song files kept on this device.
  *
  * `inviteCode` is an invite link being opened (App.jsx): once signed in it
- * makes you friends with whoever sent it. `onOpenAttempt` opens an attempt
- * in its instrument's tab.
+ * makes you friends with whoever sent it. `onOpenAttempt` / `onOpenFile`
+ * open an attempt or a file in its instrument's tab.
  */
-function HomeTab({ auth, onNavigate, inviteCode, onInviteDone, onOpenAttempt }) {
+function HomeTab({ auth, onNavigate, inviteCode, onInviteDone, onOpenAttempt, onOpenFile }) {
   const { user, configured, ready } = auth
 
   // A failed sign-in or "Connect" comes back to the app with the reason in
@@ -64,7 +65,7 @@ function HomeTab({ auth, onNavigate, inviteCode, onInviteDone, onOpenAttempt }) 
       )}
 
       {signedIn ? (
-        <SignedInHome user={user} onNavigate={onNavigate} onOpenAttempt={onOpenAttempt} inviteCode={inviteCode} />
+        <SignedInHome user={user} onNavigate={onNavigate} onOpenAttempt={onOpenAttempt} onOpenFile={onOpenFile} inviteCode={inviteCode} />
       ) : (
         <>
           <Section id="home-account" title="Account">
@@ -85,6 +86,9 @@ function HomeTab({ auth, onNavigate, inviteCode, onInviteDone, onOpenAttempt }) 
             )}
           </Section>
           <PracticeLinks onNavigate={onNavigate} />
+          <Section id="home-files" title="My files">
+            <MyFilesSection onOpenFile={onOpenFile} />
+          </Section>
         </>
       )}
 
@@ -97,7 +101,7 @@ function HomeTab({ auth, onNavigate, inviteCode, onInviteDone, onOpenAttempt }) 
   )
 }
 
-function SignedInHome({ user, onNavigate, onOpenAttempt, inviteCode }) {
+function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, inviteCode }) {
   const { data, errors, reload } = useHomeData(user.id)
   const unseen = data.inbox?.filter((item) => !item.seen_at).length ?? 0
   const requests = data.friends?.filter((f) => f.kind === 'incoming').length ?? 0
@@ -142,6 +146,10 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, inviteCode }) {
 
       <Section id="home-sent" title="Sent by you">
         <SentSection sent={data.sent} error={errors.sent} friends={data.friends} myId={user.id} onOpenAttempt={onOpenAttempt} />
+      </Section>
+
+      <Section id="home-files" title="My files">
+        <MyFilesSection onOpenFile={onOpenFile} />
       </Section>
 
       <PracticeLinks onNavigate={onNavigate} />

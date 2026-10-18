@@ -24,7 +24,7 @@ const VIEWS = [
  * prompt, and the songs' single notes keep an ear out for it drifting
  * (tuneSession.js); Tune now leads back to where you were.
  */
-function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
+function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened }) {
   const [view, setView] = useState('song')
   const [returnTo, setReturnTo] = useState(null) // the view "Tune now" came from
   const [tuned, setTuned] = useState(isTunedThisSession)
@@ -102,6 +102,8 @@ function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
                 onNavigate={onNavigate}
                 sharedAttemptId={sharedAttemptId}
                 onSharedAttemptDone={onSharedAttemptDone}
+                fileToOpenId={fileToOpenId}
+                onFileOpened={onFileOpened}
               />
             </Suspense>
           )}

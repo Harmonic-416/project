@@ -64,6 +64,8 @@ const tabForInstrument = (instrument) => (instrument === 'guitar' ? 'guitar' : '
 function App() {
   const [sharedAttempt, setSharedAttempt] = useState(takeSharedAttempt)
   const [invite, setInvite] = useState(takeInvite)
+  // A file from Home's "My files" to open in its tab: { id, tab }.
+  const [fileToOpen, setFileToOpen] = useState(null)
   const [activeTab, setActiveTab] = useState(invite ? 'home' : (sharedAttempt?.tab ?? 'home'))
   // One session for the whole app: Home owns the sign-in UI, the instrument
   // tabs only read `auth.user` to decide what they may save.
@@ -96,6 +98,14 @@ function App() {
     setActiveTab(tab)
   }, [])
 
+  // Home: open a song file kept on this device.
+  const openFile = useCallback(({ id, instrument }) => {
+    const tab = tabForInstrument(instrument)
+    setFileToOpen({ id, tab })
+    setActiveTab(tab)
+  }, [])
+  const fileOpened = useCallback(() => setFileToOpen(null), [])
+
   return (
     <div className="app">
       <main className="content">
@@ -104,9 +114,12 @@ function App() {
           onNavigate={setActiveTab}
           sharedAttemptId={sharedAttempt?.tab === activeTab ? sharedAttempt.id : null}
           onSharedAttemptDone={sharedAttemptDone}
+          fileToOpenId={fileToOpen?.tab === activeTab ? fileToOpen.id : null}
+          onFileOpened={fileOpened}
           inviteCode={invite}
           onInviteDone={inviteDone}
           onOpenAttempt={openAttempt}
+          onOpenFile={openFile}
         />
       </main>
 

@@ -9,6 +9,7 @@ import SharedAttemptGate from '../../vocal/components/SharedAttemptGate.jsx'
 import SongLibrary from '../../vocal/components/SongLibrary.jsx'
 import '../../vocal/components/NotationUploader.css'
 import { titleFromFilename } from '../../vocal/notation/loadNotation.js'
+import { loadMyFile, rememberMyFile } from '../../home/myFiles.js'
 import { fingerprintBytes } from '../../vocal/share/sharedAttempt.js'
 import { fetchCatalogSong, fetchCloudNotation } from '../../vocal/songs/cloudLibrary.js'
 import { getSharedAttempt } from '@backend/attempts'
@@ -102,7 +103,7 @@ function DraftNotice({ about }) {
  * catalog song by id, anything else by its file's fingerprint);
  * `sharedAttemptId` opens one someone sent (App.jsx reads the link).
  */
-function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) {
+function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened }) {
   const [browse, setBrowse] = useState('library') // library | search | transcribe
   const [notation, setNotation] = useState(null) // loadGuitarNotation's result + { fingerprint, catalogSongId, builtin, draft }
   const [drafts, setDrafts] = useState([]) // My transcriptions: [{ id, title, updated }]
@@ -176,7 +177,39 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
     [open],
   )
 
-  const openUpload = useCallback(async (file) => open(await file.arrayBuffer(), file.name), [open])
+  const openUpload = useCallback(
+    async (file) => {
+      const bytes = await file.arrayBuffer()
+      // Listed on Home under "My files" (this device only).
+      fingerprintBytes(bytes)
+        .then((id) => rememberMyFile({ id, name: file.name, instrument: 'guitar', bytes }))
+        .catch((err) => console.error(err))
+      await open(bytes, file.name)
+    },
+    [open],
+  )
+
+  // A file picked from Home's "My files" (myFiles.js).
+  useEffect(() => {
+    if (!fileToOpenId) return undefined
+    let cancelled = false
+    loadMyFile(fileToOpenId)
+      .then(async (file) => {
+        if (cancelled) return
+        onFileOpened?.()
+        if (!file) throw new Error('That file isn’t on this device anymore.')
+        rememberMyFile(file).catch(() => {})
+        await open(file.bytes, file.name)
+      })
+      .catch((err) => {
+        console.error(err)
+        setError(err.message || 'Could not open that file.')
+        setStatus('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [fileToOpenId, onFileOpened, open])
 
   // ── My transcriptions ──────────────────────────────────────────────────
   const inLibrary = !notation && browse === 'library'
@@ -283,6 +316,12 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone }) 
             if (!cancelled) await openShared(attempt, bytes, song.filename, { builtin: true })
             return
           }
+        }
+        // A file of yours on this device (Home's "My files").
+        const mine = await loadMyFile(attempt.song_fingerprint)
+        if (mine) {
+          if (!cancelled) await openShared(attempt, mine.bytes, mine.name)
+          return
         }
         if (!cancelled) setShared({ phase: 'need-file', attempt })
       } catch (err) {
