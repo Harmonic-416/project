@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { deleteMyFile, fileKind, formatSize, listMyFiles, myFilesAvailable } from './myFiles.js'
 import { timeAgo } from './homeFormat.js'
+import { FileIcon, NoteIcon } from './homeIcons.jsx'
+import { GuitarIcon } from '../../nav/TabIcons.jsx'
 
 const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
 
@@ -69,6 +71,53 @@ function MyFilesSection({ onOpenFile }) {
         ))}
       </ul>
       <p className="home-tab__hint">Kept on this device only.</p>
+    </>
+  )
+}
+
+const KINDS = [
+  { kind: 'MusicXML', Icon: FileIcon, tone: 'purple' },
+  { kind: 'MIDI', Icon: NoteIcon, tone: 'teal' },
+  { kind: 'Guitar Pro', Icon: GuitarIcon, tone: 'purple' },
+]
+
+/** Home's My Files card: how many of each kind are on this device. */
+export function FilesSummary({ onViewAll }) {
+  const [files, setFiles] = useState(null)
+
+  useEffect(() => {
+    let live = true
+    listMyFiles()
+      .then((list) => live && setFiles(list))
+      .catch(() => live && setFiles([]))
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const count = (kind) => files?.filter((f) => fileKind(f.name) === kind).length ?? 0
+  return (
+    <>
+      <p className="hp-muted">
+        {files?.length
+          ? `${files.length} ${files.length === 1 ? 'file' : 'files'} on this device. Tap one to open it again.`
+          : 'Files you upload in Guitar or Vocal (MusicXML, MIDI, Guitar Pro) are listed here.'}
+      </p>
+      <ul className="hp-kinds">
+        {KINDS.map(({ kind, Icon, tone }) => (
+          <li key={kind}>
+            <button type="button" className={`hp-kind hp-kind--${tone}`} onClick={onViewAll}>
+              <span className="hp-kind__icon" aria-hidden="true">
+                <Icon />
+              </span>
+              <strong>{kind}</strong>
+              <small>
+                {files === null ? '…' : count(kind)} {count(kind) === 1 ? 'file' : 'files'}
+              </small>
+            </button>
+          </li>
+        ))}
+      </ul>
     </>
   )
 }
