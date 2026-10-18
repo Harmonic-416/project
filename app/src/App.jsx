@@ -3,8 +3,9 @@ import './App.css'
 import HomeTab from './tabs/home/HomeTab.jsx'
 import GuitarTab from './tabs/guitar/GuitarTab.jsx'
 import VocalTab from './tabs/vocal/VocalTab.jsx'
+import SocialTab from './tabs/social/SocialTab.jsx'
 import { useSession } from './auth/useSession.js'
-import { GuitarIcon, HomeIcon, MicIcon } from './nav/TabIcons.jsx'
+import { GuitarIcon, HomeIcon, MicIcon, SocialIcon } from './nav/TabIcons.jsx'
 import { readSharedAttemptId, readSharedAttemptInstrument } from './tabs/vocal/share/sharedAttempt.js'
 import { readInviteCode } from '@backend/friends'
 
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'home', label: 'Home', Icon: HomeIcon, Component: HomeTab },
   { id: 'guitar', label: 'Guitar', Icon: GuitarIcon, Component: GuitarTab },
   { id: 'vocal', label: 'Vocal', Icon: MicIcon, Component: VocalTab },
+  { id: 'social', label: 'Social', Icon: SocialIcon, Component: SocialTab },
 ]
 
 // A share link (/?attempt=<id>, plus &instrument=guitar for a guitar attempt)
@@ -40,8 +42,8 @@ function takeSharedAttempt() {
   }
 }
 
-// An invite link (/?invite=<code>) is kept the same way until Home has
-// signed the visitor in and made them friends with whoever sent it.
+// An invite link (/?invite=<code>) is kept the same way until Social has
+// made the (signed-in) visitor friends with whoever sent it.
 const PENDING_INVITE_KEY = 'harmonic.pendingInvite'
 
 /** The invite code being opened, or null. */
@@ -66,7 +68,7 @@ function App() {
   const [invite, setInvite] = useState(takeInvite)
   // A file from Home's "My files" to open in its tab: { id, tab }.
   const [fileToOpen, setFileToOpen] = useState(null)
-  const [activeTab, setActiveTab] = useState(invite ? 'home' : (sharedAttempt?.tab ?? 'home'))
+  const [activeTab, setActiveTab] = useState(invite ? 'social' : (sharedAttempt?.tab ?? 'home'))
   // One session for the whole app: Home owns the sign-in UI, the instrument
   // tabs only read `auth.user` to decide what they may save.
   const auth = useSession()
