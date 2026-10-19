@@ -13,6 +13,8 @@ import { arrangeSong } from './arrange.js'
  *             vocals)
  *   melody    Basic Pitch on the vocals, without what the band bled into
  *             them (bleed.js); arrange.js cuts it to one line
+ *   words     the lyrics, when the caller can hear them (the worker:
+ *             Whisper and LRCLIB; lyrics.js places them)
  *   harmony   Basic Pitch on the whole song, for its chord on every beat
  *             (chords.js); the whole song, not the band alone, so an a
  *             cappella recording has chords too
@@ -26,9 +28,10 @@ import { arrangeSong } from './arrange.js'
 // Each stage's share of the progress bar on the CPU (`weight`) and on a graphics card (`gpuWeight`).
 export const STAGES = [
   { id: 'decode', label: 'Reading the audio', weight: 0.03, gpuWeight: 0.06 },
-  { id: 'isolate', label: 'Isolating the singer', weight: 0.55, gpuWeight: 0.4 },
-  { id: 'melody', label: 'Listening to the melody', weight: 0.17, gpuWeight: 0.24 },
-  { id: 'harmony', label: 'Listening for the chords', weight: 0.17, gpuWeight: 0.24 },
+  { id: 'isolate', label: 'Isolating the singer', weight: 0.5, gpuWeight: 0.36 },
+  { id: 'melody', label: 'Listening to the melody', weight: 0.15, gpuWeight: 0.2 },
+  { id: 'words', label: 'Listening for the words', weight: 0.08, gpuWeight: 0.1 },
+  { id: 'harmony', label: 'Listening for the chords', weight: 0.15, gpuWeight: 0.2 },
   { id: 'beats', label: 'Finding the beat', weight: 0.06, gpuWeight: 0.04 },
   { id: 'arrange', label: 'Writing the parts', weight: 0.02, gpuWeight: 0.02 },
 ]
@@ -85,13 +88,14 @@ export async function arrangeFile(file, { onProgress, signal, title, ...options 
  * the song at 44.1 kHz, `song` mono at 22.05 kHz. `toModelRate([left,
  * right])` turns the separated vocals into mono 22.05 kHz. `models` are
  * the worker's ({ runtime (onnxruntime), separator, beats (model bytes),
- * basicPitch }), or the app's own when left out. `gpu` weights the
- * progress bar. Other options are arrangeSong's (`voicing`, `melodyPart`,
+ * basicPitch }), or the app's own when left out. `lyrics(vocals)` (optional)
+ * returns the sung words ([{ text, start, end }], lyrics.js) for the
+ * separated vocals, or null. `gpu` weights the progress bar. Other options are arrangeSong's (`voicing`, `melodyPart`,
  * `keepKey`, `title`), plus `onProgress({ stage, label, value, device })`
  * (`value` the whole job's 0 … 1) and `signal` (an AbortSignal). Returns
  * arrangeSong's result with `title`; throws when no singing is heard.
  */
-export async function arrangeAudio({ left, right, song }, { toModelRate, models = {}, gpu = false, onProgress, signal, title = 'Recording', ...options } = {}) {
+export async function arrangeAudio({ left, right, song }, { toModelRate, models = {}, lyrics = null, gpu = false, onProgress, signal, title = 'Recording', ...options } = {}) {
   let device = gpu ? 'gpu' : 'cpu'
   const share = (s) => (gpu ? s.gpuWeight : s.weight)
   let done = 0
@@ -123,6 +127,13 @@ export async function arrangeAudio({ left, right, song }, { toModelRate, models 
   const notes = dropBleed(heard, vocals, song)
   if (!notes.length) throw new Error('No singing was heard in this recording.')
 
+  let words = null
+  if (lyrics) {
+    stage('words')
+    words = await lyrics(vocals)
+    signal?.throwIfAborted()
+  }
+
   const { frames } = await basicPitch.evaluateAudio(song, { onProgress: stage('harmony'), signal, basicPitch: model })
 
   const { trackBeats } = await import('../../guitar/song/transcribe/beats.js')
@@ -130,7 +141,7 @@ export async function arrangeAudio({ left, right, song }, { toModelRate, models 
 
   stage('arrange')
   const chords = bars.beats.length ? recognizeChords(beatChroma(frames, basicPitch.frameTime, bars.beats), bars) : []
-  const result = arrangeSong({ notes, chords, bars }, { ...options, title })
+  const result = arrangeSong({ notes, chords, bars, words }, { ...options, title })
   if (!result) throw new Error('No singing was heard in this recording.')
   onProgress?.({ stage: 'arrange', label: STAGES.at(-1).label, value: 1, device })
   return { ...result, title }

@@ -19,6 +19,8 @@ export interface ArrangementSummary {
   melodyPartName: string
   bpm: number
   measures: number
+  /** Where the words under the notes came from: published lyrics, Whisper alone, or none. */
+  lyrics?: 'official' | 'heard' | null
 }
 
 export interface ArrangementJob {

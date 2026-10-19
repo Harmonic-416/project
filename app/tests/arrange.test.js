@@ -200,6 +200,25 @@ describe('arranging a song', () => {
     expect(result.musicXml).not.toContain('<alter>1</alter>')
   })
 
+  it('writes the words under the tune, and under the parts singing with it', () => {
+    // "Twin-kle twin-kle lit-tle star": a syllable a note, from 1 s, half a second each.
+    const syll = ['Twinkle', 'twinkle', 'little', 'star']
+    const words = syll.map((text, i) => ({ text, start: 1 + i, end: 1.9 + i }))
+    const result = arrangeSong({ ...twinkle(), words }, { voicing: 'ttbb' })
+    expect(result.lyrics).toBe(true)
+    const tune = result.parts[0].events
+    expect(tune.slice(0, 7).map((e) => e.lyric && `${e.lyric.text}:${e.lyric.syllabic}`)).toEqual([
+      'Twin:begin', 'kle:end', 'twin:begin', 'kle:end', 'lit:begin', 'tle:end', 'star:single',
+    ])
+    // The bass starts its chords with the tune's syllables; before the tune comes in, it sings "oo".
+    const bass = result.parts[3].events
+    expect(bass[0].lyric).toEqual({ text: 'oo', syllabic: 'single' })
+    expect(bass.find((e) => e.start === tune[0].start).lyric).toEqual({ text: 'Twin', syllabic: 'begin' })
+    expect(result.musicXml).toContain('<lyric number="1"><syllabic>begin</syllabic><text>Twin</text></lyric>')
+    // No words given: no lyrics, not even "oo".
+    expect(arrangeSong(twinkle(), { voicing: 'ttbb' }).musicXml).not.toContain('<lyric')
+  })
+
   it('has nothing to arrange without singing', () => {
     expect(arrangeSong({ notes: [], chords: [], bars: { beats: [], beatsPerBar: 4, firstDownbeat: 0 } })).toBeNull()
   })

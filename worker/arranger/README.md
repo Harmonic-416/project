@@ -8,7 +8,8 @@ instead of finding the audio. One job at a time, oldest first:
 1. `yt-dlp` fetches the video's best audio stream into a temporary folder;
 2. `ffmpeg` decodes it (the browser's Web Audio does this in the app);
 3. `arrangeAudio` — the same code the browser runs — isolates the singer,
-   hears the melody and the chords, finds the beat and writes the parts;
+   hears the melody and the chords, finds the beat and writes the parts,
+   with the lyrics under the notes (below);
 4. the MusicXML goes to `arrangements/<user>/<job>.musicxml`, the job is
    marked done, and the audio is deleted.
 
@@ -41,6 +42,21 @@ To try the pipeline without Supabase:
 cd worker/arranger && npm run once -- <YouTube id | audio file> out.musicxml ttbb
 ```
 
+## Lyrics
+
+`songLyrics.js` looks up the song's published lyrics on
+[LRCLIB](https://lrclib.net) (free, no key) by the video's artist and
+track (yt-dlp knows them for music videos; otherwise they're guessed from
+the title) while the audio downloads, and runs Whisper
+(`WHISPER_MODEL`, default `onnx-community/whisper-small_timestamped`,
+~250 MB, cached in `CACHE_DIR` on first use) on the separated vocals for
+each word's time. `app/src/tabs/vocal/arrange/lyrics.js` lines the two up
+(LRCLIB's synced line times first, Whisper within a line), splits the
+words into syllables and puts them under the notes. If LRCLIB has nothing,
+Whisper's words are used as heard; if lyrics fail altogether the
+arrangement is still written, without words. The job's `summary.lyrics`
+says which ('official', 'heard' or null). Whisper adds ~40 s a song.
+
 ## Who can use it
 
 Only users in `arranger_access`, kept by hand with the service role
@@ -68,6 +84,10 @@ CPU type doesn't expose — set the VM's CPU type to `host` to allow it.
 - `register.js` / `hooks.js` let plain Node load the app's modules as Vite
   does (`@tonejs/midi`'s exports, `import.meta.env`).
 - `onnxruntime-node` has no Intel-Mac build; there the worker falls back
-  to the app's `onnxruntime-web`.
+  to the app's `onnxruntime-web`. It's pinned to the version
+  transformers.js uses (`overrides` in package.json): two native ONNX
+  Runtimes can't load in one process.
+- yt-dlp now and then gets HTTP 403 from YouTube; downloads are retried
+  three times.
 - When YouTube changes and yt-dlp starts failing (HTTP 403, "confirm
   you're not a bot"), update it: `yt-dlp -U` for the standalone build.

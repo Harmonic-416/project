@@ -164,6 +164,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         key: result.key.name,
         shift: result.shift,
         video: result.video,
+        lyrics: result.lyricsSource ?? null,
       })
     },
     [loadFromArrayBuffer],
@@ -515,6 +516,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               .{' '}
             </>
           )}
+          {arrangement.lyrics === 'official' && 'The lyrics are the published ones, placed by ear. '}
+          {arrangement.lyrics === 'heard' && 'The lyrics are as heard by ear, so check them. '}
           The harmony is written new from the song’s chords, and the notes are heard by ear: give it a listen and fix
           what’s off.
         </p>

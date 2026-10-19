@@ -8,9 +8,15 @@
     "start": "node --import ./register.js worker.js",
     "once": "node --import ./register.js arrange-once.js"
   },
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",
-    "onnxruntime-node": "^1.23.0"
+    "onnxruntime-node": "1.21.0",
+    "@huggingface/transformers": "^3.7.0"
+  },
+  "overrides": {
+    "onnxruntime-node": "$onnxruntime-node"
   }
 }

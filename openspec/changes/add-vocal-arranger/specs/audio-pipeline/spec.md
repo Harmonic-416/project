@@ -20,6 +20,7 @@ The system SHALL turn a recording of a song into a new arrangement for voices â€
 - **THEN** the job is queued and its progress shown
 - **AND** the arrangement opens when the server has finished it
 - **AND** no audio is kept on the server or sent to the user
+- **AND** the sung words are written under the notes, the published lyrics when they can be found
 
 #### Scenario: Others can't queue server jobs
 - **WHEN** a user not on the arranger list asks the server for an arrangement

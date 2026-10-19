@@ -30,20 +30,30 @@ function run(command, args, { input = null, signal } = {}) {
   })
 }
 
-/** A video's { title, duration } without downloading it. */
+/** A video's { title, duration, live, artist, track, channel } without downloading it (artist and track only for music). */
 export async function videoInfo(id, { signal } = {}) {
   const json = await run(YT_DLP, ['--no-warnings', '--no-playlist', '--skip-download', '--dump-single-json', `https://www.youtube.com/watch?v=${id}`], { signal })
-  const { title, duration, is_live: live } = JSON.parse(json.toString('utf8'))
-  return { title, duration, live: Boolean(live) }
+  const { title, duration, is_live: live, artist = null, track = null, channel = '' } = JSON.parse(json.toString('utf8'))
+  return { title, duration, live: Boolean(live), artist, track, channel }
 }
+
+const ATTEMPTS = 3 // YouTube now and then answers a download with HTTP 403; the next try usually works
 
 /** The video's best audio stream, saved in `dir`; resolves to its path. */
 export async function downloadAudio(id, dir, { signal } = {}) {
-  await run(
-    YT_DLP,
-    ['--no-warnings', '--no-playlist', '--no-progress', '-f', 'bestaudio', '--max-filesize', '100M', '-o', join(dir, 'audio.%(ext)s'), `https://www.youtube.com/watch?v=${id}`],
-    { signal },
-  )
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await run(
+        YT_DLP,
+        ['--no-warnings', '--no-playlist', '--no-progress', '-f', 'bestaudio', '--max-filesize', '100M', '-o', join(dir, 'audio.%(ext)s'), `https://www.youtube.com/watch?v=${id}`],
+        { signal },
+      )
+      break
+    } catch (err) {
+      if (attempt >= ATTEMPTS || signal?.aborted) throw err
+      await new Promise((resolve) => setTimeout(resolve, 3000 * attempt))
+    }
+  }
   const file = readdirSync(dir).find((name) => name.startsWith('audio.') && !name.endsWith('.part'))
   if (!file) throw new Error('yt-dlp left no audio file')
   return join(dir, file)

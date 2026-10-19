@@ -16,7 +16,8 @@ import { GUITAR_CLEF, STANDARD_TUNING, staffDetails } from '../../notation/fretA
  *     part as it does any other.
  *
  *   event: { start, end (sixteenths from the start of bar 1), midi (as it
- *            sounds), string?, fret?, voice?: 1 | 2 }
+ *            sounds), string?, fret?, voice?: 1 | 2, lyric?: { text,
+ *            syllabic } (written under its first note) }
  *
  * Pure; unit-tested in app/tests/scoreXml.test.js.
  */
@@ -58,14 +59,16 @@ function voiceGroups(events) {
   })
 }
 
-function noteXml(note, { chord, chunk, voice, stem, tieStart, tieStop, fifths }) {
+const lyricXml = ({ text, syllabic }) => `<lyric number="1"><syllabic>${syllabic}</syllabic><text>${escapeXml(text)}</text></lyric>`
+
+function noteXml(note, { chord, chunk, voice, stem, tieStart, tieStop, fifths, lyric = null }) {
   const ties = `${tieStop ? '<tie type="stop"/>' : ''}${tieStart ? '<tie type="start"/>' : ''}`
   const tied = `${tieStop ? '<tied type="stop"/>' : ''}${tieStart ? '<tied type="start"/>' : ''}`
   const technical = note.string ? `<technical><string>${note.string}</string><fret>${note.fret}</fret></technical>` : ''
   const notations = tied || technical ? `<notations>${tied}${technical}</notations>` : ''
   return (
     `<note>${chord ? '<chord/>' : ''}${pitchXml(note.midi, fifths)}<duration>${chunk.divisions}</duration>${ties}` +
-    `<voice>${voice}</voice><type>${chunk.type}</type>${'<dot/>'.repeat(chunk.dots)}${stem ? `<stem>${stem}</stem>` : ''}${notations}</note>`
+    `<voice>${voice}</voice><type>${chunk.type}</type>${'<dot/>'.repeat(chunk.dots)}${stem ? `<stem>${stem}</stem>` : ''}${notations}${lyric ? lyricXml(lyric) : ''}</note>`
   )
 }
 
@@ -90,7 +93,8 @@ function voiceXml(groups, from, to, { voice, stem, marks, fifths }) {
       const tieStop = i > 0 || group.start < from
       const tieStart = i < chunks.length - 1 || group.end > to
       group.notes.forEach((note, k) => {
-        xml += noteXml(note, { chord: k > 0, chunk, voice, stem, tieStart, tieStop, fifths })
+        const lyric = i === 0 && k === 0 && group.start >= from ? (group.notes.find((n) => n.lyric)?.lyric ?? null) : null
+        xml += noteXml(note, { chord: k > 0, chunk, voice, stem, tieStart, tieStop, fifths, lyric })
       })
     })
     cursor = end

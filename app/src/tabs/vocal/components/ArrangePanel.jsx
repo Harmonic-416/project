@@ -89,6 +89,7 @@ function ArrangePanel({ onArranged, auth, supabase }) {
         melodyPartName: s.melodyPartName,
         key: { name: s.key ?? '' },
         shift: s.shift ?? 0,
+        lyricsSource: s.lyrics ?? null,
         video: { id: job.youtube_id, url: `https://www.youtube.com/watch?v=${job.youtube_id}`, title: job.title },
       })
     } catch (err) {
@@ -271,7 +272,10 @@ function ArrangePanel({ onArranged, auth, supabase }) {
           <button type="button" className="arrange__primary" onClick={queue} disabled={Boolean(waitingFor)}>
             Arrange from this link
           </button>
-          <small>Runs on Harmonic’s server, which fetches the audio itself. You can leave this page and come back.</small>
+          <small>
+            Runs on Harmonic’s server, which fetches the audio itself and adds the lyrics. You can leave this page and
+            come back.
+          </small>
         </div>
       )}
       {parsed && !linkAccess && (

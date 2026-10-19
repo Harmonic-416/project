@@ -2,6 +2,7 @@ import { KINDS } from '../../guitar/practice/chordNames.js'
 import { beatClock } from '../../guitar/song/transcribe/beatWarp.js'
 import { chordId, harmonyXml } from '../../guitar/song/transcribe/chords.js'
 import { SLOTS_PER_BEAT, partXml, scoreXml } from '../../guitar/song/transcribe/scoreXml.js'
+import { placeLyrics } from './lyrics.js'
 
 /**
  * A song's tune and chords → a new arrangement of it for voices (TTBB, SATB
@@ -404,11 +405,14 @@ const escapeXml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&
  * (beats.js: { beats, beatsPerBar, firstDownbeat }). Options: `voicing`
  * (a VOICINGS key), `melodyPart` (the part that sings the tune, one of
  * that voicing's `melody`), `keepKey` (move the tune by octaves only),
- * `title`. Returns { musicXml, parts: [{ name, events }], voicing,
- * melodyPart (the part with the tune), shift (semitones the song moved),
- * key, bpm, beatsPerBar, measures }, or null when no singing was heard.
+ * `title`. `words` (lyrics.js's, timed in the recording) are written under
+ * the tune, and under the other parts where they sing with it; where they
+ * hold the chords alone, they sing "oo". Returns { musicXml, parts: [{
+ * name, events }], voicing, melodyPart (the part with the tune), shift
+ * (semitones the song moved), key, bpm, beatsPerBar, measures, lyrics
+ * (whether any words were placed) }, or null when no singing was heard.
  */
-export function arrangeSong({ notes, chords, bars }, { voicing = 'ttbb', melodyPart = 0, keepKey = false, title = '' } = {}) {
+export function arrangeSong({ notes, chords, bars, words = null }, { voicing = 'ttbb', melodyPart = 0, keepKey = false, title = '' } = {}) {
   const ensemble = VOICINGS[voicing]
   if (!ensemble) throw new Error(`No such voicing: ${voicing}`)
   const tune = ensemble.melody.includes(melodyPart) ? melodyPart : ensemble.melody[0]
@@ -427,7 +431,8 @@ export function arrangeSong({ notes, chords, bars }, { voicing = 'ttbb', melodyP
 
   const shift = bestShift(placed, voices[tune], { octavesOnly: keepKey })
   const steps = ((shift % 12) + 12) % 12
-  const melody = placed.map((e) => ({ ...e, midi: reach(e.midi + shift, voices[tune]) }))
+  const tuned = placed.map((e) => ({ ...e, midi: reach(e.midi + shift, voices[tune]) }))
+  const melody = words?.length ? placeLyrics(tuned, words, toSlot) : tuned
   const moved = (chord) => (chord ? { root: (chord.root + steps) % 12, kind: chord.kind, id: chordId((chord.root + steps) % 12, chord.kind) } : null)
   const perBar = beatsPerBar * SLOTS_PER_BEAT
   const measures = Math.ceil(melody.at(-1).end / perBar) + 1 // and a bar after it ends
@@ -435,9 +440,25 @@ export function arrangeSong({ notes, chords, bars }, { voicing = 'ttbb', melodyP
 
   const segments = harmonySegments(melody, chordAt, { measures, beatsPerBar })
   const voiced = voiceSegments(segments, voices, tune)
+  // The other parts sing the tune's syllable when they start with it, and "oo" holding chords on their own.
+  const lyricAt = new Map(melody.filter((e) => e.lyric).map((e) => [e.start, e.lyric]))
+  const sung = lyricAt.size > 0
+  const harmonyLyric = (i) => {
+    if (!sung) return null
+    const s = segments[i]
+    if (s.melody !== null) return lyricAt.get(s.start) ?? null
+    return i === 0 || segments[i - 1].melody !== null || !voiced[i - 1] ? { text: 'oo', syllabic: 'single' } : null
+  }
   const parts = voices.map((voice, v) => ({
     name: voice.name,
-    events: v === tune ? melody : segments.flatMap((s, i) => (voiced[i] ? [{ start: s.start, end: s.end, midi: voiced[i][v] }] : [])),
+    events:
+      v === tune
+        ? melody
+        : segments.flatMap((s, i) => {
+            if (!voiced[i]) return []
+            const lyric = harmonyLyric(i)
+            return [{ start: s.start, end: s.end, midi: voiced[i][v], ...(lyric ? { lyric } : {}) }]
+          }),
   }))
 
   const songChords = Array.from({ length: measures * beatsPerBar }, (_, b) => chordAt(b * SLOTS_PER_BEAT))
@@ -462,5 +483,5 @@ export function arrangeSong({ notes, chords, bars }, { voicing = 'ttbb', melodyP
   }))
   let musicXml = scoreXml(xml)
   if (title) musicXml = musicXml.replace('<score-partwise version="4.0">', `<score-partwise version="4.0"><work><work-title>${escapeXml(title)}</work-title></work>`)
-  return { musicXml, parts, voicing, melodyPart: tune, shift, key, bpm, beatsPerBar, measures }
+  return { musicXml, parts, voicing, melodyPart: tune, shift, key, bpm, beatsPerBar, measures, lyrics: sung }
 }

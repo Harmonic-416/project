@@ -5,12 +5,13 @@ import { createClient } from '@supabase/supabase-js'
 import { arrangeAudio } from '../../app/src/tabs/vocal/arrange/pipeline.js'
 import { MAX_SECONDS, decodeFile, downloadAudio, toModelRate, videoInfo } from './audio.js'
 import { loadModels } from './models.js'
+import { lyricsFor } from './songLyrics.js'
 
 /**
  * The arranger worker: takes the jobs queued in arrangement_job (migration
  * 0011) one at a time, oldest first, and for each fetches the video's
  * audio (yt-dlp), arranges it with the Vocal tab's arranger
- * (arrangeAudio), uploads the MusicXML to arrangements/<user>/<job>.musicxml
+ * (arrangeAudio) with the lyrics under the notes (songLyrics.js), uploads the MusicXML to arrangements/<user>/<job>.musicxml
  * and marks the job done, writing its stage and progress as it goes. The
  * audio lives only in a temporary folder and is deleted after each job.
  *
@@ -71,6 +72,7 @@ async function arrange(job, models) {
     await update(job.id, { title: info.title })
 
     report({ label: 'Getting the audio', value: FETCH_SHARE / 2 })
+    const lyrics = lyricsFor(info, { cacheDir: CACHE_DIR, log: (...args) => log(`[${job.id}]`, ...args) })
     let file
     try {
       file = await downloadAudio(job.youtube_id, work)
@@ -88,6 +90,7 @@ async function arrange(job, models) {
       melodyPart: job.melody_part,
       keepKey: job.keep_key,
       title: info.title,
+      lyrics: lyrics.hear,
       onProgress: ({ label, value }) => report({ label, value: FETCH_SHARE + (1 - FETCH_SHARE) * value }),
     })
 
@@ -108,6 +111,7 @@ async function arrange(job, models) {
         melodyPartName: result.parts[result.melodyPart].name,
         bpm: Math.round(result.bpm),
         measures: result.measures,
+        lyrics: result.lyrics ? lyrics.source() : null,
       },
     })
     log(`[${job.id}] done: ${info.title} → ${path}`)

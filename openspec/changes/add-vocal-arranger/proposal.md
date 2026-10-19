@@ -17,6 +17,7 @@ Arranging from a YouTube link was asked for explicitly. YouTube play-along scori
 - **From a YouTube link:**
   - Everyone: the link (validated; title and channel from YouTube's oEmbed) names the arrangement and links back to the performance. The audio still comes from a file.
   - Team members on `arranger_access`: the link alone queues an `arrangement_job`. The arranger worker (`worker/arranger/`, a Node service on our own VM) fetches the audio with yt-dlp, runs the *same* pipeline code, uploads only the MusicXML to the private `arrangements` bucket, and deletes the audio. Ten jobs a day, two at a time.
+- **Lyrics (server path):** the worker hears the words with Whisper (transformers.js, word timestamps) on the separated vocals and, when LRCLIB has the song's published lyrics, uses those words instead, timed line by line by LRCLIB's synced lines and word by word by Whisper (`lyrics.js`: `alignLyrics`). The words are split into sung syllables and written as MusicXML `<lyric>` under the tune, and under the other parts where they sing with it ("oo" where they hold chords alone).
 
 ## Capabilities
 
@@ -38,11 +39,12 @@ None.
 ## Risks
 
 - **YouTube's terms forbid downloading.** The server path is limited to a hand-kept list of team members, keeps no audio, and serves only the notes. It can be switched off by emptying `arranger_access` or stopping the worker. Anything public would need a different source of audio.
-- **Accuracy.** Notes and chords are heard, not known; the arrangement is a draft to correct by ear. Lyrics are not transcribed.
+- **Accuracy.** Notes and chords are heard, not known; the arrangement is a draft to correct by ear. Words land only where a melody note was heard (on the test song, 162 of 205).
+- **Lyrics are copyrighted.** They are written only into the requesting user's private arrangement, as the audio-derived notes are.
 
 ## Non-goals
 
 - **Transcribing the parts of an existing multi-part performance.** Basic Pitch can't reliably pull overlapping voices apart; the parts are arranged from the lead line and the chords instead.
-- **Lyrics** under the parts, and **a score editor** for fixing notes.
+- **Lyrics when arranging from a file on the device** (Whisper in the browser is a later step), and **a score editor** for fixing notes and words.
 - **Public YouTube downloading**, or downloading in the browser.
 - Per the v1-scope OUT list: computer-vision finger placement (F25), group/social features (F26), YouTube play-along scoring (F27), Changes mode (F38), piano.
