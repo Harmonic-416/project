@@ -1,0 +1,80 @@
+.arrange__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.arrange__field span {
+  font-weight: 600;
+}
+
+.arrange__field input,
+.arrange__field select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #c9c5bc;
+  border-radius: 8px;
+  background: #ffffff;
+  font: inherit;
+}
+
+.arrange__field input[aria-invalid='true'] {
+  border-color: #cf4b36;
+}
+
+.arrange__warning {
+  color: #cf4b36;
+  font-size: 0.85rem;
+}
+
+.arrange__video {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+}
+
+.arrange__video img {
+  border-radius: 4px;
+  object-fit: cover;
+  flex: none;
+}
+
+.arrange__video div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.arrange__video strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arrange__video small {
+  color: #6c6a72;
+}
+
+.arrange__video a {
+  color: #128789;
+  font-size: 0.85rem;
+}
+
+.arrange__options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arrange__check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+}

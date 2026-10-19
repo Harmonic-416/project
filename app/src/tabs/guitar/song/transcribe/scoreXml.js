@@ -26,8 +26,16 @@ export const SLOTS_PER_BEAT = 4 // sixteenths: the grid, and the <divisions> per
 const STEPS = ['C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B']
 const ALTERS = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
 
-const pitchXml = (midi) =>
-  `<pitch><step>${STEPS[midi % 12]}</step>${ALTERS[midi % 12] ? '<alter>1</alter>' : ''}<octave>${Math.floor(midi / 12) - 1}</octave></pitch>`
+const FLAT_STEPS = ['C', 'D', 'D', 'E', 'E', 'F', 'G', 'G', 'A', 'A', 'B', 'B']
+
+/** A pitch, its black keys spelled as sharps, or as flats in a flat key (`fifths` < 0). */
+function pitchXml(midi, fifths = 0) {
+  const pc = midi % 12
+  if (!ALTERS[pc]) return `<pitch><step>${STEPS[pc]}</step><octave>${Math.floor(midi / 12) - 1}</octave></pitch>`
+  return fifths < 0
+    ? `<pitch><step>${FLAT_STEPS[pc]}</step><alter>-1</alter><octave>${Math.floor(midi / 12) - 1}</octave></pitch>`
+    : `<pitch><step>${STEPS[pc]}</step><alter>1</alter><octave>${Math.floor(midi / 12) - 1}</octave></pitch>`
+}
 
 const escapeXml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -50,13 +58,13 @@ function voiceGroups(events) {
   })
 }
 
-function noteXml(note, { chord, chunk, voice, stem, tieStart, tieStop }) {
+function noteXml(note, { chord, chunk, voice, stem, tieStart, tieStop, fifths }) {
   const ties = `${tieStop ? '<tie type="stop"/>' : ''}${tieStart ? '<tie type="start"/>' : ''}`
   const tied = `${tieStop ? '<tied type="stop"/>' : ''}${tieStart ? '<tied type="start"/>' : ''}`
   const technical = note.string ? `<technical><string>${note.string}</string><fret>${note.fret}</fret></technical>` : ''
   const notations = tied || technical ? `<notations>${tied}${technical}</notations>` : ''
   return (
-    `<note>${chord ? '<chord/>' : ''}${pitchXml(note.midi)}<duration>${chunk.divisions}</duration>${ties}` +
+    `<note>${chord ? '<chord/>' : ''}${pitchXml(note.midi, fifths)}<duration>${chunk.divisions}</duration>${ties}` +
     `<voice>${voice}</voice><type>${chunk.type}</type>${'<dot/>'.repeat(chunk.dots)}${stem ? `<stem>${stem}</stem>` : ''}${notations}</note>`
   )
 }
@@ -65,7 +73,7 @@ const restXml = (chunk, voice) =>
   `<note><rest/><duration>${chunk.divisions}</duration><voice>${voice}</voice><type>${chunk.type}</type>${'<dot/>'.repeat(chunk.dots)}</note>`
 
 /** One voice's notes and rests from sixteenth `from` to `to` (one bar). `marks(slot)` gives what goes before a group starting there. */
-function voiceXml(groups, from, to, { voice, stem, marks }) {
+function voiceXml(groups, from, to, { voice, stem, marks, fifths }) {
   let xml = ''
   let cursor = from
   const rest = (length) => {
@@ -82,7 +90,7 @@ function voiceXml(groups, from, to, { voice, stem, marks }) {
       const tieStop = i > 0 || group.start < from
       const tieStart = i < chunks.length - 1 || group.end > to
       group.notes.forEach((note, k) => {
-        xml += noteXml(note, { chord: k > 0, chunk, voice, stem, tieStart, tieStop })
+        xml += noteXml(note, { chord: k > 0, chunk, voice, stem, tieStart, tieStop, fifths })
       })
     })
     cursor = end
@@ -96,9 +104,10 @@ function voiceXml(groups, from, to, { voice, stem, marks }) {
  * `tab`: write the six-string tuning (and `capo`) — the events then carry
  * strings and frets. `harmonies`: [{ slot, xml }] chord names, put before
  * the accompaniment's note at (or after) each slot. `tempo` (BPM) is
- * written in bar 1.
+ * written in bar 1. `clef` (MusicXML) and `fifths` (the key signature) are
+ * the guitar's treble-8 clef and C major unless given.
  */
-export function partXml(events, { id, beatsPerBar, measures, tab = false, capo = 0, harmonies = [], tempo = null }) {
+export function partXml(events, { id, beatsPerBar, measures, tab = false, capo = 0, harmonies = [], tempo = null, clef = GUITAR_CLEF, fifths = 0 }) {
   const perBar = beatsPerBar * SLOTS_PER_BEAT
   const voices = [1, 2].filter((v) => events.some((e) => (e.voice ?? 1) === v))
   if (!voices.length) voices.push(1)
@@ -120,8 +129,8 @@ export function partXml(events, { id, beatsPerBar, measures, tab = false, capo =
     let body = ''
     if (m === 0) {
       body +=
-        `<attributes><divisions>${SLOTS_PER_BEAT}</divisions><key><fifths>0</fifths></key>` +
-        `<time><beats>${beatsPerBar}</beats><beat-type>4</beat-type></time>${GUITAR_CLEF}${tab ? staffDetails(STANDARD_TUNING, { capo }) : ''}</attributes>`
+        `<attributes><divisions>${SLOTS_PER_BEAT}</divisions><key><fifths>${fifths}</fifths></key>` +
+        `<time><beats>${beatsPerBar}</beats><beat-type>4</beat-type></time>${clef}${tab ? staffDetails(STANDARD_TUNING, { capo }) : ''}</attributes>`
       if (tempo) {
         const bpm = Math.round(tempo)
         body += `<direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${bpm}</per-minute></metronome></direction-type><sound tempo="${bpm}"/></direction>`
@@ -130,7 +139,7 @@ export function partXml(events, { id, beatsPerBar, measures, tab = false, capo =
     voices.forEach((voice, i) => {
       if (i > 0) body += `<backup><duration>${perBar}</duration></backup>`
       const stem = voices.length > 1 ? (voice === 1 ? 'up' : 'down') : null
-      body += voiceXml(groups.get(voice), from, to, { voice, stem, marks: marksFor(voice) })
+      body += voiceXml(groups.get(voice), from, to, { voice, stem, marks: marksFor(voice), fifths })
     })
     bars.push(`<measure number="${m + 1}">${body}</measure>`)
   }

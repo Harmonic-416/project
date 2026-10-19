@@ -12,6 +12,7 @@ import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
+import ArrangePanel from './components/ArrangePanel.jsx'
 import MetronomeControl from '../../audio/metronome/MetronomeControl.jsx'
 import { useMetronomeSettings } from '../../audio/metronome/useMetronomeSettings.js'
 import TempoControl from '../../audio/tempo/TempoControl.jsx'
@@ -28,6 +29,7 @@ import { fingerprintBytes } from './share/sharedAttempt.js'
 import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
+import { VOICINGS } from './arrange/arrange.js'
 
 const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
 const NO_SCHEDULE = []
@@ -45,7 +47,7 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 // tells App it has been opened or dismissed. `fileToOpenId` is a file from
 // Home's "My files" (kept on this device, myFiles.js) to open straight away.
 function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened }) {
-  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | shared | detail
+  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | arrange | shared | detail
   // Where the back button goes: a cloud song opens from the search view, a
   // built-in song or an upload from the library view.
   const [returnTo, setReturnTo] = useState('library')
@@ -59,6 +61,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const [practiceMode, setPracticeMode] = useState('listen') // listen | wait | trouble (see practice/practiceLogic.js)
   const [practicePart, setPracticePart] = useState(undefined) // part id; undefined = the first part
   const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
+  const [arrangement, setArrangement] = useState(null) // what the arranger did, for the song it just wrote (arrange/pipeline.js)
   const sheetMusicRef = useRef(null)
 
   const beginLoad = useCallback(() => {
@@ -68,6 +71,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     setNotation(null)
     setScoreModel(null)
     setPracticePart(undefined)
+    setArrangement(null)
   }, [])
 
   const fail = useCallback((err, fallback) => {
@@ -138,6 +142,28 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           .then((id) => rememberMyFile({ id, name: file.name, instrument: 'voice', bytes: buf }))
           .catch((err) => console.error(err))
         await loadFromArrayBuffer(buf, file.name)
+      })
+    },
+    [loadFromArrayBuffer],
+  )
+
+  // A new arrangement (ArrangePanel): opened like an uploaded file, and kept
+  // under Home's "My files" like one.
+  const handleArranged = useCallback(
+    async (result) => {
+      const name = `${result.title} (${VOICINGS[result.voicing].label}).musicxml`
+      const bytes = new TextEncoder().encode(result.musicXml).buffer
+      fingerprintBytes(bytes)
+        .then((id) => rememberMyFile({ id, name, instrument: 'voice', bytes }))
+        .catch((err) => console.error(err))
+      setReturnTo('library')
+      await loadFromArrayBuffer(bytes, name, { title: result.title })
+      setArrangement({
+        voicing: VOICINGS[result.voicing].label,
+        melodyPart: result.parts[result.melodyPart]?.name,
+        key: result.key.name,
+        shift: result.shift,
+        video: result.video,
       })
     },
     [loadFromArrayBuffer],
@@ -357,6 +383,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     setError(null)
     setNotation(null)
     setScoreModel(null)
+    setArrangement(null)
   }, [playback, returnTo])
 
   if (view === 'library') {
@@ -378,6 +405,28 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         <h2 className="vocal-tab__section-title">Built-in songs</h2>
         <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
         <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
+
+        <button type="button" className="vocal-tab__search-songs" onClick={() => setView('arrange')}>
+          <span className="vocal-tab__search-icon" aria-hidden="true">🎼</span>
+          <span>
+            <strong>Arrange a song for voices</strong>
+            <small>Turn a recording into TTBB, SATB or two-part harmony</small>
+          </span>
+        </button>
+      </div>
+    )
+  }
+
+  if (view === 'arrange') {
+    return (
+      <div className="vocal-tab">
+        <div className="vocal-tab__toolbar">
+          <button type="button" className="vocal-tab__back" onClick={() => setView('library')}>
+            ← Songs
+          </button>
+          <span className="vocal-tab__song-title">Arrange a song</span>
+        </div>
+        <ArrangePanel onArranged={handleArranged} />
       </div>
     )
   }
@@ -450,6 +499,26 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
 
       {status === 'loading' && <p className="vocal-tab__status">Loading…</p>}
       {status === 'error' && <p className="vocal-tab__status vocal-tab__status--error">{error}</p>}
+
+      {notation && arrangement && (
+        <p className="vocal-tab__arranged">
+          Arranged for {arrangement.voicing} in {arrangement.key}
+          {arrangement.shift % 12 !== 0 &&
+            ` (moved ${arrangement.shift > 0 ? 'up' : 'down'} ${Math.abs(arrangement.shift % 12)} semitone${Math.abs(arrangement.shift % 12) === 1 ? '' : 's'} from the recording)`}
+          , with the melody in {arrangement.melodyPart}.{' '}
+          {arrangement.video && (
+            <>
+              From{' '}
+              <a href={arrangement.video.url} target="_blank" rel="noreferrer">
+                {arrangement.video.title ?? 'this YouTube video'}
+              </a>
+              .{' '}
+            </>
+          )}
+          The harmony is written new from the song’s chords, and the notes are heard by ear: give it a listen and fix
+          what’s off.
+        </p>
+      )}
 
       {notation && (
         <>
