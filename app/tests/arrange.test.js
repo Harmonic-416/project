@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { VOICINGS, arrangeSong, bestShift, estimateKey, harmonySegments, leadLine } from '../src/tabs/vocal/arrange/arrange.js'
+import { VOICINGS, arrangeSong, bestShift, estimateKey, harmonySegments, leadLine, reach } from '../src/tabs/vocal/arrange/arrange.js'
 import { chordId } from '../src/tabs/guitar/song/transcribe/chords.js'
 import { partXml } from '../src/tabs/guitar/song/transcribe/scoreXml.js'
 import { listParts } from '../src/tabs/vocal/notation/partFilter.js'
@@ -68,6 +68,17 @@ describe('fitting the tune to a part', () => {
     const shift = bestShift(wide, tenor1)
     expect(Math.abs(shift)).toBeLessThanOrEqual(3)
     expect(bestShift(wide, tenor1, { octavesOnly: true }) % 12).toBe(0)
+  })
+})
+
+describe('octave errors', () => {
+  const tenor1 = VOICINGS.ttbb.voices[0] // D3 … A4
+
+  it('brings a note far out of the part’s range back by octaves, and leaves the rest', () => {
+    expect(reach(79, tenor1)).toBe(67) // G5, an overtone → G4
+    expect(reach(72, tenor1)).toBe(72) // C5: a stretch, but sung
+    expect(reach(38, tenor1)).toBe(50) // D2 → D3
+    expect(reach(60, tenor1)).toBe(60)
   })
 })
 

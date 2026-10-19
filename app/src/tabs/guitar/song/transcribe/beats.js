@@ -267,12 +267,14 @@ const breathe = () => new Promise((resolve) => setTimeout(resolve, 0))
  * Beats of mono 22050 Hz `samples`: { beats, downbeats } in seconds, plus
  * barsOf()'s { beatsPerBar, firstDownbeat }. `onProgress` gets 0 … 1;
  * `signal` (an AbortSignal) stops between windows. `model` (URL or bytes)
- * and `runtime` (an onnxruntime module) are for the tests, which run in Node.
+ * and `runtime` (an onnxruntime module) are for Node: the tests and the
+ * arranger worker (worker/arranger/).
  */
 export async function trackBeats(samples, { onProgress, signal, model = MODEL_URL, runtime } = {}) {
   // A small model: the CPU (WebAssembly) runs it in a moment and leaves the GPU to the separator.
   const ort = runtime ?? (await loadRuntime()).ort
-  session ??= await ort.InferenceSession.create(model, { executionProviders: ['wasm'] })
+  // A runtime handed in (the tests', the arranger worker's native one) picks its own provider.
+  session ??= await ort.InferenceSession.create(model, runtime ? undefined : { executionProviders: ['wasm'] })
   const loaded = session
   const spect = logMelSpectrogram(samples)
   const windows = splitPiece(spect.frames)

@@ -145,6 +145,20 @@ export function bestShift(events, voice, { octavesOnly = false } = {}) {
   return best.shift
 }
 
+const REACH = 4 // semitones past a part's range a note may go before it's taken for an octave error
+
+/**
+ * A tune's note moved by octaves to within REACH of `voice`'s range: one
+ * that far out is Basic Pitch hearing an overtone (or a note an octave
+ * low), and no singer of that part could sing it as written anyway.
+ */
+export function reach(midi, voice) {
+  let p = midi
+  while (p > voice.high + REACH && p - 12 >= voice.low - REACH) p -= 12
+  while (p < voice.low - REACH && p + 12 <= voice.high + REACH) p += 12
+  return p
+}
+
 // ── The key ──────────────────────────────────────────────────────────────
 
 // Krumhansl–Kessler key profiles.
@@ -413,7 +427,7 @@ export function arrangeSong({ notes, chords, bars }, { voicing = 'ttbb', melodyP
 
   const shift = bestShift(placed, voices[tune], { octavesOnly: keepKey })
   const steps = ((shift % 12) + 12) % 12
-  const melody = placed.map((e) => ({ ...e, midi: e.midi + shift }))
+  const melody = placed.map((e) => ({ ...e, midi: reach(e.midi + shift, voices[tune]) }))
   const moved = (chord) => (chord ? { root: (chord.root + steps) % 12, kind: chord.kind, id: chordId((chord.root + steps) % 12, chord.kind) } : null)
   const perBar = beatsPerBar * SLOTS_PER_BEAT
   const measures = Math.ceil(melody.at(-1).end / perBar) + 1 // and a bar after it ends

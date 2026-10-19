@@ -48,15 +48,50 @@ export const SINGING = { onset: 0.5, frame: 0.3, minFrames: 7, minHz: 80, maxHz:
 const titleOf = (filename) => filename.replace(/\.[a-z0-9]+$/i, '').trim() || 'Recording'
 
 /**
- * Arrange `file` (a File or Blob with a name). Options are arrangeSong's
- * (`voicing`, `melodyPart`, `keepKey`, `title`, which defaults to the
- * file's name), plus `onProgress({ stage, label, value, device })` (`value`
- * the whole job's 0 … 1) and `signal` (an AbortSignal) to cancel. Returns
- * arrangeSong's result with `title`; throws when no singing is heard.
+ * Arrange `file` (a File or Blob with a name) in the browser: decoded and
+ * resampled with Web Audio, the models from the app (see arrangeAudio).
+ * Options are arrangeAudio's; `title` defaults to the file's name.
  */
 export async function arrangeFile(file, { onProgress, signal, title, ...options } = {}) {
   if (file.size > MAX_BYTES) throw new Error('That file is over 100 MB. Try a shorter recording.')
   const { gpu } = await loadRuntime()
+  onProgress?.({ stage: 'decode', label: STAGES[0].label, value: 0, device: gpu ? 'gpu' : 'cpu' })
+  let decoded
+  try {
+    decoded = await decodeFile(file)
+  } catch {
+    throw new Error('This file couldn’t be read as audio. Try an MP3, WAV, M4A or OGG.')
+  }
+  if (decoded.duration > MAX_SECONDS) throw new Error('That recording is over 10 minutes. Try a shorter one.')
+  const song = (await resample(decoded, 1, RATE)).getChannelData(0)
+  const stereo = await resample(decoded, 2, 44100)
+  signal?.throwIfAborted()
+  // To mono at Basic Pitch's rate, through Web Audio like the rest.
+  const toModelRate = async ([left, right]) => {
+    const stem = new AudioBuffer({ length: left.length, numberOfChannels: 2, sampleRate: 44100 })
+    stem.copyToChannel(left, 0)
+    stem.copyToChannel(right, 1)
+    return (await resample(stem, 1, RATE)).getChannelData(0)
+  }
+  return arrangeAudio(
+    { left: stereo.getChannelData(0), right: stereo.getChannelData(1), song },
+    { ...options, onProgress, signal, gpu: Boolean(gpu), toModelRate, title: title || titleOf(file.name ?? '') },
+  )
+}
+
+/**
+ * The stages after decoding, wherever the audio came from (the browser,
+ * or the arranger worker on a server, worker/arranger/): `left`/`right`
+ * the song at 44.1 kHz, `song` mono at 22.05 kHz. `toModelRate([left,
+ * right])` turns the separated vocals into mono 22.05 kHz. `models` are
+ * the worker's ({ runtime (onnxruntime), separator, beats (model bytes),
+ * basicPitch }), or the app's own when left out. `gpu` weights the
+ * progress bar. Other options are arrangeSong's (`voicing`, `melodyPart`,
+ * `keepKey`, `title`), plus `onProgress({ stage, label, value, device })`
+ * (`value` the whole job's 0 … 1) and `signal` (an AbortSignal). Returns
+ * arrangeSong's result with `title`; throws when no singing is heard.
+ */
+export async function arrangeAudio({ left, right, song }, { toModelRate, models = {}, gpu = false, onProgress, signal, title = 'Recording', ...options } = {}) {
   let device = gpu ? 'gpu' : 'cpu'
   const share = (s) => (gpu ? s.gpuWeight : s.weight)
   let done = 0
@@ -68,49 +103,35 @@ export async function arrangeFile(file, { onProgress, signal, title, ...options 
     onProgress?.({ stage: id, label, value: done, device })
     return (fraction) => onProgress?.({ stage: id, label, value: done + weight * Math.min(1, Math.max(0, fraction)), device })
   }
-
-  stage('decode')
-  let decoded
-  try {
-    decoded = await decodeFile(file)
-  } catch {
-    throw new Error('This file couldn’t be read as audio. Try an MP3, WAV, M4A or OGG.')
-  }
-  if (decoded.duration > MAX_SECONDS) throw new Error('That recording is over 10 minutes. Try a shorter one.')
-  const song = (await resample(decoded, 1, RATE)).getChannelData(0)
-  signal?.throwIfAborted()
+  const { runtime, separator, beats: beatModel, basicPitch: model } = models
+  const testing = runtime ? { runtime, model: separator } : {}
 
   const { separateSource } = await import('../../guitar/song/transcribe/separate.js')
-  const stereo = await resample(decoded, 2, 44100)
-  const [left, right] = await separateSource([stereo.getChannelData(0), stereo.getChannelData(1)], {
+  const stem = await separateSource([left, right], {
     source: 'vocals',
     onProgress: stage('isolate'),
     onDevice: (where) => {
       device = where
     },
     signal,
+    ...testing,
   })
-  // To mono at Basic Pitch's rate, through Web Audio like the rest.
-  const stem = new AudioBuffer({ length: left.length, numberOfChannels: 2, sampleRate: 44100 })
-  stem.copyToChannel(left, 0)
-  stem.copyToChannel(right, 1)
-  const vocals = (await resample(stem, 1, RATE)).getChannelData(0)
+  const vocals = await toModelRate(stem)
 
   const basicPitch = await import('../../guitar/song/follow/refineWithBasicPitch.js')
-  const { notes: heard } = await basicPitch.transcribeAudio(vocals, { thresholds: SINGING, onProgress: stage('melody'), signal })
+  const { notes: heard } = await basicPitch.transcribeAudio(vocals, { thresholds: SINGING, onProgress: stage('melody'), signal, basicPitch: model })
   const notes = dropBleed(heard, vocals, song)
   if (!notes.length) throw new Error('No singing was heard in this recording.')
 
-  const { frames } = await basicPitch.evaluateAudio(song, { onProgress: stage('harmony'), signal })
+  const { frames } = await basicPitch.evaluateAudio(song, { onProgress: stage('harmony'), signal, basicPitch: model })
 
   const { trackBeats } = await import('../../guitar/song/transcribe/beats.js')
-  const bars = await trackBeats(song, { onProgress: stage('beats'), signal })
+  const bars = await trackBeats(song, { onProgress: stage('beats'), signal, ...(runtime ? { runtime, model: beatModel } : {}) })
 
   stage('arrange')
   const chords = bars.beats.length ? recognizeChords(beatChroma(frames, basicPitch.frameTime, bars.beats), bars) : []
-  const name = title || titleOf(file.name ?? '')
-  const result = arrangeSong({ notes, chords, bars }, { ...options, title: name })
+  const result = arrangeSong({ notes, chords, bars }, { ...options, title })
   if (!result) throw new Error('No singing was heard in this recording.')
   onProgress?.({ stage: 'arrange', label: STAGES.at(-1).label, value: 1, device })
-  return { ...result, title: name }
+  return { ...result, title }
 }

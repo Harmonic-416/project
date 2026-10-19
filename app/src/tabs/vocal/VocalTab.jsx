@@ -160,7 +160,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       await loadFromArrayBuffer(bytes, name, { title: result.title })
       setArrangement({
         voicing: VOICINGS[result.voicing].label,
-        melodyPart: result.parts[result.melodyPart]?.name,
+        melodyPart: result.melodyPartName ?? result.parts?.[result.melodyPart]?.name,
         key: result.key.name,
         shift: result.shift,
         video: result.video,
@@ -426,7 +426,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           </button>
           <span className="vocal-tab__song-title">Arrange a song</span>
         </div>
-        <ArrangePanel onArranged={handleArranged} />
+        <ArrangePanel onArranged={handleArranged} auth={auth} supabase={supabase} />
       </div>
     )
   }
