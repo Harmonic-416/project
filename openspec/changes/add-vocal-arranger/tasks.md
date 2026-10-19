@@ -18,7 +18,7 @@
 - [x] 2.3 (M) `worker/arranger/`: yt-dlp + ffmpeg, the app's models in Node (ONNX Runtime; TensorFlow.js on WebAssembly), job loop with progress, audio deleted after each job; `setup.sh`, `run.sh`.
 - [x] 2.4 (M) The panel's "Arrange from this link", progress, and recent jobs.
 - [x] 2.5 (M) Lyrics on the server path: Whisper word timestamps + LRCLIB published lyrics (`worker/arranger/lyrics.js`), aligned, syllabified and placed under the notes (`arrange/lyrics.js`), `<lyric>` in `scoreXml.js`. Verified by: `app/tests/lyrics.test.js`, `arrange.test.js`; on the VM, 162 of 205 published words placed on the test song.
-- [ ] 2.6 (M) Apply 0011 to the shared project, add the team to `arranger_access`, start the worker against it.
+- [x] 2.6 (M) Apply 0011 to the shared project, add the team to `arranger_access`, start the worker against it (eduardo-vm, 2026-10-19; first production job done in 192 s with published lyrics).
 
 ## 3. Checks
 
