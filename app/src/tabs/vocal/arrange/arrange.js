@@ -35,8 +35,26 @@ const TREBLE = '<clef><sign>G</sign><line>2</line></clef>'
 const TENOR = '<clef><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>'
 const BASS = '<clef><sign>F</sign><line>4</line></clef>'
 
-/** The ensembles, top part first; `low`/`high` are each part's range as MIDI notes. `melody`: where the tune can go. */
+/**
+ * The ensembles, top part first; `low`/`high` are each part's range as MIDI
+ * notes. `melody`: where the tune can go. `solo`: the first part is a
+ * soloist with the tune and the words, and the others a backing group that
+ * sings the chords on "doo" (while the solo sings) and "ah" (while it
+ * rests), free to sit above or below the soloist.
+ */
 export const VOICINGS = {
+  solo_ttbb: {
+    label: 'Solo + TTBB',
+    voices: [
+      { name: 'Solo', low: 48, high: 70, clef: TENOR },
+      { name: 'Tenor 1', low: 50, high: 69, clef: TENOR },
+      { name: 'Tenor 2', low: 47, high: 65, clef: TENOR },
+      { name: 'Baritone', low: 43, high: 62, clef: BASS },
+      { name: 'Bass', low: 38, high: 57, clef: BASS },
+    ],
+    melody: [0],
+    solo: true,
+  },
   ttbb: {
     label: 'TTBB',
     voices: [
@@ -221,7 +239,7 @@ const chordTones = (chord) => KIND[chord.kind].intervals.map((i) => (chord.root 
  * tune's lowest and highest pitch in the segment, or null) }], chord null
  * for silence. `chordAt(slot)` is the chord on the beat a sixteenth is in.
  */
-export function harmonySegments(melody, chordAt, { measures, beatsPerBar }) {
+export function harmonySegments(melody, chordAt, { measures, beatsPerBar, followTune = true }) {
   const perBar = beatsPerBar * SLOTS_PER_BEAT
   const total = measures * perBar
   const sounding = (slot) => melody.find((e) => e.start <= slot && e.end > slot) ?? null
@@ -235,7 +253,7 @@ export function harmonySegments(melody, chordAt, { measures, beatsPerBar }) {
   melody.forEach((note, i) => {
     const chord = chordAt(note.start)
     const onEighth = note.start % (SLOTS_PER_BEAT / 2) === 0
-    if (onEighth && chord && (chordTones(chord).includes(note.midi % 12) || note.end - note.start >= SLOTS_PER_BEAT)) starts.add(note.start)
+    if (followTune && onEighth && chord && (chordTones(chord).includes(note.midi % 12) || note.end - note.start >= SLOTS_PER_BEAT)) starts.add(note.start)
     // A rest of a beat or more: the harmony goes on, voiced afresh without the tune.
     const next = melody[i + 1]?.start ?? total
     if (next - note.end >= SLOTS_PER_BEAT) starts.add(note.end)
@@ -261,7 +279,7 @@ export function harmonySegments(melody, chordAt, { measures, beatsPerBar }) {
 const KEEP = 40 // candidate voicings per chord, best first
 
 /** The candidate voicings of one segment for the parts `harmony` (indices), as [{ pitches (by part, the tune's part null), cost }]. */
-function candidates(segment, voices, tune, harmony) {
+function candidates(segment, voices, tune, harmony, solo = false) {
   const tones = chordTones(segment.chord)
   const kind = segment.chord.kind
   const [root, third, fifth, seventh] = tones
@@ -280,14 +298,15 @@ function candidates(segment, voices, tune, harmony) {
     // Parts in order, apart enough, and not crossing the tune.
     for (const v of harmony) {
       const p = pitches[v]
-      if (segment.high !== null && v < tune && p <= segment.high) cost += 20
-      if (segment.low !== null && v > tune && p >= segment.low) cost += 20
+      if (!solo && segment.high !== null && v < tune && p <= segment.high) cost += 20
+      if (!solo && segment.low !== null && v > tune && p >= segment.low) cost += 20
       const centre = (voices[v].low + voices[v].high) / 2
       cost += 0.04 * Math.abs(p - centre) + 0.4 * Math.max(0, voices[v].low + 2 - p, p - (voices[v].high - 2))
     }
     for (let v = 0; v + 1 < voices.length; v += 1) {
       const [a, b] = [sung[v], sung[v + 1]]
       if (a === null || b === null) continue
+      if (solo && (v === tune || v + 1 === tune)) continue // the soloist sits anywhere
       if (a <= b) cost += 20
       const room = v + 1 === lowest ? 19 : 12
       if (a - b > room) cost += 1.5 * (a - b - room)
@@ -350,7 +369,7 @@ function motionCost(before, after, voices, harmony) {
  * array per segment (by part; the tune's part and silent segments null),
  * chosen together by a Viterbi pass over each stretch of sung chords.
  */
-export function voiceSegments(segments, voices, tune) {
+export function voiceSegments(segments, voices, tune, { solo = false } = {}) {
   const harmony = voices.map((_, v) => v).filter((v) => v !== tune)
   const out = segments.map(() => null)
   let i = 0
@@ -364,7 +383,7 @@ export function voiceSegments(segments, voices, tune) {
     // Segments i … j - 1 sing without a break.
     const layers = []
     for (let s = i; s < j; s += 1) {
-      const options = candidates(segments[s], voices, tune, harmony)
+      const options = candidates(segments[s], voices, tune, harmony, solo)
       const withTune = (pitches) => pitches.map((p, v) => (v === tune ? segments[s].melody : p))
       if (s === i) layers.push(options.map((o) => ({ ...o, total: o.cost, from: -1 })))
       else {
@@ -407,7 +426,9 @@ const escapeXml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&
  * that voicing's `melody`), `keepKey` (move the tune by octaves only),
  * `title`. `words` (lyrics.js's, timed in the recording) are written under
  * the tune, and under the other parts where they sing with it; where they
- * hold the chords alone, they sing "oo". Returns { musicXml, parts: [{
+ * hold the chords alone, they sing "oo". A `solo` voicing's backing sings
+ * "doo" under the soloist and "ah" while the soloist rests, words or not,
+ * and changes only with the chords. Returns { musicXml, parts: [{
  * name, events }], voicing, melodyPart (the part with the tune), shift
  * (semitones the song moved), key, bpm, beatsPerBar, measures, lyrics
  * (whether any words were placed) }, or null when no singing was heard.
@@ -438,14 +459,21 @@ export function arrangeSong({ notes, chords, bars, words = null }, { voicing = '
   const measures = Math.ceil(melody.at(-1).end / perBar) + 1 // and a bar after it ends
   const chordAt = (slot) => moved(chords[origin + Math.floor(slot / SLOTS_PER_BEAT)] ?? null)
 
-  const segments = harmonySegments(melody, chordAt, { measures, beatsPerBar })
-  const voiced = voiceSegments(segments, voices, tune)
+  const solo = Boolean(ensemble.solo)
+  const segments = harmonySegments(melody, chordAt, { measures, beatsPerBar, followTune: !solo })
+  const voiced = voiceSegments(segments, voices, tune, { solo })
   // The other parts sing the tune's syllable when they start with it, and "oo" holding chords on their own.
+  // A backing group sings "doo" on each chord under the soloist, and "ah" while the soloist rests.
   const lyricAt = new Map(melody.filter((e) => e.lyric).map((e) => [e.start, e.lyric]))
   const sung = lyricAt.size > 0
+  const soloSings = (s) => melody.some((e) => e.start < s.end && e.end > s.start)
   const harmonyLyric = (i) => {
-    if (!sung) return null
     const s = segments[i]
+    if (solo) {
+      if (soloSings(s)) return { text: 'doo', syllabic: 'single' }
+      return i === 0 || soloSings(segments[i - 1]) || !voiced[i - 1] ? { text: 'ah', syllabic: 'single' } : null
+    }
+    if (!sung) return null
     if (s.melody !== null) return lyricAt.get(s.start) ?? null
     return i === 0 || segments[i - 1].melody !== null || !voiced[i - 1] ? { text: 'oo', syllabic: 'single' } : null
   }

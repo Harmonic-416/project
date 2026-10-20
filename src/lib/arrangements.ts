@@ -9,7 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * never stored. Jobs are owner-only; the worker writes their progress.
  */
 
-export type Voicing = 'ttbb' | 'satb' | 'tb'
+export type Voicing = 'solo_ttbb' | 'ttbb' | 'satb' | 'tb'
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed'
 

@@ -167,6 +167,59 @@ describe('arranging a song', () => {
     })
   }
 
+  it('writes a soloist with the words over a TTBB backing on "doo" and "ah"', () => {
+    const song = twinkle()
+    const words = ['Twinkle', 'twinkle', 'little', 'star'].map((text, i) => ({ text, start: 1 + i, end: 1.9 + i }))
+    const result = arrangeSong({ ...song, words }, { voicing: 'solo_ttbb' })
+    const { voices } = VOICINGS.solo_ttbb
+    expect(result.parts.map((p) => p.name)).toEqual(['Solo', 'Tenor 1', 'Tenor 2', 'Baritone', 'Bass'])
+    expect(result.melodyPart).toBe(0)
+
+    // The whole tune, with the words, in the solo.
+    const solo = result.parts[0].events
+    expect(solo).toHaveLength(14)
+    expect(solo.map((e) => e.midi - result.shift)).toEqual(TWINKLE.filter((p) => p !== null))
+    expect(solo.filter((e) => e.lyric).map((e) => e.lyric.text).slice(0, 2)).toEqual(['Twin', 'kle'])
+
+    // The backing: chord tones in range, top to bottom, on "doo" under the solo and "ah" while it rests.
+    const backing = result.parts.slice(1)
+    const perBar = 16
+    const syllables = new Set()
+    for (let slot = 0; slot < result.measures * perBar; slot += 2) {
+      const sung = backing.map((p) => sungAt(p, slot))
+      if (sung.every((p) => p === null)) continue
+      const chordNow = song.chords[Math.floor(slot / 4)]
+      const tones = TONES[chordNow.kind].map((i) => (chordNow.root + i + result.shift + 120) % 12)
+      backing.forEach((part, v) => {
+        const p = sung[v]
+        if (p === null) return
+        expect(p).toBeGreaterThanOrEqual(voices[v + 1].low)
+        expect(p).toBeLessThanOrEqual(voices[v + 1].high)
+        expect(tones, `${part.name} at ${slot}`).toContain(p % 12)
+      })
+      const heard = sung.filter((p) => p !== null)
+      for (let i = 1; i < heard.length; i += 1) expect(heard[i], `slot ${slot}`).toBeLessThan(heard[i - 1])
+    }
+    for (const part of backing) {
+      expect(part.events.length).toBeGreaterThan(0)
+      for (const e of part.events) {
+        const underSolo = solo.some((n) => n.start < e.end && n.end > e.start)
+        if (underSolo) expect(e.lyric?.text, `${part.name} at ${e.start}`).toBe('doo')
+        else if (e.lyric) expect(e.lyric.text).toBe('ah')
+        if (e.lyric) syllables.add(e.lyric.text)
+      }
+    }
+    expect([...syllables].sort()).toEqual(['ah', 'doo'])
+    expect(listParts(result.musicXml).map((p) => p.name)).toEqual(voices.map((v) => v.name))
+    expect(result.musicXml).toContain('<text>doo</text>')
+  })
+
+  it('backs a soloist on "doo" even without the words', () => {
+    const result = arrangeSong(twinkle(), { voicing: 'solo_ttbb' })
+    expect(result.parts[0].events.some((e) => e.lyric)).toBe(false)
+    expect(result.parts[1].events.some((e) => e.lyric?.text === 'doo')).toBe(true)
+  })
+
   it('fills in every chord: root and third in each full TTBB chord, no doubled thirds', () => {
     const result = arrangeSong(twinkle(), { voicing: 'ttbb' })
     const song = twinkle()

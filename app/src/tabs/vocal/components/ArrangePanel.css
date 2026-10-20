@@ -18,6 +18,8 @@
   border: 1px solid #c9c5bc;
   border-radius: 8px;
   background: #ffffff;
+  color: #1f1d1a; /* the fields stay light in dark mode, so their text must not follow the page's */
+  color-scheme: light;
   font: inherit;
 }
 
