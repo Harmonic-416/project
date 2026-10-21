@@ -3,7 +3,9 @@ import './RecordPanel.css'
 import './ShareAttempt.css'
 import { getSharedRecordingUrl } from '@backend/attempts'
 import { useSheetOverlay } from '../audio/useSheetOverlay.js'
+import { scoreLine } from '../share/attemptHistory.js'
 import { fromTrace, judgeNotes, sampleVerdict } from '../share/sharedAttempt.js'
+import AttemptHistory from './AttemptHistory.jsx'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -21,8 +23,11 @@ const LEGEND = [
  * or missed (red), their score, and their recording if they included it.
  * Everything is recomputed from the stored pitch trace, so it matches what
  * the singer saw as long as both copies of the song are the same file.
+ * Under it, AttemptHistory: the singer's notes, friends' comments and the
+ * other tries at this song (`viewerId`: who is looking; `onOpenAttempt(id)`
+ * opens another try).
  */
-function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase }) {
+function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase, viewerId = null, onOpenAttempt = null }) {
   const { addSample, clear } = useSheetOverlay(sheetMusicRef, scoreModel)
   const samples = useMemo(() => fromTrace(attempt.samples), [attempt])
   const [notes, setNotes] = useState(null)
@@ -64,6 +69,7 @@ function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase }) {
 
   const who = attempt.sharer_name || 'Someone'
   const when = new Date(attempt.created_at).toLocaleDateString()
+  const line = scoreLine(attempt.accuracy, notes)
 
   return (
     <section className="record-panel shared-attempt">
@@ -71,13 +77,8 @@ function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase }) {
         <strong>{who}</strong>’s attempt{attempt.part_name ? ` · ${attempt.part_name}` : ''} · {when}
       </p>
       <div className="record-panel__result">
-        <strong>{Math.round(Number(attempt.accuracy))}% in tune</strong>
-        {notes && notes.total > 0 && (
-          <span>
-            {notes.hit.length} of {notes.total} notes sung
-            {notes.missed.length ? ` · ${notes.missed.length} missed (red)` : ''}
-          </span>
-        )}
+        <strong>{line.headline}</strong>
+        <span>{line.detail}</span>
       </div>
       <ul className="shared-attempt__legend" aria-label="Dot colours">
         {LEGEND.map(([verdict, label]) => (
@@ -94,6 +95,7 @@ function SharedAttemptPanel({ attempt, scoreModel, sheetMusicRef, supabase }) {
       )}
       {!attempt.recording_path && <p className="share-attempt__hint">No recording was shared with this attempt.</p>}
       {recordingError && <p className="share-attempt__error">{recordingError}</p>}
+      {viewerId && <AttemptHistory key={attempt.id} attempt={attempt} viewerId={viewerId} supabase={supabase} onOpenAttempt={onOpenAttempt} />}
     </section>
   )
 }

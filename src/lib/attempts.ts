@@ -204,6 +204,67 @@ export async function listMySharedAttempts(supabase: SupabaseClient): Promise<Sh
   return (data ?? []) as SharedAttempt[]
 }
 
+/** One of a singer's attempts at a song, as listed under an opened attempt. */
+export interface SongAttempt {
+  id: string
+  user_id: string
+  created_at: string
+  part_id: string | null
+  part_name: string | null
+  accuracy: number
+  recording_path: string | null
+  recording_bytes: number | null
+  session_id: string | null
+  /** The owner's note and rating: only filled in for the owner. */
+  self_note: string | null
+  rating: number | null
+  /** Comments from the owner and the friends it was sent to. */
+  comment_count: number
+}
+
+const SONG_ATTEMPT_COLUMNS = 'id, user_id, created_at, part_id, part_name, accuracy, recording_path, recording_bytes, session_id'
+
+/**
+ * The attempts `attempt`'s singer made at the same song (same catalog song
+ * or the same file), newest first, `attempt` included, with their comment
+ * counts. Row-level security decides which ones come back: all of them for
+ * the singer, and for a friend only those sent to them. The owner's note
+ * and rating are asked for only when `isOwner`, so they never leave the
+ * database for anyone else.
+ */
+export async function listSongAttempts(
+  supabase: SupabaseClient,
+  attempt: Pick<SharedAttempt, 'user_id' | 'song_id' | 'song_fingerprint' | 'instrument'>,
+  { isOwner = false, limit = 50 }: { isOwner?: boolean; limit?: number } = {},
+): Promise<SongAttempt[]> {
+  const columns = `${SONG_ATTEMPT_COLUMNS}${isOwner ? ', self_note, rating' : ''}, attempt_comment(count)`
+  let query = supabase
+    .from('shared_attempt')
+    .select(columns)
+    .eq('user_id', attempt.user_id)
+    .eq('instrument', attempt.instrument ?? 'voice')
+  query = attempt.song_id ? query.eq('song_id', attempt.song_id) : query.eq('song_fingerprint', attempt.song_fingerprint ?? '')
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(limit)
+  if (error) throw error
+  return ((data ?? []) as unknown as Array<Record<string, unknown>>).map((row) => {
+    const counts = row.attempt_comment as Array<{ count: number }> | undefined
+    const { attempt_comment: _counts, ...rest } = row
+    return {
+      self_note: null,
+      rating: null,
+      ...rest,
+      comment_count: counts?.[0]?.count ?? 0,
+    } as SongAttempt
+  })
+}
+
+/** Whether the caller may see (and comment on) an attempt: its owner, or a friend it was sent to. */
+export async function canViewAttempt(supabase: SupabaseClient, attemptId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('can_view_attempt', { attempt: attemptId })
+  if (error) throw error
+  return Boolean(data)
+}
+
 /** Stop sharing: removes the row, then its recording. */
 export async function deleteSharedAttempt(supabase: SupabaseClient, attempt: SharedAttempt): Promise<void> {
   const { error } = await supabase.from('shared_attempt').delete().eq('id', attempt.id)

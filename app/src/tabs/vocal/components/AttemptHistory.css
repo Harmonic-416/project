@@ -1,0 +1,75 @@
+/* AttemptHistory: notes, friends' feedback and earlier tries under an opened attempt. */
+.attempt-history {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.attempt-history__section {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.attempt-history__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.attempt-history__summary,
+.attempt-history__hint {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.attempt-history__error {
+  margin: 0;
+  color: #d9534f;
+  font-size: 0.9rem;
+}
+
+.attempt-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.attempt-history__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+}
+
+.attempt-history__change--up {
+  color: #3c9a5f;
+}
+
+.attempt-history__change--down {
+  color: #d9534f;
+}
+
+.attempt-history__change--same {
+  opacity: 0.7;
+}
+
+.attempt-history__best {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.attempt-history__showing {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.attempt-row--current {
+  outline: 2px solid #3a8a87;
+  outline-offset: -2px;
+}
