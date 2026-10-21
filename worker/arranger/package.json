@@ -1,0 +1,23 @@
+{
+  "name": "harmonic-arranger-worker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Arranges YouTube links queued in arrangement_job (migration 0011) with the Vocal tab's arranger.",
+  "scripts": {
+    "start": "node --import ./register.js worker.js",
+    "once": "node --import ./register.js arrange-once.js",
+    "replay": "node --import ./register.js replay.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
+    "onnxruntime-node": "1.21.0",
+    "@huggingface/transformers": "^3.7.0"
+  },
+  "overrides": {
+    "onnxruntime-node": "$onnxruntime-node"
+  }
+}
