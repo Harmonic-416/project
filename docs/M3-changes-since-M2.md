@@ -9,7 +9,7 @@ so each change can be read next to the part of the design it updates. The M2
 status page is [`M2-design-and-setup.md`](M2-design-and-setup.md).
 
 Everything below is merged to `main` and deployed at
-**https://harmonic-vert.vercel.app** (pull requests #14 to #34).
+**https://harmonic-vert.vercel.app** (pull requests #14 to #36).
 
 ## 0. Summary
 
@@ -24,7 +24,7 @@ Everything below is merged to `main` and deployed at
 | Playback | Fixed tempo | **Metronome** with count-in, **tempo** 50–100% |
 | Database | Migrations 0001–0005 | Migrations 0001–**0014** (0006–0014 new) |
 | Server-side jobs | None | One off-platform **arranger worker** (Section 4.6) |
-| Tests | 170 app + 37 backend | 63 app test files and 12 backend test files; backend suite 97/97 against a local Supabase stack |
+| Tests | 170 app + 37 backend | 65 app test files (component tests added with jsdom and Testing Library) and 12 backend test files; backend suite 97/97 against a local Supabase stack |
 
 ## 1. Introduction (changes)
 
@@ -77,6 +77,16 @@ attempt history (Section 2.4).
   option per song (Easy scores the first note of each bar and each chord
   change). A "Tune first?" banner returns when a song's notes sit out of tune.
 - **Strum on the beat** ignores its own click heard through the speakers (#30).
+- **Vocal "Wait for me" and "Trouble spots" are scored** (#35). Wait for me
+  times each note from when it is highlighted to when the singer first lands
+  on it: full marks within 1 second, none from 6 seconds, and notes over
+  3 seconds are called out in amber. Trouble spots counts a note right when
+  it is within 50 cents and steady for 60% of its length, half right a half
+  step off (amber), and otherwise a miss (red), with a summary at the end.
+  Each finished run joins a small per-session chart of tries for that song,
+  part, accompaniment and mode, with the change since the first try. These
+  stricter tolerances are options, so recorded and shared attempts score as
+  before.
 
 ### 2.4 Run-through Summaries and Attempt History
 
