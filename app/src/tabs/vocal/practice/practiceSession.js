@@ -249,3 +249,51 @@ export function sessionLength(session, now = Date.now()) {
   const m = minutes % 60
   return `${h} h ${String(m).padStart(2, '0')} min`
 }
+
+/**
+ * How an attempt's notes went, from its per-note verdicts (shared_attempt
+ * .verdicts): { total, hit, close, missed, skipped }, or null for an
+ * attempt saved without them. `close` (a half step off, guitar) counts as
+ * missed too, as on the score.
+ */
+export function verdictCounts(verdicts) {
+  if (!Array.isArray(verdicts) || verdicts.length === 0) return null
+  const counts = { total: verdicts.length, hit: 0, close: 0, missed: 0, skipped: 0 }
+  for (const v of verdicts) {
+    if (v === 'hit') counts.hit += 1
+    else if (v === 'close') {
+      counts.close += 1
+      counts.missed += 1
+    } else if (v === 'miss') counts.missed += 1
+    else counts.skipped += 1
+  }
+  return counts
+}
+
+/** "105 of 472 notes hit · 367 missed" for an attempt, or '' without verdicts. */
+export function attemptNotesLine(verdicts) {
+  const c = verdictCounts(verdicts)
+  if (!c) return ''
+  const parts = [`${c.hit} of ${c.total} notes hit`]
+  if (c.missed) parts.push(`${c.missed} missed`)
+  if (c.skipped) parts.push(`${c.skipped} not reached`)
+  return parts.join(' · ')
+}
+
+/**
+ * A scored run's notes in words, from its counts ({ total, right, half,
+ * missed }): Wait for me counts notes found quickly and slowly; Trouble
+ * spots right, half a step off and missed. '' without counts.
+ */
+export function runNotesLine(mode, notes) {
+  if (!notes || !notes.total) return ''
+  if (mode === 'wait') {
+    return notes.half ? `${notes.right} of ${notes.total} notes found quickly · ${notes.half} slow` : `all ${notes.total} notes found quickly`
+  }
+  const parts = [`${notes.right} of ${notes.total} notes on pitch`]
+  if (notes.half) parts.push(`${notes.half} a half step off`)
+  if (notes.missed) parts.push(`${notes.missed} missed`)
+  return parts.join(' · ')
+}
+
+export const RUN_MODE_LABEL = { wait: 'Wait for me', trouble: 'Trouble spots' }

@@ -110,7 +110,7 @@ describe('wait for me score', () => {
   })
 
   it('scores an empty run as nothing', () => {
-    expect(summarizeWaitRun([])).toEqual({ score: 0, averageMs: 0, notes: 0, slow: [] })
+    expect(summarizeWaitRun([])).toEqual({ score: 0, averageMs: 0, notes: 0, slow: [], slowNotes: 0 })
   })
 })
 

@@ -24,7 +24,8 @@ import SharedAttemptPanel from './components/SharedAttemptPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
 import { melodyLine, scheduleFor } from './practice/practiceLogic.js'
-import { runsKey } from './practice/sessionRuns.js'
+import { fromRemote, runsKey } from './practice/sessionRuns.js'
+import { listPracticeRuns, savePracticeRun } from '@backend/practiceRuns'
 import { extractPart, listParts, partOnTop } from './notation/partFilter.js'
 import { songLibrary } from './songs/songLibrary.js'
 import { fetchCatalogSong, fetchCloudNotation } from './songs/cloudLibrary.js'
@@ -391,7 +392,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   })
 
   const melody = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
-  // This session's practice scores are kept per song, part, accompaniment and mode.
+  // Practice scores are kept per song, part, accompaniment and mode (on the device, and on the account when signed in).
   const runsSetting = {
     songKey: notation?.fingerprint,
     partId: selectedPart?.id,
@@ -405,12 +406,49 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     () => (notation ? { songId: notation.catalogSongId, fingerprint: notation.fingerprint, title: notation.title } : null),
     [notation],
   )
+  // Set before opening a song from Practice sessions' "+ New session": its session starts fresh.
+  const freshStartRef = useRef(false)
   const practiceSession = usePracticeSession({
     supabase,
     userId: auth.user?.id ?? null,
     song: sessionSong,
+    freshStart: freshStartRef,
     enabled: status === 'ready' && shared?.phase !== 'open' && (view === 'detail' || (view === 'sessions' && sessionsReturnTo === 'detail')),
   })
+
+  // Wait for me / Trouble spots runs saved on the account (migration 0015).
+  // The session is read when a run is saved, so a new session doesn't reload the chart.
+  const runSessionId = useRef(null)
+  useEffect(() => {
+    runSessionId.current = practiceSession.session?.id ?? null
+  })
+  const runsUserId = auth.user?.id ?? null
+  const runsFingerprint = notation?.fingerprint ?? null
+  const runsSongId = notation?.catalogSongId ?? null
+  const runsTitle = notation?.title ?? ''
+  const runsPartId = selectedPart?.id ?? null
+  const runsPartName = selectedPart?.name ?? null
+  const runsAccompaniment = withOthers ? 'all' : 'solo'
+  const runsRemotes = useMemo(() => {
+    if (!runsUserId || !supabase || !runsFingerprint) return { wait: null, trouble: null }
+    const remote = (mode) => {
+      const setting = { songFingerprint: runsFingerprint, partId: runsPartId, accompaniment: runsAccompaniment, mode }
+      return {
+        load: async () => fromRemote(await listPracticeRuns(supabase, setting)),
+        save: (run) =>
+          savePracticeRun(supabase, {
+            ...setting,
+            score: run.score,
+            notes: run.notes ?? null,
+            songId: runsSongId,
+            songTitle: runsTitle,
+            partName: runsPartName,
+            sessionId: runSessionId.current,
+          }),
+      }
+    }
+    return { wait: remote('wait'), trouble: remote('trouble') }
+  }, [runsUserId, runsFingerprint, runsSongId, runsTitle, runsPartId, runsPartName, runsAccompaniment])
 
   // With all parts on screen, fade every note but the selected part's.
   useEffect(() => {
@@ -541,6 +579,53 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     )
   }
 
+  // Practise / + New session on a song card in Practice sessions: back to the
+  // song if it is the one open, else open it (catalog, built-in, or a file
+  // kept on this device), continuing a recent session or starting a new one.
+  const practiseFromSessions = async (entry, { fresh = false } = {}) => {
+    const sameSong =
+      notation &&
+      (entry.song_id ? notation.catalogSongId === entry.song_id : notation.fingerprint === entry.song_fingerprint)
+    if (sameSong && sessionsReturnTo === 'detail') {
+      if (fresh) practiceSession.startNew()
+      setScoreModel(null) // the viewer renders the score again; the panels wait for it
+      setView('detail')
+      return
+    }
+    freshStartRef.current = fresh
+    setReturnTo('library')
+    const title = entry.song_title
+    try {
+      if (entry.song_id) {
+        beginLoad()
+        const song = await fetchCatalogSong(supabase, entry.song_id)
+        if (!song) throw new Error('This catalog song is no longer available.')
+        const bytes = await fetchCloudNotation(supabase, song)
+        await loadFromArrayBuffer(bytes, `${song.title ?? title}.musicxml`, { title: song.title ?? title, catalogSongId: entry.song_id })
+        return
+      }
+      for (const song of songLibrary) {
+        const response = await fetch(song.url)
+        if (!response.ok) continue
+        const bytes = await response.arrayBuffer()
+        if ((await fingerprintBytes(bytes)) === entry.song_fingerprint) {
+          await loadFromArrayBuffer(bytes, song.filename, { builtin: true })
+          return
+        }
+      }
+      const mine = await loadMyFile(entry.song_fingerprint)
+      if (mine) {
+        await loadFromArrayBuffer(mine.bytes, mine.name)
+        return
+      }
+      throw new Error(`Open ${title ? `“${title}”` : 'this song'}’s file once on this device to practise it again.`)
+    } catch (err) {
+      freshStartRef.current = false
+      beginLoad()
+      fail(err, 'Could not open that song.')
+    }
+  }
+
   if (view === 'sessions') {
     const toSong = sessionsReturnTo === 'detail' && notation
     const back = () => {
@@ -567,6 +652,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           auth={auth}
           supabase={supabase}
           song={sessionsFor}
+          onPractise={practiseFromSessions}
         />
       </div>
     )
@@ -705,6 +791,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               sheetMusicRef={sheetMusicRef}
               backingNotes={withOthers ? otherPartNotes : null}
               runsKey={runsKey({ ...runsSetting, mode: 'wait' })}
+              runsRemote={runsRemotes.wait}
             />
           ) : scoreModel && practiceMode === 'trouble' ? (
             <TroubleSpotsPlayer
@@ -713,6 +800,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               playback={playback}
               sheetMusicRef={sheetMusicRef}
               runsKey={runsKey({ ...runsSetting, mode: 'trouble' })}
+              runsRemote={runsRemotes.trouble}
             />
           ) : (
             <PlaybackControls

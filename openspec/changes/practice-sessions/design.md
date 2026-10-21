@@ -109,6 +109,10 @@ A session is owned by the client that practises. Two rules keep the list honest:
 - **[Risk] A friend the attempt was sent to can read `self_note` / `rating` with a hand-built table query.** 0010's `shared_attempt_recipient_select` policy covers whole rows, and RLS can't hide columns. The app never shows them to a recipient and `get_shared_attempt` (the one way the app opens someone else's attempt) blanks them; the session listings only read attempts through the caller's own sessions. Closing it fully means either dropping the recipient policy (everything a recipient needs already goes through security-definer functions; to be checked against `social.test.ts`) or moving the feedback to an owner-only table. Left as is in this change.
 - **[Trade-off] Feedback columns on `shared_attempt` rather than a `attempt_feedback` table.** One note per attempt, by its one owner, is a column. A table would only pay off with history or several authors, which are out of scope.
 
+## Follow-up (0015): scored runs and note counts
+
+"Wait for me" and "Trouble spots" (PR #35) charted their runs in sessionStorage, so they were lost when the tab closed. They are now rows in `practice_run` (owner-only), saved with the open session's id and each run's note counts, and loaded back for the chart when signed in; signed out they stay in localStorage. Recorded attempts keep their per-note verdicts so the history can say how many notes were hit. A **New session** action ends the current sitting and starts a fresh one instead of resuming.
+
 ## Migration Plan
 
 Additive, one file, applied by CI's `migrate` job when the branch merges to `main` (never by hand against the linked project). Rollback: `drop trigger`, `drop function`s, `alter table shared_attempt drop column session_id, self_note, rating, recording_bytes`, `drop table practice_session`, restore 0010's `get_shared_attempt` body. No data to migrate: existing attempts simply have `session_id = null`.

@@ -4,7 +4,7 @@ import { sessionTrend } from '../practice/scoring.js'
 
 /**
  * The end-of-run card shared by Wait for me and Trouble spots: the run's
- * score, what it was made of (`children`), and this session's tries so far
+ * score, what it was made of (`children`), and the saved tries so far
  * (RunProgress). `charted` is false for a run that didn't cover the whole
  * song (started partway), which is shown but not added to the session.
  */

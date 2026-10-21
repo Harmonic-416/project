@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import './PracticeSessions.css'
 import { listPracticeSessions, listSessionAttempts, recordingStorageUsed } from '@backend/practiceSessions'
+import { listSessionRuns } from '@backend/practiceRuns'
 import { timeAgo } from '../../home/homeFormat.js'
-import { groupSessionsBySong, sessionLength, sessionSummary } from '../practice/practiceSession.js'
+import { RUN_MODE_LABEL, attemptTime, groupSessionsBySong, runNotesLine, sessionLength, sessionSummary } from '../practice/practiceSession.js'
 import { AttemptRow, RecordingBudget } from './SessionAttempts.jsx'
 
 const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
@@ -16,8 +17,13 @@ const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
  * from the song's toolbar or Home) only that card, open; for every song
  * (from the library) the most recently practised card is open. Keyed by
  * song in VocalTab, so a different song starts it fresh.
+ *
+ * Each session lists its attempts (with how many notes were hit) and its
+ * scored Wait for me / Trouble spots runs (with their note counts). Each
+ * song card has Practise (open the song, continuing a recent session) and
+ * New session (open it with a fresh session): `onPractise(entry, { fresh })`.
  */
-function PracticeSessions({ auth, supabase, song }) {
+function PracticeSessions({ auth, supabase, song, onPractise = null }) {
   const [sessions, setSessions] = useState(null)
   const [storage, setStorage] = useState(null)
   const [error, setError] = useState(null)
@@ -85,7 +91,14 @@ function PracticeSessions({ auth, supabase, song }) {
       {songs?.length > 0 && (
         <ul className="practice-sessions__list">
           {songs.map((entry, i) => (
-            <SongCard key={entry.key} entry={entry} supabase={supabase} openAtFirst={Boolean(song) || i === 0} onRecordingDeleted={load} />
+            <SongCard
+              key={entry.key}
+              entry={entry}
+              supabase={supabase}
+              openAtFirst={Boolean(song) || i === 0}
+              onRecordingDeleted={load}
+              onPractise={onPractise}
+            />
           ))}
         </ul>
       )}
@@ -95,7 +108,7 @@ function PracticeSessions({ auth, supabase, song }) {
 }
 
 /** One song: its summary, and its sessions underneath (the latest open). */
-function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted }) {
+function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted, onPractise }) {
   const [open, setOpen] = useState(openAtFirst)
   const { summary } = entry
 
@@ -114,6 +127,16 @@ function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted }) {
           {open ? '▴' : '▾'}
         </span>
       </button>
+      {onPractise && (
+        <div className="practice-song__actions">
+          <button type="button" className="practice-song__button" onClick={() => onPractise(entry, { fresh: false })}>
+            Practise
+          </button>
+          <button type="button" className="practice-song__button practice-song__button--new" onClick={() => onPractise(entry, { fresh: true })}>
+            + New session
+          </button>
+        </div>
+      )}
       {open && (
         <ol className="practice-song__sessions">
           {entry.sessions.map((session, i) => (
@@ -129,6 +152,7 @@ function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted }) {
 function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted }) {
   const [open, setOpen] = useState(openAtFirst)
   const [attempts, setAttempts] = useState(null) // with signed URLs once opened
+  const [runs, setRuns] = useState(null) // scored Wait for me / Trouble spots runs
   const [error, setError] = useState(null)
   const summary = sessionSummary(session.attempts)
   const started = new Date(session.started_at)
@@ -136,8 +160,12 @@ function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted }) {
   useEffect(() => {
     if (!open || attempts) return undefined
     let live = true
-    listSessionAttempts(supabase, session.id).then(
-      (rows) => live && setAttempts(rows),
+    Promise.all([listSessionAttempts(supabase, session.id), listSessionRuns(supabase, session.id).catch(() => [])]).then(
+      ([rows, scored]) => {
+        if (!live) return
+        setAttempts(rows)
+        setRuns(scored)
+      },
       (err) => {
         console.error(err)
         if (live) setError(err.message || 'Could not load the attempts.')
@@ -179,7 +207,7 @@ function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted }) {
         <div className="practice-session__body">
           {error && <p className="practice-sessions__error">{error}</p>}
           {!attempts && !error && <p className="practice-sessions__hint">Loading…</p>}
-          {attempts?.length === 0 && <p className="practice-sessions__hint">No attempts in this session.</p>}
+          {attempts?.length === 0 && !runs?.length && <p className="practice-sessions__hint">No attempts in this session.</p>}
           {attempts?.length > 0 && (
             <ol className="session-attempts__list">
               {attempts.map((attempt, i) => (
@@ -193,6 +221,30 @@ function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted }) {
                 />
               ))}
             </ol>
+          )}
+          {runs?.length > 0 && (
+            <div className="practice-runs">
+              <h4 className="practice-runs__title">Scored runs</h4>
+              <ol className="practice-runs__list">
+                {runs.map((run) => {
+                  const notes =
+                    run.notes_total === null
+                      ? null
+                      : { total: run.notes_total, right: run.notes_right, half: run.notes_half, missed: run.notes_missed }
+                  return (
+                    <li key={run.id} className="practice-runs__item">
+                      <strong className="practice-runs__score">{Math.round(run.score)}</strong>
+                      <span className="practice-runs__mode">{RUN_MODE_LABEL[run.mode] ?? run.mode}</span>
+                      <span className="practice-runs__meta">
+                        {attemptTime(run.created_at)}
+                        {run.part_name ? ` · ${run.part_name}` : ''}
+                      </span>
+                      {notes && <span className="practice-runs__notes">{runNotesLine(run.mode, notes)}</span>}
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
           )}
         </div>
       )}

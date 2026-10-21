@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './SessionAttempts.css'
 import { deleteAttemptRecording, getRecordingUrl, saveAttemptFeedback } from '@backend/practiceSessions'
-import { attemptTime, budgetOf, debounce, formatBytes } from '../practice/practiceSession.js'
+import { attemptNotesLine, attemptTime, budgetOf, debounce, formatBytes } from '../practice/practiceSession.js'
 
 const AUTOSAVE_MS = 600
 const RATINGS = [1, 2, 3, 4, 5]
@@ -24,6 +24,11 @@ function SessionAttempts({ supabase, session }) {
           This session
         </h3>
         {row?.ended_at && <span className="session-attempts__hint">Ended after 30 min without an attempt; the next one starts a new session.</span>}
+        {session.startNew && attempts.length > 0 && (
+          <button type="button" className="session-attempts__new" onClick={session.startNew}>
+            New session
+          </button>
+        )}
       </div>
       {attempts.length === 0 ? (
         <p className="session-attempts__hint">Attempts you record now are kept here, and in Practice sessions later.</p>
@@ -181,6 +186,7 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
         </span>
         {actions}
       </div>
+      {attemptNotesLine(attempt.verdicts) && <p className="attempt-row__notes">{attemptNotesLine(attempt.verdicts)}</p>}
 
       {!showAudio ? null : attempt.recording_path ? (
         <div className="attempt-row__audio">
