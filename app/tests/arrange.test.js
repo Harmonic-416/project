@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { VOICINGS, arrangeSong, bestShift, estimateKey, harmonySegments, leadLine, reach } from '../src/tabs/vocal/arrange/arrange.js'
+import { VOICINGS, arrangeSong, bestShift, blockChord, estimateKey, harmonySegments, leadLine, reach } from '../src/tabs/vocal/arrange/arrange.js'
 import { chordId } from '../src/tabs/guitar/song/transcribe/chords.js'
 import { partXml } from '../src/tabs/guitar/song/transcribe/scoreXml.js'
 import { listParts } from '../src/tabs/vocal/notation/partFilter.js'
@@ -199,6 +199,13 @@ describe('arranging a song', () => {
       })
       const heard = sung.filter((p) => p !== null)
       for (let i = 1; i < heard.length; i += 1) expect(heard[i], `slot ${slot}`).toBeLessThan(heard[i - 1])
+      // A plain chord: the bass on the root, the others close above it, and the solo on top (at the unison at its lowest).
+      if (heard.length === 4) {
+        expect(heard[3] % 12, `bass at ${slot}`).toBe(tones[0])
+        expect(heard[0] - heard[3]).toBeLessThanOrEqual(12 + 7)
+        const soloNow = sungAt(result.parts[0], slot)
+        if (soloNow !== null) expect(soloNow, `solo at ${slot}`).toBeGreaterThanOrEqual(heard[0])
+      }
     }
     for (const part of backing) {
       expect(part.events.length).toBeGreaterThan(0)
@@ -212,6 +219,23 @@ describe('arranging a song', () => {
     expect([...syllables].sort()).toEqual(['ah', 'doo'])
     expect(listParts(result.musicXml).map((p) => p.name)).toEqual(voices.map((v) => v.name))
     expect(result.musicXml).toContain('<text>doo</text>')
+  })
+
+  it('sings a chord plainly: the bass on the root, the rest stacked close above, in range', () => {
+    const backing = VOICINGS.solo_ttbb.voices.slice(1)
+    for (const [root, kind] of [[0, 'major'], [2, 'minor'], [7, '7'], [5, 'major'], [9, 'minor'], [4, 'minor'], [2, 'm7']]) {
+      const chord = { root, kind }
+      const pitches = blockChord(chord, backing)
+      expect(pitches).toHaveLength(4)
+      expect(pitches[3] % 12).toBe(root)
+      for (let v = 0; v < 4; v += 1) {
+        expect(pitches[v], `${kind} on ${root}, ${backing[v].name}`).toBeGreaterThanOrEqual(backing[v].low)
+        expect(pitches[v]).toBeLessThanOrEqual(backing[v].high)
+        if (v) expect(pitches[v]).toBeLessThan(pitches[v - 1])
+      }
+    }
+    expect(blockChord({ root: 0, kind: 'major' }, backing)).toEqual([60, 55, 52, 48]) // C E G C, from C3
+    expect(blockChord({ root: 7, kind: '7' }, backing)).toEqual([53, 50, 47, 43]) // G B D F, from G2
   })
 
   it('backs a soloist on "doo" even without the words', () => {

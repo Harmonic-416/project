@@ -38,15 +38,15 @@ const BASS = '<clef><sign>F</sign><line>4</line></clef>'
 /**
  * The ensembles, top part first; `low`/`high` are each part's range as MIDI
  * notes. `melody`: where the tune can go. `solo`: the first part is a
- * soloist with the tune and the words, and the others a backing group that
- * sings the chords on "doo" (while the solo sings) and "ah" (while it
- * rests), free to sit above or below the soloist.
+ * soloist with the tune and the words, on top; the others a backing group
+ * below it that sings each chord plainly (blockChord) on "doo" (while the
+ * solo sings) and "ah" (while it rests).
  */
 export const VOICINGS = {
   solo_ttbb: {
     label: 'Solo + TTBB',
     voices: [
-      { name: 'Solo', low: 48, high: 70, clef: TENOR },
+      { name: 'Solo', low: 53, high: 72, clef: TENOR },
       { name: 'Tenor 1', low: 50, high: 69, clef: TENOR },
       { name: 'Tenor 2', low: 47, high: 65, clef: TENOR },
       { name: 'Baritone', low: 43, high: 62, clef: BASS },
@@ -414,6 +414,33 @@ export function voiceSegments(segments, voices, tune, { solo = false } = {}) {
   return out
 }
 
+/**
+ * `chord` sung plainly by `backing` (voices, top part first): the bass on
+ * the root in its lowest octave that lets the chord sit in everyone's
+ * range, the other parts stacked close above it (third, fifth, then the
+ * seventh or the root again). Returns the pitches by part, top first.
+ */
+export function blockChord(chord, backing) {
+  const [root, ...rest] = chordTones(chord)
+  const upper = [...rest, root].slice(0, backing.length - 1) // what the parts above the bass sing, lowest first
+  const bass = backing.at(-1)
+  let best = null
+  for (let b = bass.low; b <= bass.high; b += 1) {
+    if (b % 12 !== root) continue
+    const pitches = [b]
+    for (const pc of upper) {
+      let p = pitches.at(-1) + 1
+      while (p % 12 !== pc) p += 1
+      pitches.push(p)
+    }
+    const byPart = pitches.reverse() // top first, like `backing`
+    const out = byPart.reduce((sum, p, v) => sum + outside(p, backing[v]), 0)
+    if (!best || out < best.out) best = { byPart, out }
+    if (out === 0) break // the lowest octave that fits
+  }
+  return best.byPart
+}
+
 // ── The score ────────────────────────────────────────────────────────────
 
 const escapeXml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -427,8 +454,9 @@ const escapeXml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&
  * `title`. `words` (lyrics.js's, timed in the recording) are written under
  * the tune, and under the other parts where they sing with it; where they
  * hold the chords alone, they sing "oo". A `solo` voicing's backing sings
- * "doo" under the soloist and "ah" while the soloist rests, words or not,
- * and changes only with the chords. Returns { musicXml, parts: [{
+ * each chord as a plain block chord (blockChord) under the soloist, on
+ * "doo" while the soloist sings and "ah" while it rests, words or not,
+ * changing only with the chords. Returns { musicXml, parts: [{
  * name, events }], voicing, melodyPart (the part with the tune), shift
  * (semitones the song moved), key, bpm, beatsPerBar, measures, lyrics
  * (whether any words were placed) }, or null when no singing was heard.
@@ -461,7 +489,9 @@ export function arrangeSong({ notes, chords, bars, words = null }, { voicing = '
 
   const solo = Boolean(ensemble.solo)
   const segments = harmonySegments(melody, chordAt, { measures, beatsPerBar, followTune: !solo })
-  const voiced = voiceSegments(segments, voices, tune, { solo })
+  const voiced = solo
+    ? segments.map((s) => (s.chord ? [null, ...blockChord(s.chord, voices.slice(1))] : null))
+    : voiceSegments(segments, voices, tune)
   // The other parts sing the tune's syllable when they start with it, and "oo" holding chords on their own.
   // A backing group sings "doo" on each chord under the soloist, and "ah" while the soloist rests.
   const lyricAt = new Map(melody.filter((e) => e.lyric).map((e) => [e.start, e.lyric]))
