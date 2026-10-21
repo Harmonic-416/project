@@ -88,6 +88,43 @@ attempt history (Section 2.4).
   stricter tolerances are options, so recorded and shared attempts score as
   before.
 
+**How a live run works.** Everything during the run happens on the device:
+the microphone is read about 50 times a second, each reading is matched to
+the note the score expects at that moment, and the result is drawn on the
+staff as it happens. Only the finished try is saved.
+
+![A live practice run, from microphone to saved try](../harmonic-design-document/images/m3-live-practice-run-flow.png)
+
+*Figure 2.3a. A live practice run. Green boxes run in the browser with no
+network; orange is what is saved for a signed-in user.*
+
+**Examples from the deployed app.** The three screenshots below come from
+https://harmonic-vert.vercel.app, singing the built-in "Ode to Joy" (30
+notes, 120 BPM) into a simulated microphone with a few deliberate mistakes.
+
+![Listen and Record: pitch dots and notes sung or missed](../harmonic-design-document/images/m3-live-practice-recorded-attempt.png)
+
+*Figure 2.3b. Listen + Record attempt. Each dot is one pitch reading: green
+in tune, amber close, blue the right note in the wrong octave (around "of glo-", sung an octave
+low), red a wrong note (around "flow'rs be-" and "the"). Notes are marked
+green when sung and red when missed: here 28 of 30, 75% in tune.*
+
+![Trouble spots: notes marked as the song plays, and the run's score](../harmonic-design-document/images/m3-live-practice-trouble-spots.png)
+
+![Trouble spots summary: score, note counts and the chart of tries](../harmonic-design-document/images/m3-live-practice-trouble-spots-summary.png)
+
+*Figure 2.3c. Trouble spots (#35). Playback never waits; a note a half step
+off turns amber and counts half, a miss turns red. The summary counts each
+kind and charts every try: 83, then 95 on the second try.*
+
+![Wait for me: slow notes marked amber](../harmonic-design-document/images/m3-live-practice-wait-for-me.png)
+
+![Wait for me summary: how quickly each note was found, by try](../harmonic-design-document/images/m3-live-practice-wait-for-me-summary.png)
+
+*Figure 2.3d. Wait for me (#35). The cursor holds each note until it is sung
+in tune. The first try hesitated on three notes, marked amber (over 3 s to
+find); later tries found every note quickly, and the latest scored 100.*
+
 ### 2.4 Run-through Summaries and Attempt History
 
 This is the largest change since M2. At M2 an attempt was scored, marked on
@@ -195,6 +232,12 @@ Supabase is still the only backend service. It is now used for:
 7. **Arrangement jobs**: a queue table and a private `arrangements` bucket for
    the arranger worker's results.
 
+![System overview at M3](../harmonic-design-document/images/m3-system-overview.png)
+
+*Figure 4.2. System overview at M3. Everything in the top box runs on the
+user's device; `src/lib` is TypeScript in the browser, not a server; the
+orange box is the only code that runs outside the browser.*
+
 ### 4.3.1 Schema (new since M2)
 
 | Migration | Adds | Access |
@@ -257,6 +300,12 @@ because it talks to Supabase only over HTTPS.
 The diagrams, measured CPU and memory use, and the comparison with Supabase,
 Vercel and the browser are in [architecture.md, Section 5](architecture.md#5-arranging-a-song-from-a-link-the-one-job-on-our-own-machine).
 
+![The arranger worker's pipeline on the VM](../harmonic-design-document/images/m3-arranger-worker.png)
+
+*Figure 4.6. One arrangement on the worker. Red stages are where the time
+goes: isolating the singer (40%, about 13 cores and 4 GB of memory) and
+finding the words (up to 30%). Measured on a 4-minute song: 332 s in all.*
+
 ## 5. Architecture Rationale (changes)
 
 ### 5.1 Scalability
@@ -264,6 +313,30 @@ Vercel and the browser are in [architecture.md, Section 5](architecture.md#5-arr
 Unchanged for instruments. Practice sessions and attempt history are
 instrument-agnostic: Guitar attempts use the same tables, though Guitar does
 not yet show sessions.
+
+**Where the work runs decides how Harmonic scales.** The expensive part of a
+practice run, listening to the microphone and scoring it, runs on each
+user's own device, so it grows with users at no cost to us. The server side
+sees one small row per finished try, plus a recording only when the user
+keeps it. The arranger is the one heavy server job. Its queue is claimed
+with `FOR UPDATE SKIP LOCKED`, so more workers can be added on any host
+without code changes, and each job goes to exactly one of them.
+
+![Where the work runs: device, Supabase, arranger workers](../harmonic-design-document/images/m3-scalability-where-work-runs.png)
+
+*Figure 5.1a. Green scales for free with users; orange is budgeted (rows are
+tiny, recordings are opt-in and capped at 100 MB per user); red is the only
+server compute, and it scales by adding workers.*
+
+**The ladder.** The [scaling plan](scaling-plan.md) sets the triggers for
+each step up. Every step before the last is configuration, or a change to
+one module, because the client talks to the backend only through `src/lib`.
+
+![Scaling ladder: triggers and what changes at each rung](../harmonic-design-document/images/m3-scalability-ladder.png)
+
+*Figure 5.1b. Today Harmonic is at T0: Supabase Free plus one VM worker.
+Blue rungs need no code change; orange rungs change one module (rung 3),
+nothing in the client (rung 5), or only `src/lib` (rung 6).*
 
 ### 5.2 Real-Time Responsiveness
 
