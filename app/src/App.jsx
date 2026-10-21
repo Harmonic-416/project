@@ -69,6 +69,8 @@ function App() {
   const [invite, setInvite] = useState(takeInvite)
   // A file from Home's "My files" to open in its tab: { id, tab }.
   const [fileToOpen, setFileToOpen] = useState(null)
+  // A song whose practice sessions Home wants shown (Vocal tab): { songId, songFingerprint, songTitle }.
+  const [sessionsToOpen, setSessionsToOpen] = useState(null)
   const [activeTab, setActiveTab] = useState(invite ? 'social' : (sharedAttempt?.tab ?? 'home'))
   // One session for the whole app: Home owns the sign-in UI, the instrument
   // tabs only read `auth.user` to decide what they may save.
@@ -111,6 +113,13 @@ function App() {
   }, [])
   const fileOpened = useCallback(() => setFileToOpen(null), [])
 
+  // Home: a song's practice sessions (Vocal only for now).
+  const openSessions = useCallback(({ songId, songFingerprint, songTitle }) => {
+    setSessionsToOpen({ songId, songFingerprint, songTitle })
+    setActiveTab('vocal')
+  }, [])
+  const sessionsOpened = useCallback(() => setSessionsToOpen(null), [])
+
   return (
     <div className="app">
       <main className="content">
@@ -125,6 +134,9 @@ function App() {
           onInviteDone={inviteDone}
           onOpenAttempt={openAttempt}
           onOpenFile={openFile}
+          onOpenSessions={openSessions}
+          sessionsToOpen={activeTab === 'vocal' ? sessionsToOpen : null}
+          onSessionsOpened={sessionsOpened}
           learnProgressVersion={learnProgressVersion}
         />
       </main>

@@ -1,0 +1,195 @@
+/* Practice sessions view: one card per song, its sittings underneath. */
+.practice-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.practice-sessions__intro,
+.practice-sessions__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.practice-sessions__error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #cf4b36;
+}
+
+.practice-sessions__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A song */
+.practice-song {
+  border: 1px solid #e2dfd8;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.practice-song__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  color: #24242c;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.practice-song__head:hover {
+  background: #f0f7f7;
+}
+
+.practice-song__title {
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #128789;
+}
+
+.practice-song__title small {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #6c6a72;
+}
+
+.practice-song__summary {
+  flex: 1 1 220px;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.practice-song__sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0 12px 12px;
+  border-top: 1px solid #e2dfd8;
+  list-style: none;
+}
+
+.practice-song__sessions > li:first-child {
+  margin-top: 10px;
+}
+
+/* A sitting under its song */
+.practice-session {
+  border: 1px solid #ece9e2;
+  border-radius: 10px;
+  background: #faf9f6;
+  overflow: hidden;
+}
+
+.practice-session__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: none;
+  color: #24242c;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.practice-session__head:hover {
+  background: #f0f7f7;
+}
+
+.practice-session__when {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  font-weight: 600;
+}
+
+.practice-session__when small {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.practice-session__summary {
+  flex: 1 1 160px;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.practice-session__chevron {
+  margin-left: auto;
+  color: #6c6a72;
+}
+
+.practice-session__body {
+  padding: 0 10px 10px;
+  border-top: 1px solid #ece9e2;
+}
+
+.practice-session__body > * {
+  margin-top: 10px;
+}
+
+/* The toolbar link into this view from the open song. */
+.vocal-tab__sessions-link {
+  border: none;
+  background: none;
+  color: #128789;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  .practice-song {
+    border-color: #3a3a42;
+    background: #1f1f26;
+  }
+
+  .practice-song__head,
+  .practice-session__head {
+    color: #f0efe9;
+  }
+
+  .practice-song__head:hover,
+  .practice-session__head:hover {
+    background: #26262e;
+  }
+
+  .practice-song__title,
+  .vocal-tab__sessions-link {
+    color: #3fb6b8;
+  }
+
+  .practice-song__sessions,
+  .practice-session__body {
+    border-top-color: #3a3a42;
+  }
+
+  .practice-session {
+    border-color: #33333b;
+    background: #1a1a20;
+  }
+}

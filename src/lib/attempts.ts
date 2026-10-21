@@ -43,6 +43,13 @@ export interface SharedAttempt {
   /** Anyone signed in with the link may open it (false: owner + friends it was sent to). */
   link_shared: boolean
   created_at: string
+  /** The practice session it was made in (0014), if any. */
+  session_id: string | null
+  /** The owner's own note and 1–5 rating (0014); null to anyone but the owner. */
+  self_note: string | null
+  rating: number | null
+  /** Size of the kept recording, counted against the owner's budget (0014). */
+  recording_bytes: number | null
 }
 
 export interface NewSharedAttempt {
@@ -62,9 +69,35 @@ export interface NewSharedAttempt {
   instrument?: Instrument
   /** Guitar: the verdict on every note of the practised track, by timeline index. */
   verdicts?: NoteVerdict[] | null
+  /** The open practice session to attach it to (0014). */
+  sessionId?: string | null
 }
 
 export const MAX_TRACE_SAMPLES = 30000
+
+/**
+ * Thrown before uploading a recording that wouldn't fit the owner's budget
+ * (migration 0014; the database refuses it too). The message is for the user.
+ */
+export class RecordingBudgetError extends Error {
+  constructor(usedBytes: number, capBytes: number) {
+    const mb = (n: number) => Math.round(n / 1048576)
+    super(`Recording storage is full (${mb(usedBytes)} MB of ${mb(capBytes)} MB used). Delete some recordings to keep this one.`)
+    this.name = 'RecordingBudgetError'
+  }
+}
+
+/** Throws RecordingBudgetError when `bytes` more wouldn't fit the caller's budget. */
+export async function assertRecordingFits(supabase: SupabaseClient, bytes: number): Promise<void> {
+  const { data, error } = await supabase.rpc('recording_storage_used')
+  if (error) throw new Error(error.message)
+  const row = (data as { used_bytes: number; cap_bytes: number }[] | { used_bytes: number; cap_bytes: number } | null)
+  const usage = Array.isArray(row) ? row[0] : row
+  if (!usage) return
+  const used = Number(usage.used_bytes)
+  const cap = Number(usage.cap_bytes)
+  if (used + bytes > cap) throw new RecordingBudgetError(used, cap)
+}
 
 /**
  * Store the attempt (and, if given, its compressed recording in the owner's
@@ -107,6 +140,7 @@ async function insertAttempt(
   const id = crypto.randomUUID()
   let recordingPath: string | null = null
   if (recording) {
+    await assertRecordingFits(supabase, recording.size)
     recordingPath = `${userData.user.id}/${id}.webm`
     const { error } = await supabase.storage
       .from('recordings')
@@ -130,9 +164,11 @@ async function insertAttempt(
       samples: attempt.samples,
       accuracy: attempt.accuracy,
       recording_path: recordingPath,
+      recording_bytes: recording ? recording.size : null,
       instrument: attempt.instrument ?? 'voice',
       verdicts: attempt.verdicts ?? null,
       link_shared: linkShared,
+      session_id: attempt.sessionId ?? null,
     })
     .select()
     .single()
@@ -291,9 +327,9 @@ export async function deleteAttemptComment(supabase: SupabaseClient, commentId: 
 
 /**
  * Add a recording to one of your saved attempts (saveAttempt stores none),
- * e.g. when you share it with "Include my recording" ticked. Returns the
- * attempt with its recording_path; one that already has a recording is
- * left as it is.
+ * e.g. when "Keep recording" is ticked or you share it with your recording.
+ * Counts against your recording budget (0014). Returns the attempt with its
+ * recording_path; one that already has a recording is left as it is.
  */
 export async function attachRecording(
   supabase: SupabaseClient,
@@ -301,17 +337,21 @@ export async function attachRecording(
   recording: Blob,
 ): Promise<SharedAttempt> {
   if (attempt.recording_path) return attempt
+  await assertRecordingFits(supabase, recording.size)
   const path = `${attempt.user_id}/${attempt.id}.webm`
   const { error: uploadError } = await supabase.storage
     .from('recordings')
     .upload(path, recording, { contentType: recording.type || 'audio/webm', upsert: true })
   if (uploadError) throw uploadError
-  const { error } = await supabase.from('shared_attempt').update({ recording_path: path }).eq('id', attempt.id)
+  const { error } = await supabase
+    .from('shared_attempt')
+    .update({ recording_path: path, recording_bytes: recording.size })
+    .eq('id', attempt.id)
   if (error) {
     await supabase.storage.from('recordings').remove([path]).catch(() => {})
-    throw error
+    throw new Error(error.message)
   }
-  return { ...attempt, recording_path: path }
+  return { ...attempt, recording_path: path, recording_bytes: recording.size }
 }
 
 /** One of your attempts you sent to friends, with who got it. */

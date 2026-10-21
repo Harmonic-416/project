@@ -12,6 +12,8 @@ import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
+import PracticeSessions from './components/PracticeSessions.jsx'
+import { usePracticeSession } from './practice/usePracticeSession.js'
 import MetronomeControl from '../../audio/metronome/MetronomeControl.jsx'
 import { useMetronomeSettings } from '../../audio/metronome/useMetronomeSettings.js'
 import TempoControl from '../../audio/tempo/TempoControl.jsx'
@@ -44,8 +46,15 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 // `sharedAttemptId` comes from a share link (App.jsx); `onSharedAttemptDone`
 // tells App it has been opened or dismissed. `fileToOpenId` is a file from
 // Home's "My files" (kept on this device, myFiles.js) to open straight away.
-function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened }) {
-  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | shared | detail
+// `sessionsToOpen` ({ songId, songFingerprint, songTitle }, from Home's
+// "Working on") opens the Practice sessions view for that song;
+// `onSessionsOpened` tells App it has.
+function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
+  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | shared | detail | sessions
+  // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
+  const [sessionsFor, setSessionsFor] = useState(null)
+  // Where the sessions view goes back to: the library, or the open song.
+  const [sessionsReturnTo, setSessionsReturnTo] = useState('library')
   // Where the back button goes: a cloud song opens from the search view, a
   // built-in song or an upload from the library view.
   const [returnTo, setReturnTo] = useState('library')
@@ -161,6 +170,23 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       cancelled = true
     }
   }, [fileToOpenId, onFileOpened, loadFromArrayBuffer, fail])
+
+  // Practice sessions for a song, from Home's "Working on". Deferred a
+  // tick, like the other hand-offs from App, so it doesn't cascade renders.
+  useEffect(() => {
+    if (!sessionsToOpen) return undefined
+    const id = setTimeout(() => {
+      setSessionsFor({
+        songId: sessionsToOpen.songId ?? null,
+        fingerprint: sessionsToOpen.songFingerprint ?? null,
+        title: sessionsToOpen.songTitle ?? '',
+      })
+      setSessionsReturnTo('library')
+      setView('sessions')
+      onSessionsOpened?.()
+    }, 0)
+    return () => clearTimeout(id)
+  }, [sessionsToOpen, onSessionsOpened])
 
   // ── Shared attempts ────────────────────────────────────────────────────
   const openShared = useCallback(
@@ -306,6 +332,20 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
 
   const melody = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
 
+  // The practice session at this song (change: practice-sessions): starts
+  // once the score is ready for a signed-in user, ends on leaving the song.
+  // Opening a shared attempt isn't practising, so no session then.
+  const sessionSong = useMemo(
+    () => (notation ? { songId: notation.catalogSongId, fingerprint: notation.fingerprint, title: notation.title } : null),
+    [notation],
+  )
+  const practiceSession = usePracticeSession({
+    supabase,
+    userId: auth.user?.id ?? null,
+    song: sessionSong,
+    enabled: status === 'ready' && shared?.phase !== 'open' && (view === 'detail' || (view === 'sessions' && sessionsReturnTo === 'detail')),
+  })
+
   // With all parts on screen, fade every note but the selected part's.
   useEffect(() => {
     const viewer = sheetMusicRef.current
@@ -375,6 +415,22 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           </span>
         </button>
 
+        <button
+          type="button"
+          className="vocal-tab__search-songs"
+          onClick={() => {
+            setSessionsFor(null)
+            setSessionsReturnTo('library')
+            setView('sessions')
+          }}
+        >
+          <span className="vocal-tab__search-icon" aria-hidden="true">🗓</span>
+          <span>
+            <strong>Practice sessions</strong>
+            <small>Your previous sittings, attempts and notes</small>
+          </span>
+        </button>
+
         <h2 className="vocal-tab__section-title">Built-in songs</h2>
         <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
         <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
@@ -392,6 +448,37 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           <span className="vocal-tab__song-title">Search songs</span>
         </div>
         <OnlineSongs configured={auth.configured} supabase={supabase} onSelectSong={handleCloudSongSelected} />
+      </div>
+    )
+  }
+
+  if (view === 'sessions') {
+    const toSong = sessionsReturnTo === 'detail' && notation
+    const back = () => {
+      if (toSong) {
+        setScoreModel(null) // the viewer renders the score again; the panels wait for it
+        setView('detail')
+        return
+      }
+      setView('library')
+      setStatus('idle')
+      setNotation(null)
+      setScoreModel(null)
+    }
+    return (
+      <div className="vocal-tab">
+        <div className="vocal-tab__toolbar">
+          <button type="button" className="vocal-tab__back" onClick={back}>
+            {toSong ? `← ${notation.title}` : '← Songs'}
+          </button>
+          <span className="vocal-tab__song-title">Practice sessions</span>
+        </div>
+        <PracticeSessions
+          key={sessionsFor ? (sessionsFor.songId ?? sessionsFor.fingerprint ?? sessionsFor.title) : 'all'}
+          auth={auth}
+          supabase={supabase}
+          song={sessionsFor}
+        />
       </div>
     )
   }
@@ -443,6 +530,20 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
         {notation && (
           <div className="vocal-tab__actions">
+            {!viewingShared && auth.user && supabase && (
+              <button
+                type="button"
+                className="vocal-tab__sessions-link"
+                onClick={() => {
+                  playback.stop()
+                  setSessionsFor(sessionSong)
+                  setSessionsReturnTo('detail')
+                  setView('sessions')
+                }}
+              >
+                Sessions
+              </button>
+            )}
             <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
           </div>
         )}
@@ -526,6 +627,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               auth={auth}
               supabase={supabase}
               shareSong={shareSong}
+              session={auth.user && supabase ? practiceSession : null}
             />
           )}
         </>

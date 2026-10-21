@@ -498,6 +498,7 @@
 
 .hp-songs > li {
   display: flex;
+  flex-direction: column;
 }
 
 .hp-song {
@@ -567,6 +568,12 @@
 
 .hp-song__scores > strong {
   font-size: 1.15rem;
+}
+
+.hp-song__sessions {
+  align-self: flex-start;
+  margin-top: 6px;
+  font-size: 0.85rem;
 }
 
 .hp-song__best {
