@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Instrument, SharedAttempt } from './attempts'
+import type { Instrument, NoteVerdict, SharedAttempt } from './attempts'
 
 /**
  * Practice sessions (change: practice-sessions, migration 0014): one row per
@@ -43,7 +43,7 @@ export interface NewPracticeSession {
   startedAt?: string
 }
 
-/** One attempt of a session without its pitch trace / verdicts. */
+/** One attempt of a session without its pitch trace (its per-note verdicts give the note counts). */
 export interface SessionAttempt {
   id: string
   session_id: string | null
@@ -53,6 +53,8 @@ export interface SessionAttempt {
   part_name: string | null
   instrument: Instrument
   accuracy: number
+  /** Per note of the part, in order: 'hit' | 'close' | 'miss' | 'skipped' | null; null for older attempts. */
+  verdicts?: NoteVerdict[] | null
   recording_path: string | null
   recording_bytes: number | null
   self_note: string | null
@@ -81,7 +83,7 @@ export const IDLE_MS = 30 * 60 * 1000
 export const MAX_SELF_NOTE_LENGTH = 2000
 
 const ATTEMPT_COLUMNS =
-  'id, session_id, song_id, song_fingerprint, song_title, part_name, instrument, accuracy, recording_path, recording_bytes, self_note, rating, created_at'
+  'id, session_id, song_id, song_fingerprint, song_title, part_name, instrument, accuracy, verdicts, recording_path, recording_bytes, self_note, rating, created_at'
 
 // Attempts are read through their session (an inner join on a table whose
 // RLS shows only your own rows), so an attempt a friend sent you never shows

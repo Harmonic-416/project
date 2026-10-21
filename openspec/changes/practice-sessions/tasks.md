@@ -34,5 +34,16 @@ The order follows dependencies: the schema, then the backend helper it is tested
 ## 4. Integration
 
 - [x] 4.1 (M) `npm run lint`, `npm run typecheck`, `npm test`, and the app's lint / test / build pass.
-- [ ] 4.2 (M) 0014 is applied to the live project by CI's `migrate` job on merge to `main`, after Eddie's OK; nobody runs `supabase db push` by hand.
+- [x] 4.2 (M) 0014 is applied to the live project by CI's `migrate` job on merge to `main`, after Eddie's OK; nobody runs `supabase db push` by hand.
 - [ ] 4.3 (S) Decide on the open questions in design.md (Guitar sessions; pre-0014 attempts in the sessions view).
+
+## 5. Follow-up: persistent runs, note counts, New session (migration 0015)
+
+- [x] 5.1 (M) Migration `0015_practice_runs.sql`: `practice_run` (song fingerprint, part, accompaniment, mode `wait` | `trouble`, score, note counts `notes_total/right/half/missed`, optional `session_id` that must be one of the caller's own sessions); owner-only RLS; chart and session indexes.
+- [x] 5.2 (S) `src/lib/practiceRuns.ts`: `savePracticeRun`, `listPracticeRuns` (one chart, oldest first, latest 50), `listSessionRuns`.
+- [x] 5.3 (M) Wait for me / Trouble spots runs (`sessionRuns.js`) move from sessionStorage to localStorage, and for a signed-in user are saved to and loaded from the account, with their note counts and the open session.
+- [x] 5.4 (S) Recorded attempts save their per-note verdicts (`judgeNotes` → `shared_attempt.verdicts`); attempt rows show "N of M notes hit · K missed".
+- [x] 5.5 (S) The sessions view lists each session's scored runs with their note counts.
+- [x] 5.6 (S) New session: `usePracticeSession().startNew()` and a `freshStart` ref; "New session" under This session, and "Practise" / "+ New session" on each song card in Practice sessions.
+
+  Verified by: backend suite against a local stack with 0001–0015 (`tests/backend/practiceRuns.test.ts`), app lint / test / build, and a browser run: the sessions view shows "6 of 8 notes hit · 2 missed" and both scored runs with their note lines; Practise resumes a recent session with its attempt; New session ends it at its last attempt and starts a new row; "+ New session" from the song's toolbar deletes the empty sitting and starts a new one.

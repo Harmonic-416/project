@@ -51,7 +51,7 @@ export function reactionPoints(ms) {
  * is the slowest notes over SLOW_NOTE_MS (at most `maxSlow`, slowest first).
  */
 export function summarizeWaitRun(results, { maxSlow = 3 } = {}) {
-  if (!results.length) return { score: 0, averageMs: 0, notes: 0, slow: [] }
+  if (!results.length) return { score: 0, averageMs: 0, notes: 0, slow: [], slowNotes: 0 }
   const points = results.reduce((sum, r) => sum + reactionPoints(r.ms), 0)
   const averageMs = results.reduce((sum, r) => sum + r.ms, 0) / results.length
   const slow = results
@@ -59,7 +59,8 @@ export function summarizeWaitRun(results, { maxSlow = 3 } = {}) {
     .filter((r) => r.ms > SLOW_NOTE_MS)
     .sort((a, b) => b.ms - a.ms)
     .slice(0, maxSlow)
-  return { score: Math.round((points / results.length) * 100), averageMs, notes: results.length, slow }
+  const slowNotes = results.filter((r) => r.ms > SLOW_NOTE_MS).length
+  return { score: Math.round((points / results.length) * 100), averageMs, notes: results.length, slow, slowNotes }
 }
 
 /** A trouble-spots run from its counts: right = 1, close (a half step off) = ½, missed = 0. */

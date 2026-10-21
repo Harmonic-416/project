@@ -266,3 +266,21 @@
     background: #3a3a42;
   }
 }
+
+.session-attempts__new {
+  margin-left: auto;
+  border: 1px solid #128789;
+  background: transparent;
+  color: #128789;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.attempt-row__notes {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}

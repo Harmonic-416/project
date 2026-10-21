@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { endPracticeSession, recordingStorageUsed, resumePracticeSession } from '@backend/practiceSessions'
+import { endPracticeSession, recordingStorageUsed, resumePracticeSession, startPracticeSession } from '@backend/practiceSessions'
 import { endTimeFor, lastActivityOf, msUntilIdle, rollover } from './practiceSession.js'
 
 /**
@@ -15,12 +15,17 @@ import { endTimeFor, lastActivityOf, msUntilIdle, rollover } from './practiceSes
  * started. A timer does the same without an attempt, so "This session"
  * empties.
  *
+ * `startNew()` ends the current sitting and starts a fresh one at once (the
+ * "New session" button). `freshStart` (a ref) asks for the same when the
+ * song opens: if it is true then, the next session starts fresh instead of
+ * resuming, and the ref is cleared.
+ *
  *   song: { songId, fingerprint, title } (songId wins over fingerprint)
  *
  * Returns { session, attempts, ensureSessionId, addAttempt, patchAttempt,
- *           storage, refreshStorage, error }.
+ *           startNew, storage, refreshStorage, error }.
  */
-export function usePracticeSession({ supabase, userId, song, instrument = 'voice', enabled = true }) {
+export function usePracticeSession({ supabase, userId, song, instrument = 'voice', enabled = true, freshStart = null }) {
   const [session, setSession] = useState(null)
   const [attempts, setAttempts] = useState([])
   const [storage, setStorage] = useState(null)
@@ -45,39 +50,40 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
     }
   }, [supabase, userId])
 
-  /** Resume or start the session at this song; the row follows. */
-  const begin = useCallback(() => {
-    const promise = resumePracticeSession(supabase, {
-      songId,
-      songFingerprint: songId ? null : fingerprint,
-      songTitle: title,
-      instrument,
-    })
-    const entry = { promise, row: null }
-    current.current = entry
-    attemptsRef.current = []
-    setAttempts([])
-    setSession({ id: null, started_at: new Date().toISOString(), ended_at: null, pending: true })
-    setError(null)
-    promise.then(
-      ({ session: row, attempts: rows }) => {
-        if (current.current !== entry) return
-        entry.row = row
-        attemptsRef.current = rows
-        setAttempts(rows)
-        setSession(row)
-      },
-      (err) => {
-        console.error(err)
-        if (current.current === entry) {
-          current.current = null
-          setSession(null)
-          setError(err.message || 'Could not start a practice session.')
-        }
-      },
-    )
-    return entry
-  }, [supabase, songId, fingerprint, title, instrument])
+  /** Resume (or, `fresh`, start) the session at this song; the row follows. */
+  const begin = useCallback(
+    (fresh = false) => {
+      const details = { songId, songFingerprint: songId ? null : fingerprint, songTitle: title, instrument }
+      const promise = fresh
+        ? startPracticeSession(supabase, details).then((row) => ({ session: row, attempts: [], resumed: false }))
+        : resumePracticeSession(supabase, details)
+      const entry = { promise, row: null }
+      current.current = entry
+      attemptsRef.current = []
+      setAttempts([])
+      setSession({ id: null, started_at: new Date().toISOString(), ended_at: null, pending: true })
+      setError(null)
+      promise.then(
+        ({ session: row, attempts: rows }) => {
+          if (current.current !== entry) return
+          entry.row = row
+          attemptsRef.current = rows
+          setAttempts(rows)
+          setSession(row)
+        },
+        (err) => {
+          console.error(err)
+          if (current.current === entry) {
+            current.current = null
+            setSession(null)
+            setError(err.message || 'Could not start a practice session.')
+          }
+        },
+      )
+      return entry
+    },
+    [supabase, songId, fingerprint, title, instrument],
+  )
 
   /** End `entry` at `endedAt` (default: now, or its last activity if idle). Empty sessions are deleted. */
   const finish = useCallback(
@@ -99,7 +105,9 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
     if (!active) return undefined
     let entry = null
     const timer = setTimeout(() => {
-      entry = begin()
+      const fresh = Boolean(freshStart?.current)
+      if (freshStart) freshStart.current = false
+      entry = begin(fresh)
       refreshStorage()
     }, 0)
     return () => {
@@ -114,7 +122,7 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
     }
     // songKey stands for songId / fingerprint; title and instrument ride along.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, songKey, userId, begin, finish, refreshStorage])
+  }, [active, songKey, userId, begin, finish, refreshStorage, freshStart])
 
   // Idle without an attempt: end the session at its last activity.
   useEffect(() => {
@@ -146,6 +154,15 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
     return (await begin().promise).session.id
   }, [active, begin, finish])
 
+  /** End this sitting now and start a new one at the same song ("New session"). */
+  const startNew = useCallback(() => {
+    if (!active) return
+    const entry = current.current
+    if (entry) finish(entry)
+    current.current = null
+    begin(true)
+  }, [active, begin, finish])
+
   /** A saved attempt row: shown under "This session" if it belongs to it. */
   const addAttempt = useCallback((row) => {
     const id = current.current?.row?.id
@@ -160,7 +177,7 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
   }, [])
 
   return useMemo(
-    () => ({ session, attempts, ensureSessionId, addAttempt, patchAttempt, storage, refreshStorage, error }),
-    [session, attempts, ensureSessionId, addAttempt, patchAttempt, storage, refreshStorage, error],
+    () => ({ session, attempts, ensureSessionId, addAttempt, patchAttempt, startNew, storage, refreshStorage, error }),
+    [session, attempts, ensureSessionId, addAttempt, patchAttempt, startNew, storage, refreshStorage, error],
   )
 }

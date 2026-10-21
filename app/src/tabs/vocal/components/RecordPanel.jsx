@@ -184,6 +184,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
             samples={samples}
             accuracy={result.accuracy}
             recording={recording}
+            verdicts={notes?.verdicts ?? null}
             session={session}
           />
         </div>

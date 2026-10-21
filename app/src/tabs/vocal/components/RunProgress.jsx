@@ -16,7 +16,7 @@ function columnPath(x, y, width, base) {
 }
 
 /**
- * This session's practice runs as columns, one per try (score 0–100), so you
+ * The saved practice runs as columns, one per try (score 0–100), so you
  * can see each repetition get better. Single series in the app's teal: the
  * first and latest tries carry their score; hover or focus a column for the
  * rest. A visually hidden table carries every value for screen readers.
@@ -92,7 +92,7 @@ function RunProgress({ runs, label }) {
         </svg>
       </div>
       <figcaption className="run-progress__caption">
-        Score by try, this session{offset > 0 ? ` (last ${MAX_SHOWN})` : ''}
+        Score by try{offset > 0 ? ` (last ${MAX_SHOWN})` : ''}
       </figcaption>
       <table id={tableId} className="run-progress__table">
         <caption>{label}</caption>

@@ -69,7 +69,7 @@ function singAt(midi, fromMs, forMs = 300) {
 }
 
 beforeEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   clock.ms = 0
   clock.seconds = 0
   vi.spyOn(performance, 'now').mockImplementation(() => clock.ms)
@@ -110,7 +110,7 @@ describe('Wait for me score', () => {
     singAt(62, clock.ms + 400)
     expect(screen.getByLabelText('Try 2: 100')).toBeTruthy()
     expect(screen.getByText(/▲ 25 since your first try/)).toBeTruthy()
-    expect(JSON.parse(sessionStorage.getItem('song:wait')).map((r) => r.score)).toEqual([75, 100])
+    expect(JSON.parse(localStorage.getItem('song:wait')).map((r) => r.score)).toEqual([75, 100])
   })
 
   it('doesn’t count time while paused', async () => {
@@ -143,7 +143,65 @@ describe('Wait for me score', () => {
     singAt(62, 300)
     expect(screen.getByText(/Started partway/)).toBeTruthy()
     expect(screen.queryByRole('img', { name: /Wait for me scores/ })).toBeNull()
-    expect(sessionStorage.getItem('k2')).toBeNull()
+    expect(localStorage.getItem('k2')).toBeNull()
+  })
+})
+
+describe('saved runs', () => {
+  const melody = [note(0, 60), note(1, 62)]
+
+  it('keeps the tries after the tab closes (a new player loads them back)', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<WaitModePlayer melody={melody} duration={2} sheetMusicRef={{ current: fakeViewer() }} runsKey="kept:wait" />)
+    await user.click(screen.getByRole('button', { name: 'Play' }))
+    singAt(60, 300)
+    singAt(62, clock.ms + 300)
+    expect(screen.getByLabelText('Try 1: 100')).toBeTruthy()
+    unmount()
+
+    render(<WaitModePlayer melody={melody} duration={2} sheetMusicRef={{ current: fakeViewer() }} runsKey="kept:wait" />)
+    expect(screen.getByLabelText('Try 1: 100')).toBeTruthy()
+  })
+
+  it('shows the account’s tries once loaded, and saves each new try to the account', async () => {
+    const user = userEvent.setup()
+    const saved = []
+    const remote = {
+      load: vi.fn(async () => [
+        { score: 40, at: 1 },
+        { score: 55, at: 2 },
+      ]),
+      save: vi.fn(async (run) => saved.push(run)),
+    }
+    render(
+      <WaitModePlayer melody={melody} duration={2} sheetMusicRef={{ current: fakeViewer() }} runsKey="acct:wait" runsRemote={remote} />,
+    )
+    await waitFor(() => expect(screen.getByLabelText('Try 2: 55')).toBeTruthy())
+    expect(screen.getByLabelText('Try 1: 40')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Play' }))
+    singAt(60, clock.ms + 300)
+    singAt(62, clock.ms + 300)
+    expect(screen.getByLabelText('Try 3: 100')).toBeTruthy()
+    expect(saved.map((r) => r.score)).toEqual([100])
+    expect(remote.load).toHaveBeenCalledTimes(1)
+    // The device keeps the account's tries too.
+    expect(JSON.parse(localStorage.getItem('acct:wait')).map((r) => r.score)).toEqual([40, 55, 100])
+  })
+
+  it('still charts the try when the account can’t be reached', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const remote = { load: vi.fn(async () => Promise.reject(new Error('offline'))), save: vi.fn(async () => Promise.reject(new Error('offline'))) }
+    render(
+      <WaitModePlayer melody={melody} duration={2} sheetMusicRef={{ current: fakeViewer() }} runsKey="off:wait" runsRemote={remote} />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Play' }))
+    singAt(60, clock.ms + 300)
+    singAt(62, clock.ms + 300)
+    expect(screen.getByLabelText('Try 1: 100')).toBeTruthy()
+    await waitFor(() => expect(remote.save).toHaveBeenCalled())
+    expect(JSON.parse(localStorage.getItem('off:wait')).map((r) => r.score)).toEqual([100])
   })
 })
 
@@ -192,6 +250,6 @@ describe('Trouble spots score', () => {
     expect(summary.textContent).toContain('63') // (2 + ½) / 4 = 62.5
     expect(summary.textContent).toContain('2 of 4 notes on pitch')
     expect(screen.getByLabelText('Try 1: 63')).toBeTruthy()
-    expect(JSON.parse(sessionStorage.getItem('song:trouble')).map((r) => r.score)).toEqual([63])
+    expect(JSON.parse(localStorage.getItem('song:trouble')).map((r) => r.score)).toEqual([63])
   })
 })

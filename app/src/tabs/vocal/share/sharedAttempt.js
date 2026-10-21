@@ -41,7 +41,18 @@ export function judgeNotes(samples, scoreNotes) {
   const tracker = createTroubleTracker(melody)
   for (const sample of samples) tracker.addSample(sample)
   const { hit, missed } = tracker.collect(Infinity)
-  return { hit, missed, total: melody.length }
+  return { hit, missed, total: melody.length, verdicts: noteVerdicts(melody, hit, missed) }
+}
+
+/**
+ * Per note of `melody`, in order: 'hit', 'miss', or null where the run
+ * didn't judge it. Saved with the attempt (shared_attempt.verdicts), so its
+ * history can say how many notes were hit without the score at hand.
+ */
+export function noteVerdicts(melody, hit, missed) {
+  const hits = new Set(hit)
+  const misses = new Set(missed)
+  return melody.map((note) => (hits.has(note) ? 'hit' : misses.has(note) ? 'miss' : null))
 }
 
 /** SHA-256 of the song file as lowercase hex: two copies of the same file match. */
