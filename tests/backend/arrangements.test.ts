@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
   canArrangeFromLinks,
@@ -19,12 +19,14 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const VIDEO = 'dQw4w9WgXcQ'
 
 describe.skipIf(!hasSupabaseEnv || !serviceKey)('arrangements from links (0011)', () => {
-  const service = createClient(process.env.SUPABASE_URL!, serviceKey!, { auth: { persistSession: false } })
+  // Made in beforeAll: a skipped describe still runs its body, and without the env there is no URL to make a client for.
+  let service: SupabaseClient
   let member: Awaited<ReturnType<typeof newTestUser>>
   let outsider: Awaited<ReturnType<typeof newTestUser>>
   let memberId: string
 
   beforeAll(async () => {
+    service = createClient(process.env.SUPABASE_URL!, serviceKey!, { auth: { persistSession: false } })
     member = await newTestUser('arranger-member')
     outsider = await newTestUser('arranger-outsider')
     memberId = (await member.supabase.auth.getUser()).data.user!.id
