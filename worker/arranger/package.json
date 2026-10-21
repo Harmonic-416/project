@@ -6,7 +6,8 @@
   "description": "Arranges YouTube links queued in arrangement_job (migration 0011) with the Vocal tab's arranger.",
   "scripts": {
     "start": "node --import ./register.js worker.js",
-    "once": "node --import ./register.js arrange-once.js"
+    "once": "node --import ./register.js arrange-once.js",
+    "replay": "node --import ./register.js replay.js"
   },
   "engines": {
     "node": ">=22"

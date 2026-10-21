@@ -1,6 +1,6 @@
 import { KINDS } from '../../guitar/practice/chordNames.js'
 import { beatClock } from '../../guitar/song/transcribe/beatWarp.js'
-import { chordId, harmonyXml } from '../../guitar/song/transcribe/chords.js'
+import { TEMPLATES, chordEmission, chordId, harmonyXml, pathChords, smoothChords } from '../../guitar/song/transcribe/chords.js'
 import { SLOTS_PER_BEAT, partXml, scoreXml } from '../../guitar/song/transcribe/scoreXml.js'
 import { placeLyrics } from './lyrics.js'
 
@@ -10,12 +10,18 @@ import { placeLyrics } from './lyrics.js'
  *   - the lead singer's melody (leadLine: Basic Pitch's notes on the
  *     separated vocals, cut to one line) goes to one part, moved to the key
  *     that best fits that part's range (bestShift);
- *   - the other parts sing the song's chords (chords.js's, one per beat)
- *     under it in block harmony: a new chord with every melody note that is
- *     on an eighth and either belongs to the chord or is held, and with
- *     every chord change; short passing notes are sung over held harmony.
- *     Where the tune rests a beat or more, the other parts keep singing the
- *     chords ("oo"), restated each bar;
+ *   - the song's chords are heard again for the arrangement (songChords):
+ *     from the beats' pitch profiles with the sung tune added in, in the
+ *     song's own scale (songScale), plain triads where they fit, changing
+ *     at bar lines and half-bars only — one or two chords a bar, as a
+ *     backing group sings them;
+ *   - the other parts sing those chords under the tune in block harmony:
+ *     a new chord with every melody note that is on an eighth and either
+ *     belongs to the chord or is held, and with every chord change; short
+ *     passing notes are sung over held harmony. Where the tune rests a
+ *     beat or more, the other parts keep singing the chords ("oo"),
+ *     restated each bar. A `solo` voicing's backing changes with the
+ *     chords alone, restated each bar;
  *   - each chord is voiced by a Viterbi pass over the candidate voicings:
  *     chord tones in each part's range, parts in order and not crossing the
  *     melody, the bass on the root where it can be, the root and third
@@ -39,8 +45,8 @@ const BASS = '<clef><sign>F</sign><line>4</line></clef>'
  * The ensembles, top part first; `low`/`high` are each part's range as MIDI
  * notes. `melody`: where the tune can go. `solo`: the first part is a
  * soloist with the tune and the words, on top; the others a backing group
- * below it that sings each chord plainly (blockChord) on "doo" (while the
- * solo sings) and "ah" (while it rests).
+ * below it that holds each chord plainly (blockChord) on "oo" (while the
+ * solo sings) and "ah" (while it rests), restated each bar.
  */
 export const VOICINGS = {
   solo_ttbb: {
@@ -140,6 +146,69 @@ export function placeLine(line, toSlot) {
   return placed.map((e, i) => ({ ...e, end: Math.min(Math.max(e.end, e.start + 1), placed[i + 1]?.start ?? Infinity) }))
 }
 
+const EIGHTH = SLOTS_PER_BEAT / 2
+const BREATH = SLOTS_PER_BEAT // a gap of a beat or more before the next note is a rest; a shorter one, the note held
+
+const STEP = 2 // semitones: a stray sixteenth this close to its neighbour is part of it
+
+/**
+ * The tune without Basic Pitch's stray sixteenths: a sixteenth-long note
+ * that runs straight on from (or into) a note of the same pitch is the
+ * one note, split; one that starts off the eighth-note grid and runs
+ * straight on from a note within a tone of it (or into one) is a scoop or
+ * a wobble, not a note of its own, and is given to that neighbour. A
+ * sixteenth on the grid, or jumping further, is a sung note and stays.
+ */
+export function tidy(events) {
+  const out = []
+  let carry = null // where the next note starts, when a stray was given to it
+  events.forEach((e, i) => {
+    const previous = out.at(-1)
+    const next = events[i + 1]
+    const start = carry ?? e.start
+    carry = null
+    const short = e.end - e.start === 1 && start === e.start
+    const offGrid = e.start % EIGHTH !== 0
+    const near = (other) => other && Math.abs(other.midi - e.midi) <= STEP
+    const fromPrevious = previous && previous.end === e.start
+    const intoNext = next && next.start === e.end
+    if (short && fromPrevious && previous.midi === e.midi) previous.end = e.end
+    else if (short && intoNext && next.midi === e.midi) carry = e.start
+    else if (short && offGrid && fromPrevious && near(previous)) previous.end = e.end
+    else if (short && offGrid && intoNext && near(next)) carry = e.start
+    else out.push({ ...e, start })
+  })
+  return out
+}
+
+/**
+ * The tune's notes of an eighth or more that start off the eighth-note
+ * grid moved onto it, where that keeps them in order: Basic Pitch hears
+ * an onset a sixteenth early or late far more often than a singer sings
+ * one, and the line reads as the singer sang it, not as syncopation.
+ */
+export function snapToEighths(events) {
+  const out = []
+  events.forEach((e, i) => {
+    const snapped = Math.round(e.start / EIGHTH) * EIGHTH
+    const previous = out.at(-1)
+    const next = events[i + 1]
+    const room = (!previous || snapped > previous.start) && (!next || snapped < next.start)
+    const start = snapped !== e.start && room && e.end - e.start >= EIGHTH ? snapped : e.start
+    out.push({ ...e, start, end: Math.max(e.end, start + 1) })
+  })
+  return out.map((e, i) => ({ ...e, end: Math.min(e.end, out[i + 1]?.start ?? Infinity) }))
+}
+
+/** The tune sung legato: a note followed by a gap shorter than a beat is held to the next note (Basic Pitch lets go early). */
+export function legato(events) {
+  return events.map((e, i) => {
+    const next = events[i + 1]
+    const gap = next ? next.start - e.end : 0
+    return gap > 0 && gap < BREATH ? { ...e, end: next.start } : e
+  })
+}
+
 const outside = (midi, { low, high }) => (midi < low ? low - midi : midi > high ? midi - high : 0)
 const KEY_COST = 0.15 // per semitone the key moves: a little out of range beats a new key
 
@@ -229,9 +298,134 @@ export function estimateKey(events, chords) {
   return { tonic, minor, fifths, name }
 }
 
-// ── The harmony ──────────────────────────────────────────────────────────
+// ── The chords ───────────────────────────────────────────────────────────
+
+const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
+const OUT_OF_SCALE = 0.12 // a chord with a note outside the song's scale …
+const ROOT_OUT_OF_SCALE = 0.2 // … or its root outside it (a passing chord, or noise)
+const SEVENTH = 0.03 // a seventh chord where a plain triad would do: a backing group holds triads
+const NO_CHORD = 0.4 // a beat matching no chord better than this (penalties included) has none: where the band is unclear, the group holds on
+const CHANGE_AT_BAR = 0.04 // changing chord at a bar line, …
+const CHANGE_AT_HALF = 0.12 // … halfway through a bar, …
+const CHANGE_ELSEWHERE = 1 // … or on another beat (all but ruled out: a beat's perfect fit)
 
 const chordTones = (chord) => KIND[chord.kind].intervals.map((i) => (chord.root + i) % 12)
+
+/**
+ * How much of each pitch class was sung on each beat: `line` (leadLine's,
+ * in seconds) against the beat clock's `toBeats`, as an array per beat
+ * of twelve seconds-long weights (sparse: beats without singing are
+ * undefined).
+ */
+export function sungByBeat(line, toBeats, beats) {
+  const out = new Array(beats)
+  for (const note of line) {
+    const from = toBeats(note.start)
+    const to = toBeats(note.end)
+    for (let b = Math.max(0, Math.floor(from)); b < Math.min(beats, Math.ceil(to)); b += 1) {
+      const within = Math.min(to, b + 1) - Math.max(from, b)
+      if (within <= 0) continue
+      ;(out[b] ??= new Array(12).fill(0))[((note.midi % 12) + 12) % 12] += within
+    }
+  }
+  return out
+}
+
+/**
+ * The seven notes the song is made of: the major (or harmonic minor)
+ * scale holding the most of the beats' pitch profiles (chords.js's
+ * beatChroma) and of the sung tune (`sung`, sungByBeat's), each as a
+ * share of its whole — the tune counts as much as the rest of the band,
+ * since a singer's notes are heard cleanly where a mix's profile is
+ * blurred by drums and distortion. A scale rather than a key: a song in
+ * F Dorian (Fm, B♭, E♭, A♭) is made of E♭ major's notes whatever its
+ * tonic, and a key guessed from the tune alone can land a fifth away
+ * and mis-spell every chord. A Set of pitch classes, or null with
+ * nothing heard.
+ */
+export function songScale(profiles, sung = []) {
+  const share = (vectors) => {
+    const total = new Array(12).fill(0)
+    for (const v of vectors) if (v) for (let pc = 0; pc < 12; pc += 1) total[pc] += v[pc]
+    const sum = total.reduce((a, b) => a + b, 0)
+    return sum > 0 ? total.map((m) => m / sum) : null
+  }
+  const band = share(profiles.filter((p) => p.energy > 0).map((p) => p.chroma))
+  const tune = share(sung)
+  if (!band && !tune) return null
+  const mass = Array.from({ length: 12 }, (_, pc) => (band?.[pc] ?? 0) + (tune?.[pc] ?? 0))
+  let best = null
+  for (let tonic = 0; tonic < 12; tonic += 1) {
+    const pcs = MAJOR_SCALE.map((i) => (tonic + i) % 12)
+    const held = pcs.reduce((sum, pc) => sum + mass[pc], 0)
+    if (!best || held > best.held) best = { held, pcs }
+  }
+  return new Set(best.pcs)
+}
+
+/**
+ * The song's chord on each beat, for the arrangement: from the beats'
+ * pitch profiles (chords.js's beatChroma) and the song's `scale`
+ * (songScale's), the templates' fit with a bonus for chords in the scale,
+ * smoothed so the chord changes at a bar line, less readily halfway
+ * through a bar, and hardly ever elsewhere — one chord a bar or two, as
+ * a backing group holds them, where the beat-by-beat recognition
+ * (recognizeChords) follows every passing harmony. `bars` as
+ * arrangeSong's. Returns beat chords.
+ */
+export function songChords(profiles, scale, { beatsPerBar = 4, firstDownbeat = 0, sung = null } = {}) {
+  const inScale = (pc) => !scale || scale.has(pc)
+  const bonus = TEMPLATES.map(({ root, kind }) => {
+    const fit = chordTones({ root, kind }).every(inScale) ? 0 : inScale(root) ? -OUT_OF_SCALE : -ROOT_OUT_OF_SCALE
+    return fit - (KIND[kind].intervals.length > 3 ? SEVENTH : 0)
+  })
+  const position = (t) => (((t - firstDownbeat) % beatsPerBar) + beatsPerBar) % beatsPerBar
+  const halfBar = beatsPerBar % 2 === 0 ? beatsPerBar / 2 : null
+  const changeCost = (t) => (position(t) === 0 ? CHANGE_AT_BAR : position(t) === halfBar ? CHANGE_AT_HALF : CHANGE_ELSEWHERE)
+  // chords.js's "no chord" bar is set for a guitar draft naming every passing chord; a backing group would rather hold the chord through an unclear beat.
+  const emission = chordEmission(sung ? heardWithTune(profiles, sung) : profiles, bonus).map((row) => (row.at(-1) === 1 ? row : [...row.slice(0, -1), NO_CHORD]))
+  return pathChords(smoothChords(emission, changeCost))
+}
+
+const TUNE_WEIGHT = 0.6 // of a beat's profile (unit length): what the singer's note adds to it
+
+/**
+ * The beats' profiles with the sung tune added in (`sung`, sungByBeat's):
+ * the singer's note is the one pitch heard for certain on a beat, and
+ * nearly always a note of the chord.
+ */
+export function heardWithTune(profiles, sung) {
+  return profiles.map((profile, b) => {
+    const voice = sung[b]
+    if (!voice) return profile
+    const total = voice.reduce((a, v) => a + v, 0)
+    if (!total) return profile
+    const mixed = profile.chroma.map((c, pc) => c + (TUNE_WEIGHT * voice[pc]) / total)
+    const norm = Math.hypot(...mixed)
+    return { ...profile, chroma: mixed.map((c) => c / norm), energy: Math.max(profile.energy, 1) }
+  })
+}
+
+/**
+ * Without the beats' profiles: `chords` (recognizeChords', one a beat)
+ * held by the half-bar — each half-bar's commonest chord on all its beats.
+ */
+export function gridChords(chords, { beatsPerBar = 4, firstDownbeat = 0 } = {}) {
+  const half = beatsPerBar % 2 === 0 ? beatsPerBar / 2 : beatsPerBar
+  const out = chords.slice()
+  for (let from = ((firstDownbeat % half) + half) % half - half; from < chords.length; from += half) {
+    const window = chords.slice(Math.max(from, 0), from + half)
+    if (!window.length) continue
+    const counts = new Map()
+    for (const chord of window) counts.set(chord?.id ?? null, (counts.get(chord?.id ?? null) ?? 0) + 1)
+    const top = [...counts.entries()].reduce((best, entry) => (entry[1] > best[1] ? entry : best))[0]
+    const chord = window.find((c) => (c?.id ?? null) === top) ?? null
+    for (let b = Math.max(from, 0); b < Math.min(from + half, chords.length); b += 1) out[b] = chord
+  }
+  return out
+}
+
+// ── The harmony ──────────────────────────────────────────────────────────
 
 /**
  * Where the harmony parts sing a new chord, and what over: [{ start, end,
@@ -239,7 +433,7 @@ const chordTones = (chord) => KIND[chord.kind].intervals.map((i) => (chord.root 
  * tune's lowest and highest pitch in the segment, or null) }], chord null
  * for silence. `chordAt(slot)` is the chord on the beat a sixteenth is in.
  */
-export function harmonySegments(melody, chordAt, { measures, beatsPerBar, followTune = true }) {
+export function harmonySegments(melody, chordAt, { measures, beatsPerBar, followTune = true, everyBar = false }) {
   const perBar = beatsPerBar * SLOTS_PER_BEAT
   const total = measures * perBar
   const sounding = (slot) => melody.find((e) => e.start <= slot && e.end > slot) ?? null
@@ -258,8 +452,8 @@ export function harmonySegments(melody, chordAt, { measures, beatsPerBar, follow
     const next = melody[i + 1]?.start ?? total
     if (next - note.end >= SLOTS_PER_BEAT) starts.add(note.end)
   })
-  // While the tune rests, the chords are restated every bar.
-  for (let bar = perBar; bar < total; bar += perBar) if (!sounding(bar)) starts.add(bar)
+  // While the tune rests (or, `everyBar`, always), the chords are restated every bar.
+  for (let bar = perBar; bar < total; bar += perBar) if (everyBar || !sounding(bar)) starts.add(bar)
 
   const ordered = [...starts].filter((s) => s < total).sort((a, b) => a - b)
   return ordered.map((start, i) => {
@@ -447,21 +641,24 @@ const escapeXml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&
 
 /**
  * The arrangement. `notes` are Basic Pitch's on the separated vocals,
- * `chords` the song's chord on each beat (chords.js), `bars` its beats
+ * `chords` the song's chord on each beat (chords.js), `profiles` the
+ * beats' pitch profiles they came from (beatChroma's; the chords are heard
+ * again from them for the arrangement, songChords — without them, `chords`
+ * are held by the half-bar), `bars` its beats
  * (beats.js: { beats, beatsPerBar, firstDownbeat }). Options: `voicing`
  * (a VOICINGS key), `melodyPart` (the part that sings the tune, one of
  * that voicing's `melody`), `keepKey` (move the tune by octaves only),
  * `title`. `words` (lyrics.js's, timed in the recording) are written under
  * the tune, and under the other parts where they sing with it; where they
- * hold the chords alone, they sing "oo". A `solo` voicing's backing sings
+ * hold the chords alone, they sing "oo". A `solo` voicing's backing holds
  * each chord as a plain block chord (blockChord) under the soloist, on
- * "doo" while the soloist sings and "ah" while it rests, words or not,
- * changing only with the chords. Returns { musicXml, parts: [{
+ * "oo" while the soloist sings and "ah" while it rests, words or not,
+ * changing only with the chords and restated each bar. Returns { musicXml, parts: [{
  * name, events }], voicing, melodyPart (the part with the tune), shift
  * (semitones the song moved), key, bpm, beatsPerBar, measures, lyrics
  * (whether any words were placed) }, or null when no singing was heard.
  */
-export function arrangeSong({ notes, chords, bars, words = null }, { voicing = 'ttbb', melodyPart = 0, keepKey = false, title = '' } = {}) {
+export function arrangeSong({ notes, chords, bars, words = null, profiles = null }, { voicing = 'ttbb', melodyPart = 0, keepKey = false, title = '' } = {}) {
   const ensemble = VOICINGS[voicing]
   if (!ensemble) throw new Error(`No such voicing: ${voicing}`)
   const tune = ensemble.melody.includes(melodyPart) ? melodyPart : ensemble.melody[0]
@@ -476,7 +673,13 @@ export function arrangeSong({ notes, chords, bars, words = null }, { voicing = '
   const earliest = toBeats(line[0].start)
   const origin = firstDownbeat + (Math.floor((earliest + 0.5 / SLOTS_PER_BEAT - firstDownbeat) / beatsPerBar) - 1) * beatsPerBar
   const toSlot = (seconds) => Math.round((toBeats(seconds) - origin) * SLOTS_PER_BEAT)
-  const placed = placeLine(line, toSlot)
+  const placed = legato(snapToEighths(tidy(placeLine(line, toSlot))))
+  // The song's chords for the arrangement, heard again with the tune, in the song's own scale.
+  const heard = sungByBeat(line, toBeats, chords.length)
+  const track =
+    profiles?.length && profiles.length === chords.length
+      ? songChords(profiles, songScale(profiles, heard), { beatsPerBar, firstDownbeat, sung: heard })
+      : gridChords(chords, { beatsPerBar, firstDownbeat })
 
   const shift = bestShift(placed, voices[tune], { octavesOnly: keepKey })
   const steps = ((shift % 12) + 12) % 12
@@ -485,22 +688,22 @@ export function arrangeSong({ notes, chords, bars, words = null }, { voicing = '
   const moved = (chord) => (chord ? { root: (chord.root + steps) % 12, kind: chord.kind, id: chordId((chord.root + steps) % 12, chord.kind) } : null)
   const perBar = beatsPerBar * SLOTS_PER_BEAT
   const measures = Math.ceil(melody.at(-1).end / perBar) + 1 // and a bar after it ends
-  const chordAt = (slot) => moved(chords[origin + Math.floor(slot / SLOTS_PER_BEAT)] ?? null)
+  const chordAt = (slot) => moved(track[origin + Math.floor(slot / SLOTS_PER_BEAT)] ?? null)
 
   const solo = Boolean(ensemble.solo)
-  const segments = harmonySegments(melody, chordAt, { measures, beatsPerBar, followTune: !solo })
+  const segments = harmonySegments(melody, chordAt, { measures, beatsPerBar, followTune: !solo, everyBar: solo })
   const voiced = solo
     ? segments.map((s) => (s.chord ? [null, ...blockChord(s.chord, voices.slice(1))] : null))
     : voiceSegments(segments, voices, tune)
   // The other parts sing the tune's syllable when they start with it, and "oo" holding chords on their own.
-  // A backing group sings "doo" on each chord under the soloist, and "ah" while the soloist rests.
+  // A backing group holds each chord on "oo" under the soloist, and "ah" while the soloist rests.
   const lyricAt = new Map(melody.filter((e) => e.lyric).map((e) => [e.start, e.lyric]))
   const sung = lyricAt.size > 0
   const soloSings = (s) => melody.some((e) => e.start < s.end && e.end > s.start)
   const harmonyLyric = (i) => {
     const s = segments[i]
     if (solo) {
-      if (soloSings(s)) return { text: 'doo', syllabic: 'single' }
+      if (soloSings(s)) return { text: 'oo', syllabic: 'single' }
       return i === 0 || soloSings(segments[i - 1]) || !voiced[i - 1] ? { text: 'ah', syllabic: 'single' } : null
     }
     if (!sung) return null
@@ -519,11 +722,11 @@ export function arrangeSong({ notes, chords, bars, words = null }, { voicing = '
           }),
   }))
 
-  const songChords = Array.from({ length: measures * beatsPerBar }, (_, b) => chordAt(b * SLOTS_PER_BEAT))
-  const key = estimateKey(melody, songChords)
+  const beatChords = Array.from({ length: measures * beatsPerBar }, (_, b) => chordAt(b * SLOTS_PER_BEAT))
+  const key = estimateKey(melody, beatChords)
   const harmonies = []
-  songChords.forEach((chord, b) => {
-    if (chord && chord.id !== songChords[b - 1]?.id) harmonies.push({ slot: b * SLOTS_PER_BEAT, xml: harmonyXml(chord) })
+  beatChords.forEach((chord, b) => {
+    if (chord && chord.id !== beatChords[b - 1]?.id) harmonies.push({ slot: b * SLOTS_PER_BEAT, xml: harmonyXml(chord) })
   })
   const bpm = 60 / period
   const xml = parts.map((part, v) => ({

@@ -35,7 +35,7 @@ const STATUS_LABEL = { queued: 'Waiting for the server', running: 'Arranging', d
 function ArrangePanel({ onArranged, auth, supabase }) {
   const [link, setLink] = useState('')
   const [info, setInfo] = useState(null) // the linked video's { id, title, author, thumbnail }, from YouTube
-  const [voicing, setVoicing] = useState('ttbb')
+  const [voicing, setVoicing] = useState('solo_ttbb')
   const [melodyPart, setMelodyPart] = useState(0)
   const [keepKey, setKeepKey] = useState(false)
   const [job, setJob] = useState(null) // { name, label, value, device } while arranging

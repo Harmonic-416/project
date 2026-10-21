@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { VOICINGS, arrangeSong, bestShift, blockChord, estimateKey, harmonySegments, leadLine, reach } from '../src/tabs/vocal/arrange/arrange.js'
+import { VOICINGS, arrangeSong, bestShift, blockChord, estimateKey, harmonySegments, heardWithTune, leadLine, reach, songChords, songScale, sungByBeat, tidy } from '../src/tabs/vocal/arrange/arrange.js'
 import { chordId } from '../src/tabs/guitar/song/transcribe/chords.js'
 import { partXml } from '../src/tabs/guitar/song/transcribe/scoreXml.js'
 import { listParts } from '../src/tabs/vocal/notation/partFilter.js'
@@ -167,7 +167,7 @@ describe('arranging a song', () => {
     })
   }
 
-  it('writes a soloist with the words over a TTBB backing on "doo" and "ah"', () => {
+  it('writes a soloist with the words over a TTBB backing on "oo" and "ah"', () => {
     const song = twinkle()
     const words = ['Twinkle', 'twinkle', 'little', 'star'].map((text, i) => ({ text, start: 1 + i, end: 1.9 + i }))
     const result = arrangeSong({ ...song, words }, { voicing: 'solo_ttbb' })
@@ -181,7 +181,7 @@ describe('arranging a song', () => {
     expect(solo.map((e) => e.midi - result.shift)).toEqual(TWINKLE.filter((p) => p !== null))
     expect(solo.filter((e) => e.lyric).map((e) => e.lyric.text).slice(0, 2)).toEqual(['Twin', 'kle'])
 
-    // The backing: chord tones in range, top to bottom, on "doo" under the solo and "ah" while it rests.
+    // The backing: chord tones in range, top to bottom, on "oo" under the solo and "ah" while it rests.
     const backing = result.parts.slice(1)
     const perBar = 16
     const syllables = new Set()
@@ -211,14 +211,14 @@ describe('arranging a song', () => {
       expect(part.events.length).toBeGreaterThan(0)
       for (const e of part.events) {
         const underSolo = solo.some((n) => n.start < e.end && n.end > e.start)
-        if (underSolo) expect(e.lyric?.text, `${part.name} at ${e.start}`).toBe('doo')
+        if (underSolo && e.lyric) expect(e.lyric.text, `${part.name} at ${e.start}`).toBe('oo')
         else if (e.lyric) expect(e.lyric.text).toBe('ah')
         if (e.lyric) syllables.add(e.lyric.text)
       }
     }
-    expect([...syllables].sort()).toEqual(['ah', 'doo'])
+    expect([...syllables].sort()).toEqual(['ah', 'oo'])
     expect(listParts(result.musicXml).map((p) => p.name)).toEqual(voices.map((v) => v.name))
-    expect(result.musicXml).toContain('<text>doo</text>')
+    expect(result.musicXml).toContain('<text>oo</text>')
   })
 
   it('sings a chord plainly: the bass on the root, the rest stacked close above, in range', () => {
@@ -238,10 +238,10 @@ describe('arranging a song', () => {
     expect(blockChord({ root: 7, kind: '7' }, backing)).toEqual([53, 50, 47, 43]) // G B D F, from G2
   })
 
-  it('backs a soloist on "doo" even without the words', () => {
+  it('backs a soloist on "oo" even without the words', () => {
     const result = arrangeSong(twinkle(), { voicing: 'solo_ttbb' })
     expect(result.parts[0].events.some((e) => e.lyric)).toBe(false)
-    expect(result.parts[1].events.some((e) => e.lyric?.text === 'doo')).toBe(true)
+    expect(result.parts[1].events.some((e) => e.lyric?.text === 'oo')).toBe(true)
   })
 
   it('fills in every chord: root and third in each full TTBB chord, no doubled thirds', () => {
@@ -298,5 +298,80 @@ describe('arranging a song', () => {
 
   it('has nothing to arrange without singing', () => {
     expect(arrangeSong({ notes: [], chords: [], bars: { beats: [], beatsPerBar: 4, firstDownbeat: 0 } })).toBeNull()
+  })
+})
+
+describe('hearing the chords again for the arrangement', () => {
+  const pcs = (root, kind) => TONES[kind].map((i) => (root + i) % 12)
+  /** A beat's profile (beatChroma's) of a chord: its notes equally, plus a little of `noise` (a pitch class). */
+  const profile = (root, kind = 'major', { noise = null, amount = 0.5 } = {}) => {
+    const sum = new Array(12).fill(0)
+    for (const pc of pcs(root, kind)) sum[pc] = 1
+    if (noise !== null) sum[noise] += amount
+    const norm = Math.hypot(...sum)
+    return { chroma: sum.map((v) => v / norm), bass: root, energy: 1 }
+  }
+  const BAR = { beatsPerBar: 4, firstDownbeat: 0 }
+  const names = (set) => [...set].sort((a, b) => a - b)
+
+  it('counts what was sung on each beat', () => {
+    const line = [{ start: 0.5, end: 1.5, midi: 60 }, { start: 1.5, end: 1.75, midi: 64 }]
+    const sung = sungByBeat(line, (seconds) => seconds, 3)
+    expect(sung[0][0]).toBeCloseTo(0.5)
+    expect(sung[1][0]).toBeCloseTo(0.5)
+    expect(sung[1][4]).toBeCloseTo(0.25)
+    expect(sung[2]).toBeUndefined()
+  })
+
+  it('finds the scale a modal song is made of: Fm, B♭, E♭, A♭ are E♭ major’s notes', () => {
+    const profiles = [[5, 'minor'], [10, 'major'], [3, 'major'], [8, 'major']].flatMap(([r, k]) => [profile(r, k), profile(r, k)])
+    expect(names(songScale(profiles))).toEqual([0, 2, 3, 5, 7, 8, 10])
+  })
+
+  it('hears the scale from the singer alone, and from the band alone', () => {
+    const sung = [60, 62, 64, 65, 67, 69, 71, 72].map((midi) => { const v = new Array(12).fill(0); v[midi % 12] = 1; return v })
+    expect(names(songScale([], sung))).toEqual([0, 2, 4, 5, 7, 9, 11])
+    expect(songScale([], [])).toBeNull()
+    expect(names(songScale([profile(7), profile(2), profile(9, 'minor')]))).toEqual([0, 2, 4, 6, 7, 9, 11])
+  })
+
+  it('spells a chord in the song’s scale: B♭ in E♭ major, not B♭m7, though a stray D♭ is heard', () => {
+    const scale = new Set([0, 2, 3, 5, 7, 8, 10])
+    const profiles = Array.from({ length: 8 }, () => profile(10, 'major', { noise: 1, amount: 0.6 }))
+    const track = songChords(profiles, scale, BAR)
+    expect(track.map((c) => c.id)).toEqual(Array(8).fill('Bb'))
+  })
+
+  it('changes chord at the bar line or the half-bar, not on the beat the band wobbled', () => {
+    const profiles = [...Array(3).fill(profile(0)), ...Array(5).fill(profile(7)), ...Array(8).fill(profile(0))]
+    const track = songChords(profiles, new Set([0, 2, 4, 5, 7, 9, 11]), BAR)
+    const changes = track.map((c, i) => (i && c.id !== track[i - 1].id ? i : null)).filter((i) => i !== null)
+    expect(changes.length).toBe(2)
+    for (const at of changes) expect(at % 2).toBe(0)
+    expect(track[8].id).toBe('C')
+  })
+
+  it('lets the singer’s note tip a beat’s chord', () => {
+    const flat = { chroma: new Array(12).fill(1 / Math.sqrt(12)), bass: null, energy: 1 }
+    const sungE = new Array(12).fill(0)
+    sungE[4] = 1
+    const [heard] = heardWithTune([flat], [sungE])
+    expect(heard.chroma[4]).toBeGreaterThan(heard.chroma[0])
+    expect(Math.hypot(...heard.chroma)).toBeCloseTo(1)
+    expect(heardWithTune([flat], [undefined])[0]).toBe(flat)
+  })
+})
+
+describe('tidying the tune', () => {
+  const ev = (start, end, midi) => ({ start, end, midi })
+  it('joins a sixteenth to the same note before or after it', () => {
+    expect(tidy([ev(0, 4, 60), ev(4, 5, 60), ev(5, 8, 62)])).toEqual([ev(0, 5, 60), ev(5, 8, 62)])
+    expect(tidy([ev(0, 3, 60), ev(3, 4, 62), ev(4, 8, 62)])).toEqual([ev(0, 3, 60), ev(3, 8, 62)])
+  })
+  it('gives an off-beat scoop or wobble to its neighbour, and keeps a sung sixteenth', () => {
+    expect(tidy([ev(0, 3, 60), ev(3, 4, 61), ev(4, 8, 64)])).toEqual([ev(0, 4, 60), ev(4, 8, 64)])
+    expect(tidy([ev(0, 2, 60), ev(3, 4, 63), ev(4, 8, 64)])).toEqual([ev(0, 2, 60), ev(3, 8, 64)])
+    expect(tidy([ev(0, 2, 60), ev(2, 3, 67), ev(3, 8, 64)])).toEqual([ev(0, 2, 60), ev(2, 3, 67), ev(3, 8, 64)]) // on the grid: sung
+    expect(tidy([ev(0, 3, 60), ev(3, 4, 67), ev(4, 8, 64)])).toEqual([ev(0, 3, 60), ev(3, 4, 67), ev(4, 8, 64)]) // a leap: sung
   })
 })

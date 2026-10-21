@@ -8,11 +8,14 @@ import { lyricsFor } from './songLyrics.js'
 
 /**
  * Arrange one song without Supabase, to try the worker's pipeline:
- *   npm run once -- <YouTube id | audio file> [out.musicxml] [ttbb|satb|tb]
+ *   npm run once -- <YouTube id | audio file> [out.musicxml] [solo_ttbb|ttbb|satb|tb]
+ * With ANALYSIS=<file.json> in the environment, what the models heard
+ * (arrangeAudio's onAnalysis) is saved there too, so the arranger alone can
+ * be run again on it (app/src/tabs/vocal/arrange/replay.js).
  */
 const [source, out = 'arrangement.musicxml', voicing = 'ttbb'] = process.argv.slice(2)
 if (!source) {
-  console.error('usage: npm run once -- <YouTube id | audio file> [out.musicxml] [ttbb|satb|tb]')
+  console.error('usage: npm run once -- <YouTube id | audio file> [out.musicxml] [solo_ttbb|ttbb|satb|tb]')
   process.exit(2)
 }
 const started = Date.now()
@@ -39,6 +42,13 @@ try {
     voicing,
     title,
     lyrics: lyrics?.hear,
+    onAnalysis: process.env.ANALYSIS
+      ? (analysis) => {
+          const plain = (key, value) => (ArrayBuffer.isView(value) ? Array.from(value) : value)
+          writeFileSync(process.env.ANALYSIS, JSON.stringify({ title, ...analysis }, plain))
+          console.log(`[${seconds()} s] analysis saved to ${process.env.ANALYSIS}`)
+        }
+      : undefined,
     onProgress: ({ label, value }) => {
       const line = `${label} ${Math.floor(value * 20) * 5}%`
       if (line !== last) console.log(`[${seconds()} s] ${(last = line)}`)

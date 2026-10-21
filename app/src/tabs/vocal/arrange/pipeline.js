@@ -92,10 +92,13 @@ export async function arrangeFile(file, { onProgress, signal, title, ...options 
  * returns the sung words ([{ text, start, end }], lyrics.js) for the
  * separated vocals, or null. `gpu` weights the progress bar. Other options are arrangeSong's (`voicing`, `melodyPart`,
  * `keepKey`, `title`), plus `onProgress({ stage, label, value, device })`
- * (`value` the whole job's 0 … 1) and `signal` (an AbortSignal). Returns
- * arrangeSong's result with `title`; throws when no singing is heard.
+ * (`value` the whole job's 0 … 1), `signal` (an AbortSignal) and
+ * `onAnalysis({ notes, chords, bars, words, profiles })` (what the models
+ * heard, before the parts are written: the worker saves it to try the
+ * arranger again without the models). Returns arrangeSong's result with
+ * `title`; throws when no singing is heard.
  */
-export async function arrangeAudio({ left, right, song }, { toModelRate, models = {}, lyrics = null, gpu = false, onProgress, signal, title = 'Recording', ...options } = {}) {
+export async function arrangeAudio({ left, right, song }, { toModelRate, models = {}, lyrics = null, gpu = false, onProgress, onAnalysis = null, signal, title = 'Recording', ...options } = {}) {
   let device = gpu ? 'gpu' : 'cpu'
   const share = (s) => (gpu ? s.gpuWeight : s.weight)
   let done = 0
@@ -140,8 +143,10 @@ export async function arrangeAudio({ left, right, song }, { toModelRate, models 
   const bars = await trackBeats(song, { onProgress: stage('beats'), signal, ...(runtime ? { runtime, model: beatModel } : {}) })
 
   stage('arrange')
-  const chords = bars.beats.length ? recognizeChords(beatChroma(frames, basicPitch.frameTime, bars.beats), bars) : []
-  const result = arrangeSong({ notes, chords, bars, words }, { ...options, title })
+  const profiles = bars.beats.length ? beatChroma(frames, basicPitch.frameTime, bars.beats) : []
+  const chords = profiles.length ? recognizeChords(profiles, bars) : []
+  onAnalysis?.({ notes, chords, bars, words, profiles })
+  const result = arrangeSong({ notes, chords, bars, words, profiles }, { ...options, title })
   if (!result) throw new Error('No singing was heard in this recording.')
   onProgress?.({ stage: 'arrange', label: STAGES.at(-1).label, value: 1, device })
   return { ...result, title }
