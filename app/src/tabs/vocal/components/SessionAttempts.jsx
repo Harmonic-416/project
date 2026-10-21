@@ -67,8 +67,10 @@ export function RecordingBudget({ storage }) {
  * One attempt with its feedback controls. `attempt` is a shared_attempt row
  * (or a SessionAttempt, which may already carry `recording_url`).
  * `onChange(patch)` reports what was saved so the parent's copy stays right.
+ * `actions` go at the end of the row's first line; `showAudio` false leaves
+ * the recording to the caller (an opened attempt already has a player).
  */
-export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDeleted }) {
+export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDeleted, actions = null, showAudio = true, className = '' }) {
   const [note, setNote] = useState(attempt.self_note ?? '')
   const [noteState, setNoteState] = useState('idle') // idle | saving | saved | error
   const [rating, setRating] = useState(attempt.rating ?? null)
@@ -153,7 +155,7 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
     noteState === 'saving' ? 'Saving…' : noteState === 'saved' ? 'Saved' : noteState === 'error' ? 'Could not save' : ''
 
   return (
-    <li className="attempt-row">
+    <li className={`attempt-row ${className}`.trim()}>
       <div className="attempt-row__head">
         {index !== undefined && <span className="attempt-row__index">#{index}</span>}
         <strong className="attempt-row__score">{Math.round(Number(attempt.accuracy))}%</strong>
@@ -177,9 +179,10 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
             </button>
           ))}
         </span>
+        {actions}
       </div>
 
-      {attempt.recording_path ? (
+      {!showAudio ? null : attempt.recording_path ? (
         <div className="attempt-row__audio">
           {audioUrl ? (
             <audio className="attempt-row__player" controls src={audioUrl} autoPlay={!attempt.recording_url} />

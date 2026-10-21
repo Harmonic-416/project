@@ -216,6 +216,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   }, [sessionsToOpen, onSessionsOpened])
 
   // ── Shared attempts ────────────────────────────────────────────────────
+  // Another try opened from under an attempt (AttemptHistory): loaded like a share link.
+  const [openTryId, setOpenTryId] = useState(null)
   const openShared = useCallback(
     async (attempt, bytes, filename, { title, builtin = false } = {}) => {
       setShared({ phase: 'open', attempt })
@@ -226,6 +228,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         catalogSongId: attempt.song_id,
         part: { id: attempt.part_id, withOthers: attempt.with_others },
       })
+      setOpenTryId(null) // opened: a later share link or Open isn't shadowed by it
       onSharedAttemptDone?.()
     },
     [loadFromArrayBuffer, onSharedAttemptDone],
@@ -234,12 +237,13 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   // Follow a share link once someone is signed in. Before that, the gate
   // shows a phase derived from auth (see sharedGate below).
   const userId = auth.user?.id ?? null
+  const attemptToOpen = sharedAttemptId ?? openTryId
   useEffect(() => {
-    if (!sharedAttemptId || !userId || !supabase) return undefined
+    if (!attemptToOpen || !userId || !supabase) return undefined
     let cancelled = false
     ;(async () => {
       try {
-        const attempt = await getSharedAttempt(supabase, sharedAttemptId)
+        const attempt = await getSharedAttempt(supabase, attemptToOpen)
         if (cancelled) return
         if (!attempt) throw new Error('This shared attempt doesn’t exist anymore.')
         if (attempt.song_id) {
@@ -274,7 +278,34 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     return () => {
       cancelled = true
     }
-  }, [sharedAttemptId, userId, openShared])
+  }, [attemptToOpen, userId, openShared])
+
+  // Open another try at the song on screen (AttemptHistory's Open): the
+  // score is already loaded, so only the attempt and its part change —
+  // loading the same notation again would leave the viewer without a score.
+  const openTry = useCallback(
+    async (id) => {
+      const current = shared?.attempt
+      try {
+        const attempt = await getSharedAttempt(supabase, id)
+        if (!attempt) throw new Error('This attempt doesn’t exist anymore.')
+        const sameSong =
+          current &&
+          (attempt.song_id ? attempt.song_id === current.song_id : attempt.song_fingerprint === current.song_fingerprint)
+        if (!sameSong) {
+          setOpenTryId(id)
+          return
+        }
+        setPracticePart(attempt.part_id ?? undefined)
+        setAccompaniment(attempt.with_others ? 'all' : 'solo')
+        setShared({ phase: 'open', attempt })
+      } catch (err) {
+        console.error(err)
+        setShared({ phase: 'error', error: err.message || 'Could not open this attempt.' })
+      }
+    },
+    [shared],
+  )
 
   const handleSharedFile = useCallback(
     async (file) => {
@@ -296,6 +327,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
 
   const closeShared = useCallback(() => {
     setShared(null)
+    setOpenTryId(null)
     onSharedAttemptDone?.()
     setView('library')
     setStatus('idle')
@@ -687,6 +719,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               scoreModel={scoreModel}
               sheetMusicRef={sheetMusicRef}
               supabase={supabase}
+              viewerId={userId}
+              onOpenAttempt={openTry}
             />
           )}
           {scoreModel && practiceMode === 'listen' && !viewingShared && (
