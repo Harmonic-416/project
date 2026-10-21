@@ -44,6 +44,7 @@ anon key (see *Supabase setup* below). Node 20+.
 - [`docs/architecture.md`](docs/architecture.md) — boxes and arrows, components, data flows, decisions, testing
 - [`docs/scaling-plan.md`](docs/scaling-plan.md) — load model, measured baseline, when and how to move off Supabase
 - [`docs/M2-design-and-setup.md`](docs/M2-design-and-setup.md) — milestone rubric and status
+- [`docs/M3-changes-since-M2.md`](docs/M3-changes-since-M2.md) — what changed between M2 and M3, by design-document section
 - [`openspec/`](openspec/README.md) — requirement-linked specs, proposals and design notes
 - Supabase project: [`mxfclxntqbeznbubfmwa`](https://supabase.com/dashboard/project/mxfclxntqbeznbubfmwa)
 
