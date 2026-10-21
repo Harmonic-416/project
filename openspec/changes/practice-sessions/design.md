@@ -105,6 +105,7 @@ A session is owned by the client that practises:
 - **[Risk] Two tabs practising at once open two sessions.** Acceptable: they are two sittings; nothing breaks.
 - **[Risk] The budget trigger counts `recording_bytes` the client reported, not the object's real size.** The client is the only writer and the bucket's 25 MB per-file limit bounds any lie; the trigger is a guard against honest overuse, not an adversary.
 - **[Risk] `get_shared_attempt` replacement.** It keeps the same signature and return type; the backend tests for shares (0005/0010) run unchanged against it.
+- **[Risk] A friend the attempt was sent to can read `self_note` / `rating` with a hand-built table query.** 0010's `shared_attempt_recipient_select` policy covers whole rows, and RLS can't hide columns. The app never shows them to a recipient and `get_shared_attempt` (the one way the app opens someone else's attempt) blanks them; the session listings only read attempts through the caller's own sessions. Closing it fully means either dropping the recipient policy (everything a recipient needs already goes through security-definer functions; to be checked against `social.test.ts`) or moving the feedback to an owner-only table. Left as is in this change.
 - **[Trade-off] Feedback columns on `shared_attempt` rather than a `attempt_feedback` table.** One note per attempt, by its one owner, is a column. A table would only pay off with history or several authors, which are out of scope.
 
 ## Migration Plan
