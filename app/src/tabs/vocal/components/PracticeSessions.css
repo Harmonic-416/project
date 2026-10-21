@@ -1,0 +1,133 @@
+/* Practice sessions view (previous sittings at a song). */
+.practice-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.practice-sessions__intro,
+.practice-sessions__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.practice-sessions__error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #cf4b36;
+}
+
+.practice-sessions__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.practice-session {
+  border: 1px solid #e2dfd8;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.practice-session__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  color: #24242c;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.practice-session__head:hover {
+  background: #f0f7f7;
+}
+
+.practice-session__when {
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  font-weight: 600;
+}
+
+.practice-session__when small {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.practice-session__song {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #128789;
+}
+
+.practice-session__summary {
+  flex: 1 1 200px;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.practice-session__chevron {
+  margin-left: auto;
+  color: #6c6a72;
+}
+
+.practice-session__body {
+  padding: 0 12px 12px;
+  border-top: 1px solid #e2dfd8;
+}
+
+.practice-session__body > * {
+  margin-top: 10px;
+}
+
+/* The toolbar link into this view from the open song. */
+.vocal-tab__sessions-link {
+  border: none;
+  background: none;
+  color: #128789;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  .practice-session {
+    border-color: #3a3a42;
+    background: #1f1f26;
+  }
+
+  .practice-session__head {
+    color: #f0efe9;
+  }
+
+  .practice-session__head:hover {
+    background: #26262e;
+  }
+
+  .practice-session__song,
+  .vocal-tab__sessions-link {
+    color: #3fb6b8;
+  }
+
+  .practice-session__body {
+    border-top-color: #3a3a42;
+  }
+}

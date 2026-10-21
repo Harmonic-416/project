@@ -1,0 +1,268 @@
+/* "This session" under the record panel, and the attempt rows the
+   Practice sessions view reuses. */
+.session-attempts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e2dfd8;
+}
+
+.session-attempts__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+
+.session-attempts__title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6c6a72;
+}
+
+.session-attempts__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.session-attempts__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One attempt */
+.attempt-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e2dfd8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #24242c;
+}
+
+.attempt-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.attempt-row__index {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6c6a72;
+}
+
+.attempt-row__score {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.attempt-row__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.attempt-row__rating {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.attempt-row__star {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: #d6d3cc;
+  cursor: pointer;
+}
+
+.attempt-row__star.is-on {
+  color: #e0a100;
+}
+
+.attempt-row__star:focus-visible {
+  outline: 2px solid #128789;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+.attempt-row__audio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.attempt-row__player {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 420px;
+  height: 36px;
+}
+
+.attempt-row__button {
+  border: 1px solid #128789;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  color: #128789;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.attempt-row__link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #cf4b36;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.attempt-row__link:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.attempt-row__hint {
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.attempt-row__error {
+  font-size: 0.85rem;
+  color: #cf4b36;
+}
+
+.attempt-row__note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attempt-row__note-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.attempt-row__note-state {
+  font-style: normal;
+}
+
+.attempt-row__note-state--saved {
+  color: #1d6b3d;
+}
+
+.attempt-row__note-state--error {
+  color: #cf4b36;
+}
+
+.attempt-row__note textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 2.6em;
+  border: 1px solid #d6d3cc;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  background: #ffffff;
+  color: #24242c;
+}
+
+.attempt-row__note textarea:focus {
+  outline: 2px solid #128789;
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+/* Storage used */
+.session-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.session-budget__bar {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e2dfd8;
+  overflow: hidden;
+}
+
+.session-budget__bar span {
+  display: block;
+  height: 100%;
+  background: #128789;
+}
+
+.session-budget--high .session-budget__bar span {
+  background: #cf4b36;
+}
+
+@media (prefers-color-scheme: dark) {
+  .session-attempts {
+    border-top-color: #3a3a42;
+  }
+
+  .attempt-row {
+    border-color: #3a3a42;
+    background: #1f1f26;
+    color: #f0efe9;
+  }
+
+  .attempt-row__star {
+    color: #4a4a54;
+  }
+
+  .attempt-row__star.is-on {
+    color: #f0b429;
+  }
+
+  .attempt-row__button {
+    border-color: #3fb6b8;
+    color: #3fb6b8;
+  }
+
+  .attempt-row__note textarea {
+    border-color: #3a3a42;
+    background: #16161b;
+    color: #f0efe9;
+  }
+
+  .session-budget__bar {
+    background: #3a3a42;
+  }
+}

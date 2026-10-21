@@ -26,9 +26,9 @@ const SONGS_SHOWN = 2
  * the Social tab.
  *
  * `onOpenAttempt` / `onOpenFile` open an attempt or a file in its
- * instrument's tab.
+ * instrument's tab; `onOpenSessions` a song's practice sessions (Vocal).
  */
-function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile }) {
+function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions }) {
   const { user, configured, ready } = auth
 
   // A failed sign-in or "Connect" comes back to the app with the reason in
@@ -91,7 +91,7 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile }) {
         </header>
 
         {signedIn ? (
-          <SignedInHome user={user} onNavigate={onNavigate} onOpenAttempt={onOpenAttempt} onOpenFile={onOpenFile} />
+          <SignedInHome user={user} onNavigate={onNavigate} onOpenAttempt={onOpenAttempt} onOpenFile={onOpenFile} onOpenSessions={onOpenSessions} />
         ) : (
           <SignedOutHome auth={auth} notice={notice} onNavigate={onNavigate} onOpenFile={onOpenFile} />
         )}
@@ -137,7 +137,7 @@ function SignedOutHome({ auth, notice, onNavigate, onOpenFile }) {
   )
 }
 
-function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile }) {
+function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions }) {
   const { data, errors, reload } = useHomeData(user.id, PARTS)
   const [page, setPage] = useState(null) // null | 'songs' | 'activity' | 'files'
   const [activityTab, setActivityTab] = useState('received')
@@ -161,7 +161,7 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile }) {
   if (page === 'songs') {
     return (
       <SubPage title="Working On" onBack={back}>
-        <WorkingOnCards recent={data.recent} error={errors.recent} onOpenAttempt={onOpenAttempt} onNavigate={onNavigate} showAdd />
+        <WorkingOnCards recent={data.recent} error={errors.recent} onOpenAttempt={onOpenAttempt} onOpenSessions={onOpenSessions} onNavigate={onNavigate} showAdd />
       </SubPage>
     )
   }
@@ -208,6 +208,7 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile }) {
           error={errors.recent}
           limit={SONGS_SHOWN}
           onOpenAttempt={onOpenAttempt}
+          onOpenSessions={onOpenSessions}
           onNavigate={onNavigate}
           showAdd
         />

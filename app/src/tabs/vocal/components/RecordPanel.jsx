@@ -8,6 +8,7 @@ import { downloadBlob, safeFilename } from '../notation/exportNotation.js'
 import { judgeNotes } from '../share/sharedAttempt.js'
 import { getScoreSeconds } from '../playback/scoreClock.js'
 import ShareAttempt from './ShareAttempt.jsx'
+import SessionAttempts from './SessionAttempts.jsx'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -26,8 +27,10 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
  * pressed): each note of the part turns green (sung) or red (missed). The
  * compressed recording can be downloaded, and the attempt shared as a link
  * (see ShareAttempt; `shareSong` describes the song without uploading it).
+ * `session` (usePracticeSession, from VocalTab) collects the attempts of
+ * this sitting under the panel ("This session").
  */
-function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong }) {
+function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null }) {
   const melody = useMemo(
     () =>
       scoreModel
@@ -181,9 +184,11 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
             samples={samples}
             accuracy={result.accuracy}
             recording={recording}
+            session={session}
           />
         </div>
       )}
+      {session && supabase && <SessionAttempts supabase={supabase} session={session} />}
     </section>
   )
 }

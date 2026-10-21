@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './ShareAttempt.css'
 import { attachRecording, saveAttempt, sendAttemptToFriends, shareAttempt, shareAttemptLink } from '@backend/attempts'
+import { deleteAttemptRecording } from '@backend/practiceSessions'
 import { formatHandle, listFriends } from '@backend/friends'
 import { displayNameFor } from '../../../auth/authHelpers.js'
 import { shareUrlFor, toTrace } from '../share/sharedAttempt.js'
+import { formatBytes, keepByDefault } from '../practice/practiceSession.js'
 import { namesList } from '../../home/homeFormat.js'
 
 /**
@@ -21,9 +23,20 @@ import { namesList } from '../../home/homeFormat.js'
  * matched by its fingerprint.
  *
  * `song` is { songId, title, format, fingerprint, builtin, partId, partName, withOthers }.
+ *
+ * With `session` (usePracticeSession's value; the Vocal tab passes it) the
+ * attempt is saved into the open practice session and reported back to it,
+ * and "Keep recording" stores the audio right away — on by default while it
+ * fits the recording budget, off once it doesn't; unticking it again deletes
+ * the audio and keeps the attempt. Without a session (Guitar) the recording
+ * is only uploaded when the attempt is shared or sent, as before.
  */
-function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording, instrument = 'voice', verdicts = null }) {
-  const [includeRecording, setIncludeRecording] = useState(true)
+function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording, instrument = 'voice', verdicts = null, session = null }) {
+  const [includeRecording, setIncludeRecording] = useState(() =>
+    session ? keepByDefault(recording?.size ?? 0, session.storage) : true,
+  )
+  const [audioBusy, setAudioBusy] = useState(false)
+  const audioOp = useRef(null) // the attach / delete in flight
   const [saved, setSaved] = useState(null) // the saved attempt row
   const [saveFailed, setSaveFailed] = useState(false)
   const [state, setState] = useState('idle') // idle | sharing | shared | error
@@ -51,10 +64,60 @@ function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording,
     verdicts,
   }))
 
-  // Save once per finished attempt (the ref survives StrictMode's re-run).
+  // In a session, "Keep recording" acts at once: ticked stores the audio,
+  // unticked (after it was kept) deletes it. The attempt stays either way.
+  // One operation at a time; `row` is the saved attempt to act on.
+  const sessionRef = useRef(session)
+  sessionRef.current = session
+  const keepRecording = useCallback(
+    (wantKept, row) => {
+      const live = sessionRef.current
+      if (!live || !row || !recording || audioOp.current) return
+      const isKept = Boolean(row.recording_path)
+      if (wantKept === isKept) return
+      setAudioBusy(true)
+      setMessage(null)
+      const op = wantKept
+        ? attachRecording(supabase, row, recording)
+        : deleteAttemptRecording(supabase, row).then(() => ({ ...row, recording_path: null, recording_bytes: null }))
+      audioOp.current = op
+      op.then(
+        (next) => {
+          setSaved(next)
+          live.patchAttempt(next.id, { recording_path: next.recording_path, recording_bytes: next.recording_bytes, recording_url: null })
+          live.refreshStorage()
+        },
+        (err) => {
+          console.error(err)
+          setMessage(err.message || (wantKept ? 'Could not keep the recording.' : 'Could not delete the recording.'))
+          setState('error')
+          setIncludeRecording(isKept)
+        },
+      ).finally(() => {
+        audioOp.current = null
+        setAudioBusy(false)
+      })
+    },
+    [supabase, recording],
+  )
+
+  // Save once per finished attempt (the ref survives StrictMode's re-run),
+  // under the open practice session when there is one; then keep the
+  // recording if the box started ticked.
   useEffect(() => {
     if (!signedIn || !identifiable) return undefined
-    if (!savingRef.current) savingRef.current = saveAttempt(supabase, details)
+    if (!savingRef.current) {
+      const open = sessionRef.current
+      savingRef.current = (open ? open.ensureSessionId() : Promise.resolve(null)).then((sessionId) =>
+        saveAttempt(supabase, { ...details, sessionId }),
+      )
+      savingRef.current
+        .then((row) => {
+          sessionRef.current?.addAttempt(row)
+          if (includeRecording) keepRecording(true, row)
+        })
+        .catch(() => {})
+    }
     let live = true
     savingRef.current.then(
       (row) => live && setSaved(row),
@@ -66,6 +129,8 @@ function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording,
     return () => {
       live = false
     }
+    // `includeRecording` / `keepRecording` only matter on the first run, which creates the save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, identifiable, supabase, details])
 
   if (!auth.configured) return null
@@ -152,10 +217,13 @@ function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording,
           <input
             type="checkbox"
             checked={includeRecording}
-            disabled={state === 'sharing'}
-            onChange={(event) => setIncludeRecording(event.target.checked)}
+            disabled={state === 'sharing' || audioBusy || Boolean(session && !saved)}
+            onChange={(event) => {
+              setIncludeRecording(event.target.checked)
+              if (session) keepRecording(event.target.checked, saved)
+            }}
           />
-          Include my recording
+          {session ? `Keep recording (${formatBytes(recording.size)})` : 'Include my recording'}
         </label>
       )}
       {message && <span className={state === 'error' ? 'share-attempt__error' : 'share-attempt__hint'}>{message}</span>}
