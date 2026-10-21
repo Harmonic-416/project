@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { listPracticeRuns, listSessionRuns, savePracticeRun } from '../../src/lib/practiceRuns'
 import { saveAttempt } from '../../src/lib/attempts'
@@ -17,7 +18,8 @@ const FINGERPRINT = 'f'.repeat(64)
 const CATALOG_SONG = '00000000-0000-4000-8000-000000000011' // Ode to Joy (voice)
 
 describe('practice run input checks (no database)', () => {
-  const supabase = newClient()
+  // The checks fail before any request, so no client is needed.
+  const supabase = {} as SupabaseClient
   it('refuses runs it can’t chart', async () => {
     await expect(savePracticeRun(supabase, { songFingerprint: 'x', accompaniment: 'solo', mode: 'wait', score: 50 })).rejects.toThrow(/fingerprint/)
     await expect(savePracticeRun(supabase, { songFingerprint: FINGERPRINT, accompaniment: 'solo', mode: 'wait', score: 101 })).rejects.toThrow(/0 to 100/)
