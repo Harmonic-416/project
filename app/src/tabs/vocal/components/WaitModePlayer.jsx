@@ -2,12 +2,24 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
+import PracticeSummary from './PracticeSummary.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { frequencyToMidi, midiToNoteName } from '../audio/pitchDetector.js'
 import { createHoldDetector, noteDistanceCents, soundingAt } from '../practice/practiceLogic.js'
+import {
+  createListeningClock,
+  formatSeconds,
+  liveVerdict,
+  REACTION_FULL_MS,
+  SLOW_NOTE_MS,
+  STRICT_HOLD,
+  summarizeWaitRun,
+} from '../practice/scoring.js'
+import { useSessionRuns } from '../practice/sessionRuns.js'
 
 const TARGET_CLASS = 'practice-note--target'
 const SUNG_CLASS = 'practice-note--sung'
+const SLOW_CLASS = 'practice-note--slow'
 const HINT_SECONDS = 0.8
 // Ignore the mic while the hint tone (and a little room echo) is sounding,
 // or the speaker would "sing" the note for the user.
@@ -30,13 +42,6 @@ function heldChord(backingNotes, target) {
 /** There's no playback clock in this mode; any non-null time lets samples through. */
 const wallClock = () => performance.now() / 1000
 
-function verdictFor(cents) {
-  const abs = Math.abs(cents)
-  if (abs <= 50) return 'in-tune'
-  if (abs <= 100) return 'close'
-  return 'wrong'
-}
-
 /**
  * "Wait for me": no backing track. The next melody note is highlighted
  * (cursor + coloured notehead) and the score only moves on once the mic
@@ -47,11 +52,24 @@ function verdictFor(cents) {
  * With `backingNotes` (the other parts, "with all parts"), whatever they
  * are sounding at the target's moment is held as a chord while waiting,
  * and changes as the singer moves on.
+ *
+ * Scoring (practice/scoring.js): each note is timed from when it's
+ * highlighted to when the singer first lands on it, counting listening time
+ * only. A run from the first note to the last gets a score and joins this
+ * session's tries for `runsKey` (practice/sessionRuns.js); slow notes are
+ * marked amber on the score.
  */
-function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNotes = null }) {
+function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNotes = null, runsKey }) {
   const [index, setIndex] = useState(0)
   const indexRef = useRef(0)
-  const [detector] = useState(() => createHoldDetector())
+  const [detector] = useState(() => createHoldDetector(STRICT_HOLD))
+  const [clock] = useState(createListeningClock)
+  const listeningRef = useRef(false)
+  // This run's times, and whether it started on the first note (only those are charted).
+  const runRef = useRef({ fromStart: true, results: [] })
+  const [lastMs, setLastMs] = useState(null)
+  const [summary, setSummary] = useState(null)
+  const [runs, addRun] = useSessionRuns(runsKey)
   const deafUntilRef = useRef(0)
   const synthRef = useRef(null)
   const chordSynthRef = useRef(null)
@@ -75,10 +93,33 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
       indexRef.current = i
       setIndex(i)
       detector.reset()
+      clock.restart(performance.now(), listeningRef.current)
       highlight(i)
     },
-    [detector, highlight],
+    [clock, detector, highlight],
   )
+
+  const newRun = useCallback(() => {
+    runRef.current = { fromStart: true, results: [] }
+    setLastMs(null)
+    setSummary(null)
+    sheetMusicRef.current?.clearMarks(SLOW_CLASS)
+  }, [sheetMusicRef])
+
+  // Last note sung: score the run, mark the slow notes, add it to the session.
+  const finishRun = useCallback(() => {
+    const { fromStart, results } = runRef.current
+    if (!results.length) return
+    const charted = fromStart && results.length === melody.length
+    const result = summarizeWaitRun(results)
+    for (const r of results) {
+      if (r.ms <= SLOW_NOTE_MS) continue
+      sheetMusicRef.current?.markNote(r.index, SUNG_CLASS, false)
+      sheetMusicRef.current?.markNote(r.index, SLOW_CLASS)
+    }
+    if (charted) addRun(result.score)
+    setSummary({ ...result, charted })
+  }, [addRun, melody.length, sheetMusicRef])
 
   const handleSample = useCallback(
     (sample) => {
@@ -86,14 +127,26 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
       if (now < deafUntilRef.current) return
       const note = melody[indexRef.current]
       if (!note || !detector.update(sample.midi, note.midi, now)) return
+      // Timed to when the singer first landed on it, not to the end of the hold.
+      const ms = clock.at(detector.onsetMs ?? now)
+      runRef.current.results.push({ index: note.index, position: indexRef.current, midi: note.midi, ms })
+      setLastMs(ms)
       sheetMusicRef.current?.markNote(note.index, SUNG_CLASS)
       goTo(indexRef.current + 1)
+      if (indexRef.current >= melody.length) finishRun()
     },
-    [detector, goTo, melody, sheetMusicRef],
+    [clock, detector, finishRun, goTo, melody, sheetMusicRef],
   )
 
   const mic = useMicPitch({ getTime: wallClock, onSample: handleSample })
   const listening = mic.status === 'listening'
+
+  // The note clock runs only while listening.
+  useEffect(() => {
+    listeningRef.current = listening
+    if (listening) clock.resume(performance.now())
+    else clock.pause(performance.now())
+  }, [clock, listening])
 
   // Show the first target as soon as the mode is picked; leave a clean score behind.
   useEffect(() => {
@@ -102,6 +155,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     return () => {
       viewer?.clearMarks(TARGET_CLASS)
       viewer?.clearMarks(SUNG_CLASS)
+      viewer?.clearMarks(SLOW_CLASS)
       viewer?.reset()
     }
   }, [highlight, sheetMusicRef])
@@ -140,24 +194,33 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
   const play = useCallback(async () => {
     if (done) {
       sheetMusicRef.current?.clearMarks(SUNG_CLASS)
+      newRun()
       goTo(0)
     }
     if (backingNotes) await Tone.start() // audio must be unlocked inside the click
     await mic.start()
-  }, [backingNotes, done, goTo, mic, sheetMusicRef])
+  }, [backingNotes, done, goTo, mic, newRun, sheetMusicRef])
 
   const stop = useCallback(() => {
     mic.stop()
     sheetMusicRef.current?.clearMarks(SUNG_CLASS)
+    newRun()
     goTo(0)
-  }, [goTo, mic, sheetMusicRef])
+  }, [goTo, mic, newRun, sheetMusicRef])
 
   const seek = useCallback(
     (time) => {
-      const i = melody.findIndex((note) => note.time >= time - 1e-3)
-      goTo(i === -1 ? melody.length - 1 : i)
+      const found = melody.findIndex((note) => note.time >= time - 1e-3)
+      const i = found === -1 ? melody.length - 1 : found
+      if (i === 0) newRun()
+      else {
+        // Skipping notes: still scored, but not charted.
+        runRef.current.fromStart = false
+        setSummary(null)
+      }
+      goTo(i)
     },
-    [goTo, melody],
+    [goTo, melody, newRun],
   )
 
   const hearNote = useCallback(async () => {
@@ -198,10 +261,11 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
           )
         )}
         {listening && !done && (
-          <span className={`practice-status__live practice-status__live--${live ? verdictFor(liveCents) : 'rest'}`}>
+          <span className={`practice-status__live practice-status__live--${live ? liveVerdict(liveCents, STRICT_HOLD.toleranceCents) : 'rest'}`}>
             {live ? `you: ${live.noteName} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : 'listening…'}
           </span>
         )}
+        {lastMs !== null && !done && <span>last note: found in {formatSeconds(lastMs)}</span>}
         {target && (
           <button type="button" className="practice-status__link" onClick={hearNote}>
             Hear note
@@ -209,6 +273,34 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
         )}
         {mic.status === 'error' && <span className="practice-status__error">{mic.error}</span>}
       </div>
+      {(summary || runs.length > 0) && (
+        <PracticeSummary
+          title="How well you know the melody"
+          score={summary?.score ?? null}
+          runs={runs}
+          charted={summary?.charted ?? true}
+          chartLabel="Wait for me scores this session, by try"
+        >
+          {summary && (
+            <>
+              <p>
+                You took {formatSeconds(summary.averageMs)} on average to find each note (full marks within{' '}
+                {formatSeconds(REACTION_FULL_MS)}).
+              </p>
+              {summary.slow.length > 0 ? (
+                <p>
+                  Slowest (amber on the score):{' '}
+                  {summary.slow
+                    .map((r) => `note ${r.position + 1} (${midiToNoteName(r.midi)}) ${formatSeconds(r.ms)}`)
+                    .join(', ')}
+                </p>
+              ) : (
+                <p>Every note came within {formatSeconds(SLOW_NOTE_MS)}: you know this one.</p>
+              )}
+            </>
+          )}
+        </PracticeSummary>
+      )}
     </>
   )
 }
