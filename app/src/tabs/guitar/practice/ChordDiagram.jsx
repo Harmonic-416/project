@@ -1,4 +1,4 @@
-import { STRING_NAMES, dotLabel } from './chords.js'
+import { STRING_NAMES, barresOf, dotLabel } from './chords.js'
 import './ChordDiagram.css'
 
 // Drawing size (SVG units; the SVG scales to its container).
@@ -12,9 +12,10 @@ const HEIGHT = TOP + FRET_GAP * FRETS_SHOWN + 30
 
 /**
  * Chord box: six strings (low E on the left), the nut, four frets, a dot per
- * fretted string, ○ for open and ✕ for muted strings above the nut.
- * `labelMode` picks what the dots say (F35); `pulse` makes the dots throb
- * while the Hint is playing (F31).
+ * fretted string, ○ for open and ✕ for muted strings above the nut, and a bar
+ * where one finger presses several strings. `labelMode` picks what the dots
+ * say (F35); `pulse` makes the dots throb while the Hint is playing, in the
+ * order the fingers go down — first finger first (F31).
  */
 function ChordDiagram({ chord, labelMode, pulse = false }) {
   const x = (i) => LEFT + i * STRING_GAP
@@ -55,10 +56,23 @@ function ChordDiagram({ chord, labelMode, pulse = false }) {
         ) : null,
       )}
 
+      {/* barre: one finger across several strings */}
+      {barresOf(chord).map(({ from, to, fret }) => (
+        <rect
+          key={`barre-${from}-${to}`}
+          className="chord-diagram__barre"
+          x={Math.min(x(from), x(to)) - 12}
+          y={TOP + (fret - 0.5) * FRET_GAP - 12}
+          width={Math.abs(x(to) - x(from)) + 24}
+          height={24}
+          rx={12}
+        />
+      ))}
+
       {/* finger dots */}
       {chord.frets.map((fret, i) =>
         fret > 0 ? (
-          <g key={`dot-${i}`} className="chord-diagram__dot" style={{ animationDelay: `${i * 60}ms` }}>
+          <g key={`dot-${i}`} className="chord-diagram__dot" style={{ animationDelay: `${((chord.fingers?.[i] || 1) - 1) * 180}ms` }}>
             <circle cx={x(i)} cy={TOP + (fret - 0.5) * FRET_GAP} r={12} />
             <text x={x(i)} y={TOP + (fret - 0.5) * FRET_GAP + 4.5}>
               {dotLabel(chord, i, labelMode)}

@@ -104,6 +104,57 @@ export async function setTempoPref(
   if (error) throw error
 }
 
+// ── Guitar Learn progress (migration 0013) ─────────────────────────────
+
+/** What the guitar Learn tab's activities record, as the app keeps it. */
+export interface GuitarProgress {
+  /** Chord lessons cleared in Practice: chord id → 'passed' | 'skipped'. */
+  cleared: Record<string, 'passed' | 'skipped'>
+  /** One-minute changes: best count per chord pair ("C-Em"). */
+  changesBest: Record<string, number>
+  /** Strum-on-the-beat steps passed: step id → true. */
+  strumPassed: Record<string, boolean>
+}
+
+export const emptyGuitarProgress = (): GuitarProgress => ({ cleared: {}, changesBest: {}, strumPassed: {} })
+
+/**
+ * Two records of the same player's progress as one (pure): every chord
+ * cleared in either, a pass beating a skip; the higher best for each pair;
+ * every step passed in either.
+ */
+export function mergeGuitarProgress(a: GuitarProgress, b: GuitarProgress): GuitarProgress {
+  const cleared: GuitarProgress['cleared'] = { ...a.cleared }
+  for (const [id, outcome] of Object.entries(b.cleared)) {
+    if (cleared[id] !== 'passed') cleared[id] = outcome
+  }
+  const changesBest: GuitarProgress['changesBest'] = { ...a.changesBest }
+  for (const [pair, count] of Object.entries(b.changesBest)) changesBest[pair] = Math.max(changesBest[pair] ?? 0, count)
+  return { cleared, changesBest, strumPassed: { ...a.strumPassed, ...b.strumPassed } }
+}
+
+/** The signed-in player's saved guitar progress (empty if they have none yet). */
+export async function getGuitarProgress(supabase: SupabaseClient): Promise<GuitarProgress> {
+  const { data, error } = await supabase.from('guitar_progress').select('cleared, changes_best, strum_passed').maybeSingle()
+  if (error) throw error
+  if (!data) return emptyGuitarProgress()
+  return { cleared: data.cleared ?? {}, changesBest: data.changes_best ?? {}, strumPassed: data.strum_passed ?? {} }
+}
+
+/** Save the signed-in player's guitar progress (replaces what was saved). */
+export async function saveGuitarProgress(supabase: SupabaseClient, progress: GuitarProgress): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) throw userError ?? new Error('Not authenticated')
+  const { error } = await supabase.from('guitar_progress').upsert({
+    user_id: userData.user.id,
+    cleared: progress.cleared,
+    changes_best: progress.changesBest,
+    strum_passed: progress.strumPassed,
+    updated_at: new Date().toISOString(),
+  })
+  if (error) throw error
+}
+
 export async function getTempoPref(supabase: SupabaseClient, songId: string): Promise<number | null> {
   const { data, error } = await supabase
     .from('song_pref')

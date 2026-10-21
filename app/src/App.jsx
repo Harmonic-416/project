@@ -5,6 +5,7 @@ import GuitarTab from './tabs/guitar/GuitarTab.jsx'
 import VocalTab from './tabs/vocal/VocalTab.jsx'
 import SocialTab from './tabs/social/SocialTab.jsx'
 import { useSession } from './auth/useSession.js'
+import { useLearnProgressSync } from './tabs/guitar/learn/useLearnProgressSync.js'
 import { GuitarIcon, HomeIcon, MicIcon, SocialIcon } from './nav/TabIcons.jsx'
 import { readSharedAttemptId, readSharedAttemptInstrument } from './tabs/vocal/share/sharedAttempt.js'
 import { readInviteCode } from '@backend/friends'
@@ -72,6 +73,8 @@ function App() {
   // One session for the whole app: Home owns the sign-in UI, the instrument
   // tabs only read `auth.user` to decide what they may save.
   const auth = useSession()
+  // Guitar → Learn's progress follows the account (signing in merges it, signing out clears it here).
+  const learnProgressVersion = useLearnProgressSync(auth.user?.id ?? null)
   const ActiveComponent = TABS.find((tab) => tab.id === activeTab).Component
 
   const sharedAttemptDone = useCallback(() => {
@@ -122,6 +125,7 @@ function App() {
           onInviteDone={inviteDone}
           onOpenAttempt={openAttempt}
           onOpenFile={openFile}
+          learnProgressVersion={learnProgressVersion}
         />
       </main>
 

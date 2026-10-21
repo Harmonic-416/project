@@ -1,17 +1,13 @@
 import { useState } from 'react'
 import EarTraining from './EarTraining.jsx'
-import StrumDrill from './StrumDrill.jsx'
 import '../../../auth/authTheme.css'
 import './Exercises.css'
 
-const EXERCISES = [
-  { id: 'ear', title: 'Ear training', Component: EarTraining },
-  { id: 'strum', title: 'Strum on the beat', Component: StrumDrill },
-]
+const EXERCISES = [{ id: 'ear', title: 'Ear training', Component: EarTraining }]
 
 /**
  * Exercises to practise on your own, away from a song: ear training (F41),
- * which needs no microphone, and strumming in time with a click (F18).
+ * which needs no microphone. (Strum on the beat, F18, is in Learn.)
  */
 function Exercises() {
   const [exerciseId, setExerciseId] = useState(EXERCISES[0].id)
@@ -19,13 +15,15 @@ function Exercises() {
 
   return (
     <div className="exercises">
-      <div className="exercises__pick" role="group" aria-label="Exercise">
-        {EXERCISES.map((e) => (
-          <button key={e.id} type="button" aria-pressed={e.id === exerciseId} onClick={() => setExerciseId(e.id)}>
-            {e.title}
-          </button>
-        ))}
-      </div>
+      {EXERCISES.length > 1 && (
+        <div className="exercises__pick" role="group" aria-label="Exercise">
+          {EXERCISES.map((e) => (
+            <button key={e.id} type="button" aria-pressed={e.id === exerciseId} onClick={() => setExerciseId(e.id)}>
+              {e.title}
+            </button>
+          ))}
+        </div>
+      )}
       <Component />
     </div>
   )

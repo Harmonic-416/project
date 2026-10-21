@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   evaluateUnlocks,
+  getGuitarProgress,
   getLastScore,
   getTempoPref,
   markNodeComplete,
   getCompletedNodeIds,
+  mergeGuitarProgress,
   recordRunThrough,
+  saveGuitarProgress,
   setTempoPref,
   type LessonNode,
 } from '../../src/lib/progress'
@@ -41,6 +44,34 @@ describe('unlock evaluation (F2)', () => {
     const state = evaluateUnlocks(map, new Set(['meet-the-guitar']))
     expect(state['meet-the-guitar']).toBe('completed')
     expect(state['first-notes']).toBe('unlocked')
+  })
+})
+
+describe('guitar Learn progress, merged (pure)', () => {
+  it('keeps every chord cleared, a pass over a skip, the higher best and every step passed', () => {
+    const device = { cleared: { Em: 'skipped' as const, Am: 'passed' as const }, changesBest: { 'C-Em': 12 }, strumPassed: { down: true } }
+    const account = { cleared: { Em: 'passed' as const, C: 'skipped' as const }, changesBest: { 'C-Em': 9, 'Am-C': 5 }, strumPassed: { 'down-up': true } }
+    const expected = {
+      cleared: { Em: 'passed', Am: 'passed', C: 'skipped' },
+      changesBest: { 'C-Em': 12, 'Am-C': 5 },
+      strumPassed: { down: true, 'down-up': true },
+    }
+    expect(mergeGuitarProgress(device, account)).toEqual(expected)
+    expect(mergeGuitarProgress(account, device)).toEqual(expected)
+  })
+})
+
+describe.skipIf(!hasSupabaseEnv)('guitar Learn progress on the account', () => {
+  it('is saved to the account, survives re-login, and is no one else’s to read', async () => {
+    const { supabase, email, password } = await newTestUser('guitar')
+    expect(await getGuitarProgress(supabase)).toEqual({ cleared: {}, changesBest: {}, strumPassed: {} })
+    const progress = { cleared: { Em: 'passed' as const }, changesBest: { 'C-Em': 20 }, strumPassed: { down: true } }
+    await saveGuitarProgress(supabase, progress)
+    await logout(supabase)
+    await login(supabase, email, password)
+    expect(await getGuitarProgress(supabase)).toEqual(progress)
+    const { supabase: other } = await newTestUser('guitar-other')
+    expect(await getGuitarProgress(other)).toEqual({ cleared: {}, changesBest: {}, strumPassed: {} })
   })
 })
 
