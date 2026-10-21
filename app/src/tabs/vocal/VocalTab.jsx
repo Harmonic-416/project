@@ -343,11 +343,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     supabase,
     userId: auth.user?.id ?? null,
     song: sessionSong,
-    enabled:
-      status === 'ready' &&
-      Boolean(scoreModel) &&
-      shared?.phase !== 'open' &&
-      (view === 'detail' || (view === 'sessions' && sessionsReturnTo === 'detail')),
+    enabled: status === 'ready' && shared?.phase !== 'open' && (view === 'detail' || (view === 'sessions' && sessionsReturnTo === 'detail')),
   })
 
   // With all parts on screen, fade every note but the selected part's.
@@ -460,6 +456,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     const toSong = sessionsReturnTo === 'detail' && notation
     const back = () => {
       if (toSong) {
+        setScoreModel(null) // the viewer renders the score again; the panels wait for it
         setView('detail')
         return
       }
