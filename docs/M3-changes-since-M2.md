@@ -19,7 +19,7 @@ Everything below is merged to `main` and deployed at
 | Accounts | Sign-in only needed to share an attempt | Sign-in also keeps your attempts, practice sessions, feedback, friends and guitar progress |
 | Attempts | One-off share link | Saved privately on every finish; sent to friends; comments; per-song history with notes and ratings |
 | Practice history | Tables built but unused | **Practice sessions**: every sitting at a song with its attempts and recordings |
-| Vocal | Practise a song from a file or the catalog | Also **arrange a song for voices** from an audio file or a YouTube link |
+| Vocal | Practise a song from a file or the catalog | Added detailed scoring taking in delays to hit note, and rewarding pitch accuracy + timing, and progress during your session, Also **arrange a song for voices** from an audio file or a YouTube link |
 | Guitar | Tuner, chord practice, tab songs | Songs, **Learn** (chord lessons, strum on the beat), **Exercises** (ear training), **Fretboard**, Tuner, audio-to-tab draft |
 | Playback | Fixed tempo | **Metronome** with count-in, **tempo** 50–100% |
 | Database | Migrations 0001–0005 | Migrations 0001–**0014** (0006–0014 new) |
