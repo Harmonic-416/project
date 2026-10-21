@@ -1,0 +1,134 @@
+/* One-minute changes (ChangesRun.jsx). */
+.changes-run {
+  padding: 14px 16px 18px;
+}
+
+.changes-run__pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.changes-run__pair select {
+  font: inherit;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.changes-run__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.changes-run__shape {
+  flex: 0 1 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.changes-run__panel {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.changes-run__tip {
+  margin: 0;
+  font-weight: 600;
+}
+
+.changes-run__hint,
+.changes-run__counts {
+  margin: 0;
+  color: var(--hm-text-muted);
+  font-size: 0.9rem;
+}
+
+.changes-run__primary,
+.changes-run__secondary {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.changes-run__primary {
+  border: none;
+  background: var(--hm-accent, #128789);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.changes-run__secondary {
+  border: 1px solid var(--hm-border);
+  background: none;
+  color: var(--hm-text);
+  font-size: 0.85rem;
+}
+
+.changes-run__secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.changes-run__countdown {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--hm-accent, #128789);
+}
+
+.changes-run__time {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A big target to hit without looking. */
+.changes-run__tap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 260px);
+  padding: 18px 12px;
+  border: none;
+  border-radius: 16px;
+  background: var(--practice-good, #6a9f4e);
+  color: #ffffff;
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.changes-run__tap small {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-run__tap:active {
+  transform: scale(0.98);
+}
+
+.changes-run__score {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.changes-run__locked,
+.changes-run__error {
+  margin: 16px;
+  color: var(--hm-text-muted);
+}
+
+.changes-run__error {
+  color: var(--practice-bad, #c8553d);
+}

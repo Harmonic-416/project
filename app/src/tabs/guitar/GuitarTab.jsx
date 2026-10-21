@@ -4,6 +4,7 @@ import Tuner from './tuner/Tuner.jsx'
 import AccountChip from '../../auth/AccountChip.jsx'
 import Exercises from './exercises/Exercises.jsx'
 import Fretboard from './fretboard/Fretboard.jsx'
+import LearnTab from './learn/LearnTab.jsx'
 import TuneUpPrompt from './tuner/TuneUpPrompt.jsx'
 import { createTuningWatch, dismissTunePrompt, isTunePromptDismissed, isTunedThisSession } from './tuner/tuneSession.js'
 import { TuningReportContext } from './tuner/tuningReport.js'
@@ -13,20 +14,23 @@ const GuitarSong = lazy(() => import('./song/GuitarSong.jsx'))
 
 const VIEWS = [
   { id: 'song', label: 'Songs' },
-  { id: 'exercises', label: 'Exercises' }, // ear training (F41), strum on the beat (F18)
+  { id: 'learn', label: 'Learn' }, // chord lessons, strum on the beat (F18); progress on the account
+  { id: 'exercises', label: 'Exercises' }, // ear training (F41)
   { id: 'fretboard', label: 'Fretboard' }, // every note on the neck, per tuning
   { id: 'tuner', label: 'Tuner' },
 ]
 
 /**
- * Guitar: Songs (tab + notation, played along and scored), Exercises to
- * practise on your own, the Fretboard (every note on the neck), and the Tuner. Opens on Songs; a shared guitar
+ * Guitar: Songs (tab + notation, played along and scored), Learn (the chord
+ * lessons and strum on the beat, with progress kept on the account when
+ * signed in; `learnProgressVersion` from App.jsx), Exercises to practise on
+ * your own, the Fretboard (every note on the neck), and the Tuner. Opens on Songs; a shared guitar
  * attempt (`sharedAttemptId`, from a share link via App.jsx) opens there too.
  * Until the guitar has been tuned this session, Songs shows a "Tune first?"
  * prompt, and the songs' single notes keep an ear out for it drifting
  * (tuneSession.js); Tune now leads back to where you were.
  */
-function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened }) {
+function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, learnProgressVersion }) {
   const [view, setView] = useState('song')
   const [returnTo, setReturnTo] = useState(null) // the view "Tune now" came from
   const [tuned, setTuned] = useState(isTunedThisSession)
@@ -95,6 +99,8 @@ function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fil
               )}
               <Tuner />
             </>
+          ) : view === 'learn' ? (
+            <LearnTab auth={auth} progressVersion={learnProgressVersion} />
           ) : view === 'exercises' ? (
             <Exercises />
           ) : view === 'fretboard' ? (

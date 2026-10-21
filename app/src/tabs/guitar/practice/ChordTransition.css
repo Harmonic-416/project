@@ -1,0 +1,72 @@
+/* A chord change, animated (ChordTransition.jsx). */
+.chord-transition {
+  display: block;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.chord-transition__nut {
+  stroke: var(--hm-text, #24242c);
+  stroke-width: 5;
+}
+
+.chord-transition__fret {
+  stroke: var(--hm-border, #e2dfd8);
+  stroke-width: 2;
+}
+
+.chord-transition__string {
+  stroke: var(--hm-text-muted, #6c6a72);
+  stroke-width: 1.5;
+}
+
+.chord-transition__open {
+  fill: none;
+  stroke: var(--hm-text-muted, #6c6a72);
+  stroke-width: 1.5;
+}
+
+.chord-transition__mute,
+.chord-transition__name {
+  fill: var(--hm-text-muted, #6c6a72);
+  font-size: 13px;
+  text-anchor: middle;
+}
+
+.chord-transition__name {
+  font-weight: 700;
+  fill: var(--hm-text, #24242c);
+}
+
+.chord-transition__dot {
+  transition:
+    transform 0.6s ease-in-out,
+    opacity 0.4s ease-in-out;
+}
+
+.chord-transition__dot circle {
+  fill: var(--practice-good, #6a9f4e);
+  stroke: var(--practice-good-strong, #4f7d38);
+  stroke-width: 1.5;
+}
+
+.chord-transition__dot text {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+/* A finger that doesn't move: the one to keep down. */
+.chord-transition__dot--anchor circle {
+  fill: #128789;
+  stroke: #0d6466;
+  stroke-width: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chord-transition__dot {
+    transition: none;
+  }
+}

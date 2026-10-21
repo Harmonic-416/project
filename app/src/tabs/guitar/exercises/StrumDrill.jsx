@@ -16,30 +16,14 @@ import {
   strumTargets,
   tendency,
 } from './strumTiming.js'
+import { soundsLikeAStrum } from './strumHearing.js'
+import { loadPassed, savePassed } from './strumProgress.js'
 import './StrumDrill.css'
 
-const PASSED_KEY = 'harmonic.guitar.strumPassed'
 const CALIBRATION_CLICKS = 8
 const CALIBRATION_BPM = 80
 const LEAD_SECONDS = 0.4 // between the tap and the first click
 const SETTLE_MS = 900 // after the last beat, for its strum's window to arrive
-
-function loadPassed() {
-  try {
-    const saved = JSON.parse(globalThis.localStorage.getItem(PASSED_KEY) ?? '{}')
-    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
-  } catch {
-    return {}
-  }
-}
-
-function savePassed(passedSteps) {
-  try {
-    globalThis.localStorage.setItem(PASSED_KEY, JSON.stringify(passedSteps))
-  } catch {
-    // Private window or blocked storage: progress lasts until reload.
-  }
-}
 
 /**
  * Schedule `beats` clicks at `bpm` on `click` (from a tap, after
@@ -87,6 +71,8 @@ function StrumDrill() {
   const onWindow = useCallback((w) => {
     const run = runRef.current
     if (!run) return
+    // The drill's own click, heard back through the speakers, is never a strum.
+    if (!soundsLikeAStrum(w)) return
     // Chord steps need a real, ringing strum; muted strums are meant to be dead.
     if (run.kind === 'run' && !run.step.muted && !soundsLikeANote(w).ok) return
     const time = run.kind === 'calibrate' ? w.wall : w.wall - latencyRef.current

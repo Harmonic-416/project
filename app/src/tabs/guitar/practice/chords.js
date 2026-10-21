@@ -55,6 +55,23 @@ export function chordMidi(chord) {
   return chord.frets.flatMap((fret, i) => (fret < 0 ? [] : [OPEN_STRING_MIDI[i] + fret]))
 }
 
+/**
+ * One finger pressing several strings at the same fret (the small F's first
+ * finger across B and e): [{ from, to, fret }] by string index, for a barre bar.
+ */
+export function barresOf(chord) {
+  const groups = new Map()
+  chord.frets.forEach((fret, i) => {
+    const finger = chord.fingers?.[i]
+    if (fret <= 0 || !finger) return
+    const key = `${finger}:${fret}`
+    groups.set(key, [...(groups.get(key) ?? []), i])
+  })
+  return [...groups.entries()]
+    .filter(([, strings]) => strings.length > 1)
+    .map(([key, strings]) => ({ from: Math.min(...strings), to: Math.max(...strings), fret: Number(key.split(':')[1]) }))
+}
+
 export const LABEL_MODES = [
   { id: 'fret', label: 'Frets' },
   { id: 'note', label: 'Notes' },

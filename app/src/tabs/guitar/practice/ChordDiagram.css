@@ -43,7 +43,13 @@
   text-anchor: middle;
 }
 
-/* Hint: dots throb one after another while the chord plays. */
+/* One finger across several strings (a barre). */
+.chord-diagram__barre {
+  fill: var(--practice-good);
+  opacity: 0.55;
+}
+
+/* Hint: dots throb in the order the fingers go down while the chord plays. */
 .chord-diagram--pulse .chord-diagram__dot {
   transform-box: fill-box;
   transform-origin: center;
