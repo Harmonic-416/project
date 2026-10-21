@@ -61,6 +61,74 @@ export function msUntilIdle(session, now = Date.now(), idleMs = IDLE_MS) {
 }
 
 /**
+ * Whether opening the song now should continue `session` rather than start
+ * a new one: it was active (open: its start or last attempt; ended: its
+ * end) less than IDLE_MS ago. The same rule as rollover, seen from the
+ * other side.
+ */
+export function resumable(session, now = Date.now(), idleMs = IDLE_MS) {
+  if (!session) return false
+  const last = session.ended_at ? ms(session.ended_at) : lastActivityOf(session)
+  return now - last < idleMs
+}
+
+/** Stable key for a song: instrument + catalog id, else the file's fingerprint, else the title. */
+export function songKeyOf(session) {
+  return `${session.instrument ?? 'voice'}:${session.song_id ?? session.song_fingerprint ?? session.song_title}`
+}
+
+/** When a session was last practised: its end, or its last attempt / start. Epoch ms. */
+export function lastPractisedOf(session) {
+  return session.ended_at ? Math.max(ms(session.ended_at), lastActivityOf(session)) : lastActivityOf(session)
+}
+
+/**
+ * One entry per song for the Practice sessions view: the song, its sessions
+ * (newest first, each with `attempts`), and a summary — how many times it
+ * was practised (sessions with at least one attempt), attempts in all, best
+ * score and when it was last practised. Songs come most recently practised
+ * first. Sessions without attempts are left out (they shouldn't exist, but
+ * an old open tab may still hold one).
+ */
+export function groupSessionsBySong(sessions) {
+  const bySong = new Map()
+  for (const session of sessions) {
+    if (!session.attempts?.length) continue
+    const key = songKeyOf(session)
+    let entry = bySong.get(key)
+    if (!entry) {
+      entry = {
+        key,
+        song_id: session.song_id ?? null,
+        song_fingerprint: session.song_fingerprint ?? null,
+        song_title: session.song_title,
+        instrument: session.instrument ?? 'voice',
+        sessions: [],
+      }
+      bySong.set(key, entry)
+    }
+    entry.sessions.push(session)
+  }
+  const round1 = (n) => Math.round(n * 10) / 10
+  return [...bySong.values()]
+    .map((entry) => {
+      const sessionsSorted = [...entry.sessions].sort((a, b) => ms(b.started_at) - ms(a.started_at))
+      const attempts = sessionsSorted.flatMap((s) => s.attempts)
+      return {
+        ...entry,
+        sessions: sessionsSorted,
+        summary: {
+          times: sessionsSorted.length,
+          attempts: attempts.length,
+          best: round1(Math.max(...attempts.map((a) => Number(a.accuracy)))),
+          lastPractised: new Date(Math.max(...sessionsSorted.map(lastPractisedOf))).toISOString(),
+        },
+      }
+    })
+    .sort((a, b) => ms(b.summary.lastPractised) - ms(a.summary.lastPractised))
+}
+
+/**
  * Attempts under their session (oldest first within a session); sessions
  * keep the order given. Attempts with no session (from before 0014) are
  * returned separately as `orphans`, newest first.

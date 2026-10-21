@@ -67,13 +67,13 @@ Owner-only RLS on `practice_session` (`for all`, `auth.uid() = user_id`), like `
 
 ### Session boundaries
 
-A session is owned by the client that practises:
+A session is owned by the client that practises. Two rules keep the list honest: **reopening a song within the idle window continues the same sitting**, and **a sitting with no attempts is never kept**.
 
-- **Start:** the Vocal tab's detail view, once the notation is ready and the user is signed in, calls `startPracticeSession`. The id is made client-side (`crypto.randomUUID()`) so an attempt finished while the insert is in flight can wait on the same promise and attach to it.
+- **Resume or start:** the Vocal tab's detail view, once the notation is ready and the user is signed in, calls `resumePracticeSession`. It reads the latest session at that song (with its attempts, one `listPracticeSessions` call) and, if that session was active less than 30 minutes ago (open: its start or last attempt; ended: its end, `practiceSession.js: resumable`), reopens it (`ended_at = null`) and hands back its attempts so "This session" shows the sitting so far. Otherwise `startPracticeSession` inserts a new row. Attempts finished while this is in flight wait on the same promise.
 - **Attach:** `ShareAttempt` saves each attempt with the session's id. Before saving it asks the session hook for the id, which is also where the idle rule runs.
 - **Idle (30 min):** `lastActivity` is the later of `started_at` and the last attempt. If a new attempt comes more than 30 minutes after that, the open session is ended **at `lastActivity`** and a new one starts for the attempt. A 30-minute timer in the page does the same without an attempt, so "This session" empties. The rule is a pure function (`practiceSession.js: rollover`) so it is unit-tested.
-- **End:** leaving the song (back, closing a shared attempt, unmount, song change) sets `ended_at = now()`, or `lastActivity` if idle.
-- **Stale sessions:** `close_idle_practice_sessions()` (SQL, called by `startPracticeSession`) ends any open session of the caller whose last activity is older than 30 minutes, at that activity. A closed tab therefore never leaves a session open for days.
+- **End:** leaving the song (back, closing a shared attempt, unmount, song change) calls `end_practice_session(id, at)` (SQL): a session with attempts gets `ended_at = at` (now, or `lastActivity` if idle; never before it started); one without attempts is **deleted**. So looking at a song and leaving without singing leaves no trace.
+- **Stale sessions:** `close_idle_practice_sessions()` (SQL, called before a session is resumed or started) tidies any open session of the caller whose last activity is older than 30 minutes: ended at that activity if it has attempts, deleted if not. A closed tab therefore never leaves a session open for days, nor an empty one at all.
 
 ### Owner feedback
 
@@ -92,17 +92,18 @@ A session is owned by the client that practises:
 
 - `listPracticeSessions(supabase, { songId | songFingerprint, limit })`: the caller's sessions newest first, one query. A second query fetches the attempts of those sessions (summary columns: no pitch trace) and `groupAttemptsBySession` (pure) puts them under their session, oldest first. No PostgREST aggregates, which hosted projects don't enable by default.
 - `listSessionAttempts(supabase, sessionId)`: one session's attempts with `recording_url` from one `createSignedUrls` call (10 minutes). The sessions view calls it when a session is expanded.
+- **By song, in the view:** `groupSessionsBySong` (pure, `practiceSession.js`) turns the sessions into one entry per song (key = instrument + catalog id, else fingerprint, else title) with the sessions newest first and a summary: times practised (sessions with at least one attempt), attempts in all, best score, last practised. Songs come most recently practised first; sessions without attempts are skipped (they shouldn't exist any more, but an old open tab may still hold one).
 
 ### App
 
 - `usePracticeSession({ supabase, userId, song })` owns the live session: `session`, `attempts` (this session, newest last), `ensureSessionId()`, `addAttempt`, `patchAttempt`, `storage` (`{ used, cap }`), and ends the session on cleanup.
 - `SessionAttempts` renders "This session" under `RecordPanel`: each row has time, score, part, a play button (signed URL fetched on first play, `<audio>`), a textarea whose value autosaves 600 ms after the last keystroke (`debounce` in `practiceSession.js`), five rating buttons, and "Delete recording". A line under the list shows storage used.
-- `PracticeSessions` is a Vocal view (`view === 'sessions'`): sessions for one song (from the song library's "Practice sessions" row with a song chosen, or from Home's "Working on" card) or for all songs. Sessions expand to their attempts with the same feedback controls, so a note written days later is as easy as one written right away.
+- `PracticeSessions` is a Vocal view (`view === 'sessions'`): **one card per song** (title, instrument, the summary line) with the song's sessions underneath as compact rows (date and time, length, attempts · best) that expand to their attempts with the same feedback controls, so a note written days later is as easy as one written right away. Opened for one song (the open song's toolbar, Home's "Working on") it shows that card open; opened from the library it shows every song, the most recently practised one open. Within a card only the latest session is open at first.
 - Home → Vocal: `App.jsx` gets `openSessions({ songId, songFingerprint, songTitle })`, passed to `VocalTab` as `sessionsToOpen` + `onSessionsOpened`, the way `fileToOpenId` already works.
 
 ## Risks / Trade-offs
 
-- **[Risk] Two tabs practising at once open two sessions.** Acceptable: they are two sittings; nothing breaks.
+- **[Risk] Two tabs practising the same song at once.** The second tab resumes the first tab's open session (it is active), so both write to one sitting; when one leaves, the other keeps going and the next attempt reopens nothing because the session is simply ended-then-resumed on its next `ensureSessionId`. Acceptable.
 - **[Risk] The budget trigger counts `recording_bytes` the client reported, not the object's real size.** The client is the only writer and the bucket's 25 MB per-file limit bounds any lie; the trigger is a guard against honest overuse, not an adversary.
 - **[Risk] `get_shared_attempt` replacement.** It keeps the same signature and return type; the backend tests for shares (0005/0010) run unchanged against it.
 - **[Risk] A friend the attempt was sent to can read `self_note` / `rating` with a hand-built table query.** 0010's `shared_attempt_recipient_select` policy covers whole rows, and RLS can't hide columns. The app never shows them to a recipient and `get_shared_attempt` (the one way the app opens someone else's attempt) blanks them; the session listings only read attempts through the caller's own sessions. Closing it fully means either dropping the recipient policy (everything a recipient needs already goes through security-definer functions; to be checked against `social.test.ts`) or moving the feedback to an owner-only table. Left as is in this change.

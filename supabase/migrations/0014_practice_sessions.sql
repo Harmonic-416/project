@@ -4,6 +4,8 @@
 -- 1. practice_session: one sitting at a song. The app starts it when a
 --    signed-in user opens a song to practise and ends it when they leave,
 --    or after 30 minutes without an attempt (then at the last attempt).
+--    Reopening the song within 30 minutes resumes the same session; a
+--    session that ends with no attempts is deleted rather than kept.
 --    Attempts finished in between carry its id (shared_attempt.session_id).
 --
 -- 2. Owner feedback on an attempt: self_note and rating (1..5) on
@@ -52,11 +54,41 @@ alter table public.shared_attempt
 create index shared_attempt_session_idx on public.shared_attempt (session_id, created_at)
   where session_id is not null;
 
--- ── idle sessions ─────────────────────────────────────────────────────────
--- End the caller's open sessions whose last activity (the later of the start
--- and the last attempt) is older than `idle`, at that activity. The app calls
--- it before starting a session, so a tab closed mid-practice never leaves a
--- session open for days. Returns how many it closed.
+-- ── ending sessions ───────────────────────────────────────────────────────
+-- End one of the caller's sessions at `at` (never before it started). A
+-- session with no attempts is deleted instead, so an "empty" sitting never
+-- shows up anywhere. Returns 'ended', 'deleted' or 'none' (not yours).
+create function public.end_practice_session(session uuid, at timestamptz default now())
+returns text
+language plpgsql volatile security definer set search_path = public
+as $$
+declare
+  me uuid := auth.uid();
+begin
+  if me is null then
+    raise exception 'Sign in first' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.practice_session s where s.id = session and s.user_id = me) then
+    return 'none';
+  end if;
+  if exists (select 1 from public.shared_attempt a where a.session_id = session) then
+    update public.practice_session s
+    set ended_at = greatest(at, s.started_at)
+    where s.id = session and s.user_id = me and s.ended_at is null;
+    return 'ended';
+  end if;
+  delete from public.practice_session s where s.id = session and s.user_id = me;
+  return 'deleted';
+end;
+$$;
+revoke execute on function public.end_practice_session(uuid, timestamptz) from public, anon;
+grant execute on function public.end_practice_session(uuid, timestamptz) to authenticated;
+
+-- Tidy the caller's open sessions whose last activity (the later of the start
+-- and the last attempt) is older than `idle`: one with attempts is ended at
+-- that activity, one without is deleted. The app calls it before starting or
+-- resuming a session, so a tab closed mid-practice never leaves a session
+-- open for days. Returns how many it touched.
 create function public.close_idle_practice_sessions(idle interval default interval '30 minutes')
 returns integer
 language plpgsql volatile security definer set search_path = public
@@ -64,6 +96,7 @@ as $$
 declare
   me uuid := auth.uid();
   closed integer;
+  deleted integer;
 begin
   if me is null then
     raise exception 'Sign in first' using errcode = '42501';
@@ -73,15 +106,23 @@ begin
   update public.practice_session s
   set ended_at = x.last_active
   from (
-    select s2.id, greatest(s2.started_at, coalesce(max(a.created_at), s2.started_at)) as last_active
+    select s2.id, greatest(s2.started_at, max(a.created_at)) as last_active
     from public.practice_session s2
-    left join public.shared_attempt a on a.session_id = s2.id
+    join public.shared_attempt a on a.session_id = s2.id
     where s2.user_id = me and s2.ended_at is null
     group by s2.id, s2.started_at
   ) x
   where s.id = x.id and x.last_active < now() - idle;
   get diagnostics closed = row_count;
-  return closed;
+
+  delete from public.practice_session s
+  where s.user_id = me
+    and s.ended_at is null
+    and s.started_at < now() - idle
+    and not exists (select 1 from public.shared_attempt a where a.session_id = s.id);
+  get diagnostics deleted = row_count;
+
+  return closed + deleted;
 end;
 $$;
 revoke execute on function public.close_idle_practice_sessions(interval) from public, anon;

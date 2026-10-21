@@ -8,12 +8,15 @@ import {
 } from '../../src/lib/attempts'
 import { acceptFriendRequest, listFriends, sendFriendRequest } from '../../src/lib/friends'
 import {
+  IDLE_MS,
   deleteAttemptRecording,
   endPracticeSession,
   groupAttemptsBySession,
   listPracticeSessions,
   listSessionAttempts,
   recordingStorageUsed,
+  resumable,
+  resumePracticeSession,
   saveAttemptFeedback,
   startPracticeSession,
   type PracticeSession,
@@ -80,6 +83,19 @@ describe('groupAttemptsBySession (pure)', () => {
     expect(grouped.map((s) => s.id)).toEqual(['s2', 's1'])
     expect(grouped[0]!.attempts.map((a) => a.id)).toEqual(['a2', 'a3'])
     expect(grouped[1]!.attempts.map((a) => a.id)).toEqual(['a1'])
+  })
+
+  it('resumable: active or ended within the idle window', () => {
+    const t0 = Date.parse('2026-10-20T10:00:00Z')
+    const minutes = (n: number) => n * 60 * 1000
+    const open = { ...session('s', '2026-10-20T10:00:00Z'), attempts: [{ created_at: '2026-10-20T10:10:00Z' }] }
+    expect(resumable(open, t0 + minutes(39))).toBe(true)
+    expect(resumable(open, t0 + minutes(40))).toBe(false)
+    const ended = { ...session('s', '2026-10-20T10:00:00Z'), ended_at: '2026-10-20T10:20:00Z' }
+    expect(resumable(ended, t0 + minutes(49))).toBe(true)
+    expect(resumable(ended, t0 + minutes(50))).toBe(false)
+    expect(resumable(null, t0)).toBe(false)
+    expect(IDLE_MS).toBe(minutes(30))
   })
 
   it('gives a session with no attempts an empty list and numbers the accuracy', () => {
@@ -199,10 +215,46 @@ describe.skipIf(!hasSupabaseEnv)('practice sessions (0014)', () => {
     expect((await recordingStorageUsed(owner.supabase)).used_bytes).toBe(0)
   }, 30_000)
 
-  it('ends a session, and closes an idle one at its last activity when the next starts', async () => {
-    await endPracticeSession(owner.supabase, session.id)
+  it('ends a session with attempts; reopening the song within 30 minutes resumes it, later starts a new one', async () => {
+    expect(await endPracticeSession(owner.supabase, session.id)).toBe('ended')
     const [ended] = await listPracticeSessions(owner.supabase, { songId: CATALOG_SONG })
     expect(ended?.ended_at).not.toBeNull()
+
+    const back = await resumePracticeSession(owner.supabase, { songId: CATALOG_SONG, songTitle: 'Ode to Joy' })
+    expect(back.resumed).toBe(true)
+    expect(back.session.id).toBe(session.id)
+    expect(back.session.ended_at).toBeNull()
+    expect(back.attempts.length).toBeGreaterThanOrEqual(2)
+    const [reopened] = await listPracticeSessions(owner.supabase, { songId: CATALOG_SONG })
+    expect(reopened?.id).toBe(session.id)
+    expect(reopened?.ended_at).toBeNull()
+
+    // Ended 40 minutes ago: too long, a new session starts.
+    await endPracticeSession(owner.supabase, session.id)
+    const later = await resumePracticeSession(owner.supabase, { songId: CATALOG_SONG, songTitle: 'Ode to Joy' }, { now: Date.now() + IDLE_MS + 60_000 })
+    expect(later.resumed).toBe(false)
+    expect(later.session.id).not.toBe(session.id)
+    expect(later.attempts).toEqual([])
+    // A new, empty session: ending it deletes it.
+    expect(await endPracticeSession(owner.supabase, later.session.id)).toBe('deleted')
+    expect((await listPracticeSessions(owner.supabase, { songId: CATALOG_SONG })).map((s) => s.id)).toEqual([session.id])
+  }, 30_000)
+
+  it('deletes a session that ends with no attempts; another user cannot end yours', async () => {
+    const empty = await startPracticeSession(owner.supabase, { songId: CATALOG_SONG, songTitle: 'Ode to Joy' })
+    expect(await endPracticeSession(other.supabase, empty.id)).toBe('none')
+    expect(await endPracticeSession(owner.supabase, empty.id)).toBe('deleted')
+    expect((await listPracticeSessions(owner.supabase)).some((s) => s.id === empty.id)).toBe(false)
+    expect(await endPracticeSession(owner.supabase, empty.id)).toBe('none')
+  }, 30_000)
+
+  it('closes an idle session at its last activity and deletes an idle empty one when the next starts', async () => {
+    // An old empty session left open (a closed tab before any attempt).
+    const abandoned = await startPracticeSession(owner.supabase, {
+      songId: CATALOG_SONG,
+      songTitle: 'Ode to Joy',
+      startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    })
 
     // An old session left open (a closed tab), with an attempt an hour after it started.
     const staleStart = new Date(Date.now() - 3 * 60 * 60 * 1000)
@@ -231,6 +283,8 @@ describe.skipIf(!hasSupabaseEnv)('practice sessions (0014)', () => {
     const closed = sessions.find((s) => s.id === stale.id)!
     expect(new Date(closed.ended_at!).getTime()).toBe(new Date(lastActivity).getTime())
     expect(sessions.find((s) => s.id === fresh.id)!.ended_at).toBeNull()
+    expect(sessions.some((s) => s.id === abandoned.id)).toBe(false)
+    expect(await endPracticeSession(owner.supabase, fresh.id)).toBe('deleted')
 
     const byFile = await listPracticeSessions(owner.supabase, { songFingerprint: 'ab'.repeat(32) })
     expect(byFile.map((s) => s.id)).toEqual([stale.id])

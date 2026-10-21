@@ -3,27 +3,37 @@
 ## ADDED Requirements
 
 ### Requirement: Practice Sessions (F22)
-The system SHALL group a signed-in user's attempts at a song into practice sessions stored on the account. A session SHALL start when the user opens a song to practise and SHALL end when they leave it, or after 30 minutes without an attempt, in which case it ends at its last activity. Every attempt finished while a session is open SHALL belong to it. Sessions and their attempts SHALL be listed per song, most recent session first, with each attempt's time, score, part and feedback, and SHALL be visible only to their owner.
+The system SHALL group a signed-in user's attempts at a song into practice sessions stored on the account. A session SHALL start when the user opens a song to practise and SHALL end when they leave it, or after 30 minutes without an attempt, in which case it ends at its last activity. Opening the same song again within 30 minutes of a session's last activity SHALL continue that session rather than start another. A session that ends with no attempts SHALL NOT be kept. Every attempt finished while a session is open SHALL belong to it. The sessions view SHALL show one entry per song with a summary (times practised, attempts, best score, last practised) and, under it, that song's sessions most recent first, each with its attempts' time, score, part and feedback; all of it SHALL be visible only to its owner.
 
 #### Scenario: Attempts join the open session
 - **WHEN** a signed-in user opens a song in the Vocal tab and records two attempts
 - **THEN** one session exists for that sitting with both attempts attached, in order
 - **AND** the "This session" list under the score shows both
 
-#### Scenario: Leaving ends the session
-- **WHEN** the user goes back to the song library (or closes the tab and later returns)
+#### Scenario: Leaving ends the session; coming back soon continues it
+- **WHEN** the user goes back to the song library after recording an attempt
 - **THEN** the session's end time is set
-- **AND** opening the song again starts a new session
+- **AND** opening the same song again within 30 minutes continues that session, with its attempts shown under "This session"
+- **AND** opening it more than 30 minutes later starts a new session
+
+#### Scenario: Looking without singing leaves nothing
+- **WHEN** the user opens a song and leaves it (or the tab is closed) without recording an attempt
+- **THEN** no session is kept for that sitting
 
 #### Scenario: Idle for 30 minutes
 - **WHEN** 30 minutes pass after the last attempt and the user records another
 - **THEN** the earlier session ends at the time of its last attempt
 - **AND** the new attempt is attached to a new session
 
-#### Scenario: Sessions are listed per song and per user
-- **WHEN** the user opens Practice sessions for a song from the song library or from Home's "Working on"
-- **THEN** their previous sessions for that song are listed, newest first, each with its attempts and feedback
+#### Scenario: Sessions are listed under their song, per user
+- **WHEN** the user opens Practice sessions from the song library
+- **THEN** each song they have practised is shown once, most recently practised first, with how many times it was practised, how many attempts, the best score and when it was last practised
+- **AND** under a song its sessions are listed newest first, each opening to its attempts and feedback
 - **AND** another user's sessions and attempts are never returned
+
+#### Scenario: One song's sessions
+- **WHEN** the user opens Practice sessions for one song from the open song or from Home's "Working on"
+- **THEN** only that song's entry is shown, open, with its sessions underneath
 
 ### Requirement: Owner Feedback on an Attempt
 The system SHALL let the owner of an attempt keep a note and a rating from 1 to 5 on it. The note SHALL save automatically shortly after the owner stops typing, SHALL be editable later from the sessions view, SHALL survive across browsers and devices, and SHALL NOT be shown to anyone the attempt is shared with.

@@ -8,10 +8,12 @@ import {
   fitsBudget,
   formatBytes,
   groupBySession,
+  groupSessionsBySong,
   isIdle,
   keepByDefault,
   lastActivityOf,
   msUntilIdle,
+  resumable,
   rollover,
   sessionLength,
   sessionSummary,
@@ -57,6 +59,17 @@ describe('session boundaries', () => {
     expect(rollover(session(0, [3]), T0 + minutes(33))).toEqual({ action: 'rollover', endedAt: at(3) })
   })
 
+  it('resumes a session active or ended within the idle window, not one older than that', () => {
+    expect(resumable(null, T0)).toBe(false)
+    const open = session(0, [10])
+    expect(resumable(open, T0 + minutes(39))).toBe(true)
+    expect(resumable(open, T0 + minutes(40))).toBe(false)
+    const ended = session(0, [10], { ended_at: at(20) })
+    expect(resumable(ended, T0 + minutes(49))).toBe(true)
+    expect(resumable(ended, T0 + minutes(50))).toBe(false)
+    expect(resumable(session(0), T0 + minutes(29))).toBe(true)
+  })
+
   it('counts down to idle', () => {
     expect(msUntilIdle(session(0, [10]), T0 + minutes(25))).toBe(minutes(15))
     expect(msUntilIdle(session(0, [10]), T0 + minutes(50))).toBe(0)
@@ -87,6 +100,23 @@ describe('grouping', () => {
     expect(grouped[0].attempts.map((a) => a.id)).toEqual(['b', 'c'])
     expect(grouped[1].attempts.map((a) => a.id)).toEqual(['a'])
     expect(orphans.map((a) => a.id)).toEqual(['y', 'x'])
+  })
+
+  it('groups sessions by song with a summary, most recently practised song first', () => {
+    const attempt = (m, accuracy) => ({ id: `a${m}`, created_at: at(m), accuracy })
+    const grouped = groupSessionsBySong([
+      { id: 'ode-2', song_id: 'ode', song_title: 'Ode to Joy', instrument: 'voice', started_at: at(300), ended_at: at(320), attempts: [attempt(305, 70), attempt(315, 82.26)] },
+      { id: 'scale-1', song_id: null, song_fingerprint: 'f'.repeat(64), song_title: 'C Major Scale', instrument: 'voice', started_at: at(400), ended_at: null, attempts: [attempt(410, 50)] },
+      { id: 'ode-1', song_id: 'ode', song_title: 'Ode to Joy', instrument: 'voice', started_at: at(0), ended_at: at(30), attempts: [attempt(10, 60)] },
+      { id: 'empty', song_id: 'ode', song_title: 'Ode to Joy', instrument: 'voice', started_at: at(500), ended_at: null, attempts: [] },
+    ])
+    expect(grouped.map((g) => g.song_title)).toEqual(['C Major Scale', 'Ode to Joy'])
+    const ode = grouped[1]
+    expect(ode.key).toBe('voice:ode')
+    expect(ode.sessions.map((s) => s.id)).toEqual(['ode-2', 'ode-1'])
+    expect(ode.summary).toEqual({ times: 2, attempts: 3, best: 82.3, lastPractised: at(320) })
+    expect(grouped[0].summary).toEqual({ times: 1, attempts: 1, best: 50, lastPractised: at(410) })
+    expect(groupSessionsBySong([])).toEqual([])
   })
 
   it('summarises a session', () => {

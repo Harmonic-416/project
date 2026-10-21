@@ -9,15 +9,15 @@ Audio is the only part of this that costs anything. The live project runs on Sup
 ## What Changes
 
 - **Practice sessions (progress-tracking, F22):**
-  - A `practice_session` row per sitting at a song: it starts when a signed-in user opens a song to practise in the Vocal tab and ends when they leave it, or after 30 minutes without an attempt (then it ends at its last activity). Every attempt finished in between carries its `session_id`.
-  - Previous sessions for a song, with their attempts, are listed in a **Practice sessions** view reachable from the Vocal song library and from each song on Home's "Working on".
+  - A `practice_session` row per sitting at a song: it starts when a signed-in user opens a song to practise in the Vocal tab and ends when they leave it, or after 30 minutes without an attempt (then it ends at its last activity). Reopening the song within 30 minutes resumes the same session; a session that ends with no attempts is deleted. Every attempt finished in between carries its `session_id`.
+  - A **Practice sessions** view, reachable from the Vocal song library and from each song on Home's "Working on", shows one card per song (times practised, attempts, best, last practised) with that song's sessions underneath, each opening to its attempts and feedback.
   - Under the score, a **This session** list grows with each attempt: time, score, part, play the recording, a note and a 1–5 rating that save as you type, and a way to drop the recording while keeping the attempt.
 - **Owner feedback on an attempt (progress-tracking):** `self_note` and `rating` on `shared_attempt`, owner-only; never shown to people the attempt was shared with.
 - **Recording storage budget (song-storage, N3, N5):**
   - Keeping an attempt's audio is opt-in per attempt (a toggle, on by default while under budget). Scores, pitch traces and feedback are always kept; only the audio is budgeted.
   - `recording_bytes` is tracked per attempt; a per-user cap of 100 MB is enforced by a trigger on insert/update, and "storage used" is exposed to the app.
   - A recording can be deleted on its own, keeping the attempt.
-- **Backend:** `src/lib/practiceSessions.ts` (start/end/list sessions, a session's attempts with signed URLs, feedback, delete recording, storage used), and `attempts.ts` learns `sessionId` and `recording_bytes`.
+- **Backend:** `src/lib/practiceSessions.ts` (resume-or-start, end, list sessions, a session's attempts with signed URLs, feedback, delete recording, storage used), and `attempts.ts` learns `sessionId` and `recording_bytes`.
 
 ## Capabilities
 
@@ -32,7 +32,7 @@ None.
 
 ## Impact
 
-- **Migration:** `supabase/migrations/0014_practice_sessions.sql` (0013 is the guitar Learn progress). Additive: a new table, four nullable columns on `shared_attempt`, two functions, one trigger, a per-file size limit on the `recordings` bucket. `get_shared_attempt` is replaced so that a viewer who isn't the owner gets `self_note` / `rating` as null.
+- **Migration:** `supabase/migrations/0014_practice_sessions.sql` (0013 is the guitar Learn progress). Additive: a new table, four nullable columns on `shared_attempt`, four functions (`end_practice_session`, `close_idle_practice_sessions`, `recording_budget_bytes`, `recording_storage_used`), one trigger, a per-file size limit on the `recordings` bucket. `get_shared_attempt` is replaced so that a viewer who isn't the owner gets `self_note` / `rating` as null.
 - **New code:**
   - `src/lib/practiceSessions.ts`, `tests/backend/practiceSessions.test.ts`;
   - `app/src/tabs/vocal/practice/practiceSession.js` (pure: boundaries, idle, grouping, budget) with `app/tests/practiceSession.test.js`;

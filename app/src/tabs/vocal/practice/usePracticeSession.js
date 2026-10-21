@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { endPracticeSession, recordingStorageUsed, startPracticeSession } from '@backend/practiceSessions'
+import { endPracticeSession, recordingStorageUsed, resumePracticeSession } from '@backend/practiceSessions'
 import { endTimeFor, lastActivityOf, msUntilIdle, rollover } from './practiceSession.js'
 
 /**
  * The live practice session at the open song (change: practice-sessions).
  *
- * While `enabled` (a signed-in user with the score ready) a session row is
- * started for `song` and ended when the song changes, the view is left, or
- * the tab unmounts. Attempts ask `ensureSessionId()` for the id to save
- * under; that is where the idle rule runs: more than 30 minutes after the
- * last attempt, the open session is ended at that attempt and a new one
+ * While `enabled` (a signed-in user with the song open) the last session at
+ * `song` is resumed if it was active less than 30 minutes ago, else a new
+ * one is started (resumePracticeSession). It is ended when the song
+ * changes, the view is left, or the tab unmounts; a session with no
+ * attempts is deleted then. Attempts ask `ensureSessionId()` for the id to
+ * save under; that is where the idle rule runs: more than 30 minutes after
+ * the last attempt, the open session is ended at that attempt and a new one
  * started. A timer does the same without an attempt, so "This session"
  * empties.
  *
@@ -23,8 +25,8 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
   const [attempts, setAttempts] = useState([])
   const [storage, setStorage] = useState(null)
   const [error, setError] = useState(null)
-  // The row (or its insert in flight) that attempts attach to.
-  const current = useRef(null) // { id, startedAt, promise }
+  // The sitting attempts attach to: { promise, row } — row once resumed/started.
+  const current = useRef(null)
   const attemptsRef = useRef([])
 
   const songId = song?.songId ?? null
@@ -43,27 +45,27 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
     }
   }, [supabase, userId])
 
-  /** Start a session now; its id is known at once, the row follows. */
+  /** Resume or start the session at this song; the row follows. */
   const begin = useCallback(() => {
-    const id = crypto.randomUUID()
-    const startedAt = new Date().toISOString()
-    const promise = startPracticeSession(supabase, {
-      id,
-      startedAt,
+    const promise = resumePracticeSession(supabase, {
       songId,
       songFingerprint: songId ? null : fingerprint,
       songTitle: title,
       instrument,
     })
-    const entry = { id, startedAt, promise }
+    const entry = { promise, row: null }
     current.current = entry
     attemptsRef.current = []
     setAttempts([])
-    setSession({ id, started_at: startedAt, ended_at: null, pending: true })
+    setSession({ id: null, started_at: new Date().toISOString(), ended_at: null, pending: true })
     setError(null)
     promise.then(
-      (row) => {
-        if (current.current === entry) setSession(row)
+      ({ session: row, attempts: rows }) => {
+        if (current.current !== entry) return
+        entry.row = row
+        attemptsRef.current = rows
+        setAttempts(rows)
+        setSession(row)
       },
       (err) => {
         console.error(err)
@@ -77,18 +79,22 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
     return entry
   }, [supabase, songId, fingerprint, title, instrument])
 
-  /** End the given entry at `endedAt` (default: now, or its last activity if idle). */
+  /** End `entry` at `endedAt` (default: now, or its last activity if idle). Empty sessions are deleted. */
   const finish = useCallback(
     (entry, endedAt) => {
       if (!entry) return
-      const at = endedAt ?? endTimeFor({ started_at: entry.startedAt, attempts: attemptsRef.current })
-      entry.promise.then(() => endPracticeSession(supabase, entry.id, at)).catch((err) => console.error(err))
+      const attemptsThen = attemptsRef.current
+      entry.promise
+        .then(({ session: row }) =>
+          endPracticeSession(supabase, row.id, endedAt ?? endTimeFor({ started_at: row.started_at, attempts: attemptsThen })),
+        )
+        .catch((err) => console.error(err))
     },
     [supabase],
   )
 
   // One session per song while active. Deferred a tick so StrictMode's
-  // mount/unmount/mount in development doesn't leave a 0-minute session.
+  // mount/unmount/mount in development doesn't start the sitting twice.
   useEffect(() => {
     if (!active) return undefined
     let entry = null
@@ -112,15 +118,15 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
 
   // Idle without an attempt: end the session at its last activity.
   useEffect(() => {
-    if (!session || session.ended_at) return undefined
+    if (!session || session.pending || session.ended_at) return undefined
     const wait = msUntilIdle({ started_at: session.started_at, attempts })
     const timer = setTimeout(() => {
       const entry = current.current
-      if (!entry || entry.id !== session.id) return
-      const endedAt = new Date(lastActivityOf({ started_at: entry.startedAt, attempts: attemptsRef.current })).toISOString()
+      if (!entry?.row || entry.row.id !== session.id) return
+      const endedAt = new Date(lastActivityOf({ started_at: entry.row.started_at, attempts: attemptsRef.current })).toISOString()
       finish(entry, endedAt)
       current.current = null
-      setSession((s) => (s && s.id === entry.id ? { ...s, ended_at: endedAt } : s))
+      setSession((s) => (s && s.id === entry.row.id ? { ...s, ended_at: endedAt } : s))
     }, wait)
     return () => clearTimeout(timer)
   }, [session, attempts, finish])
@@ -129,21 +135,21 @@ export function usePracticeSession({ supabase, userId, song, instrument = 'voice
   const ensureSessionId = useCallback(async () => {
     if (!active) return null
     const entry = current.current
-    const open = entry ? { started_at: entry.startedAt, ended_at: null, attempts: attemptsRef.current } : null
+    if (entry && !entry.row) return (await entry.promise).session.id // still resuming / starting
+    const open = entry ? { started_at: entry.row.started_at, ended_at: null, attempts: attemptsRef.current } : null
     const next = rollover(open)
-    if (next.action === 'reuse') return entry.id
+    if (next.action === 'reuse') return entry.row.id
     if (next.action === 'rollover') {
       finish(entry, next.endedAt)
       current.current = null
     }
-    const fresh = begin()
-    await fresh.promise
-    return fresh.id
+    return (await begin().promise).session.id
   }, [active, begin, finish])
 
   /** A saved attempt row: shown under "This session" if it belongs to it. */
   const addAttempt = useCallback((row) => {
-    if (!row || !current.current || row.session_id !== current.current.id) return
+    const id = current.current?.row?.id
+    if (!row || !id || row.session_id !== id) return
     attemptsRef.current = [...attemptsRef.current, row]
     setAttempts(attemptsRef.current)
   }, [])

@@ -4,10 +4,14 @@ import type { Instrument, SharedAttempt } from './attempts'
 /**
  * Practice sessions (change: practice-sessions, migration 0014): one row per
  * sitting at a song, with the attempts finished during it attached by
- * `shared_attempt.session_id`. The app starts a session when a signed-in
- * user opens a song to practise, ends it when they leave, and rolls over to
- * a new one after 30 minutes without an attempt (the idle rule itself lives
- * in the app, app/src/tabs/vocal/practice/practiceSession.js).
+ * `shared_attempt.session_id`. The app resumes or starts a session when a
+ * signed-in user opens a song to practise (resumePracticeSession: the last
+ * session at that song, if it was active within the last 30 minutes), ends
+ * it when they leave, and rolls over to a new one after 30 minutes without
+ * an attempt. A session that ends with no attempts is deleted, so an empty
+ * sitting never shows up. The idle / resume rules are pure and live in
+ * app/src/tabs/vocal/practice/practiceSession.js; `resumable` here mirrors
+ * them for the backend tests.
  *
  * Also here: the owner's own feedback on an attempt (self_note, rating),
  * deleting a recording while keeping the attempt, and the recording budget
@@ -71,6 +75,9 @@ export interface RecordingStorage {
 /** Mirrors recording_budget_bytes() in migration 0014. */
 export const RECORDING_BUDGET_BYTES = 100 * 1024 * 1024
 
+/** 30 minutes without an attempt ends a session; within them, reopening the song resumes it. */
+export const IDLE_MS = 30 * 60 * 1000
+
 export const MAX_SELF_NOTE_LENGTH = 2000
 
 const ATTEMPT_COLUMNS =
@@ -91,8 +98,10 @@ const SIGNED_URL_SECONDS = 60 * 10
 // ── sessions ────────────────────────────────────────────────────────────
 
 /**
- * Start a session at a song. Any of your sessions left open and idle for
- * over 30 minutes (a closed tab) is ended first, at its last activity.
+ * Start a new session at a song (resumePracticeSession is what the app
+ * calls; it comes here when there is nothing to continue). Any of your
+ * sessions left open and idle for over 30 minutes (a closed tab) is tidied
+ * first: ended at its last activity, or deleted if it has no attempts.
  */
 export async function startPracticeSession(
   supabase: SupabaseClient,
@@ -120,18 +129,78 @@ export async function startPracticeSession(
   return data as PracticeSession
 }
 
-/** End one of your sessions, now or at `endedAt` (e.g. its last attempt when it went idle). */
+/**
+ * When a session was last active, in epoch ms: its end if it has ended,
+ * else the later of its start and its last attempt. Pure.
+ */
+export function lastActivityOf(session: Pick<PracticeSession, 'started_at' | 'ended_at'> & { attempts?: { created_at: string }[] }): number {
+  if (session.ended_at) return Date.parse(session.ended_at)
+  let last = Date.parse(session.started_at)
+  for (const attempt of session.attempts ?? []) last = Math.max(last, Date.parse(attempt.created_at))
+  return last
+}
+
+/** Whether reopening the song now should continue this session rather than start one. Pure. */
+export function resumable(
+  session: (Pick<PracticeSession, 'started_at' | 'ended_at'> & { attempts?: { created_at: string }[] }) | null | undefined,
+  now: number = Date.now(),
+  idleMs: number = IDLE_MS,
+): boolean {
+  if (!session) return false
+  return now - lastActivityOf(session) < idleMs
+}
+
+export interface ResumedSession {
+  session: PracticeSession
+  /** The session's attempts so far (oldest first; empty for a new one). */
+  attempts: SessionAttempt[]
+  /** True when an earlier session was continued, false when one was started. */
+  resumed: boolean
+}
+
+/**
+ * Continue your last session at this song if it was active (or ended) less
+ * than 30 minutes ago, else start a new one. A resumed session is open
+ * again (ended_at cleared) and comes with its attempts, so "This session"
+ * shows the sitting so far.
+ */
+export async function resumePracticeSession(
+  supabase: SupabaseClient,
+  session: NewPracticeSession,
+  { now = Date.now(), idleMs = IDLE_MS }: { now?: number; idleMs?: number } = {},
+): Promise<ResumedSession> {
+  if (!session.songId && !session.songFingerprint) {
+    throw new Error('A practice session needs a catalog song or a file fingerprint')
+  }
+  const [latest] = await listPracticeSessions(supabase, {
+    songId: session.songId ?? null,
+    songFingerprint: session.songId ? null : (session.songFingerprint ?? null),
+    limit: 1,
+  })
+  if (latest && latest.instrument === (session.instrument ?? 'voice') && resumable(latest, now, idleMs)) {
+    if (latest.ended_at) {
+      const { error } = await supabase.from('practice_session').update({ ended_at: null }).eq('id', latest.id)
+      if (error) throw new Error(error.message)
+    }
+    const { attempts, ...row } = latest
+    return { session: { ...row, ended_at: null }, attempts, resumed: true }
+  }
+  return { session: await startPracticeSession(supabase, session), attempts: [], resumed: false }
+}
+
+/**
+ * End one of your sessions, now or at `endedAt` (e.g. its last attempt when
+ * it went idle). A session with no attempts is deleted instead. Returns
+ * 'ended', 'deleted', or 'none' when it isn't yours (or is already gone).
+ */
 export async function endPracticeSession(
   supabase: SupabaseClient,
   sessionId: string,
   endedAt: string = new Date().toISOString(),
-): Promise<void> {
-  const { error } = await supabase
-    .from('practice_session')
-    .update({ ended_at: endedAt })
-    .eq('id', sessionId)
-    .is('ended_at', null)
+): Promise<'ended' | 'deleted' | 'none'> {
+  const { data, error } = await supabase.rpc('end_practice_session', { session: sessionId, at: endedAt })
   if (error) throw new Error(error.message)
+  return data as 'ended' | 'deleted' | 'none'
 }
 
 /** Rename a session or write notes on it. */

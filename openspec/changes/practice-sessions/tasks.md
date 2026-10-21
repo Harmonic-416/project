@@ -7,7 +7,7 @@ The order follows dependencies: the schema, then the backend helper it is tested
 - [x] 1.1 (M) `practice_session` table with owner-only RLS, `(user_id, started_at desc)` index, song reference by `song_id` or `song_fingerprint`.
 - [x] 1.2 (M) `shared_attempt.session_id` (nullable, `on delete set null`), `self_note` (≤ 2000 chars), `rating` (1..5), `recording_bytes` (≥ 0); partial index `(session_id, created_at)`.
 - [x] 1.3 (M) Budget: `recording_budget_bytes()`, `recording_storage_used()`, and the `shared_attempt_recording_budget` trigger that refuses a recording past the cap while letting rows without audio through. `recordings` bucket `file_size_limit` = 25 MB.
-- [x] 1.4 (M) `close_idle_practice_sessions()`: ends the caller's open sessions whose last activity is more than 30 minutes old, at that activity.
+- [x] 1.4 (M) `end_practice_session(id, at)`: ends a session with attempts at `at`, deletes one without. `close_idle_practice_sessions()`: ends the caller's open sessions whose last activity is more than 30 minutes old (at that activity), deletes idle empty ones.
 - [x] 1.5 (M) `get_shared_attempt` returns `self_note` / `rating` as null to anyone but the owner.
 
   Verified by: `tests/backend/practiceSessions.test.ts` (1.1–1.5) and the unchanged `attempts.test.ts` / `social.test.ts` against a local stack.
@@ -15,21 +15,21 @@ The order follows dependencies: the schema, then the backend helper it is tested
 ## 2. Backend (`src/lib`)
 
 - [x] 2.1 (M) `attempts.ts`: `sessionId` on `NewSharedAttempt`; `recording_bytes` written on every upload; budget checked before uploading; `SharedAttempt` type gains the new columns.
-- [x] 2.2 (M) `practiceSessions.ts`: `startPracticeSession`, `endPracticeSession`, `listPracticeSessions` (with attempts grouped by `groupAttemptsBySession`), `listSessionAttempts` (signed URLs), `saveAttemptFeedback`, `deleteAttemptRecording`, `recordingStorageUsed`, `RECORDING_BUDGET_BYTES`.
+- [x] 2.2 (M) `practiceSessions.ts`: `resumePracticeSession` (continue the last session at the song if active within 30 minutes, else start; pure `resumable`), `startPracticeSession`, `endPracticeSession` (RPC; 'ended' | 'deleted' | 'none'), `listPracticeSessions` (with attempts grouped by `groupAttemptsBySession`), `listSessionAttempts` (signed URLs), `saveAttemptFeedback`, `deleteAttemptRecording`, `recordingStorageUsed`, `RECORDING_BUDGET_BYTES`, `IDLE_MS`.
 
-  Verified by: `tests/backend/practiceSessions.test.ts`: the pure grouping always runs; the rest runs when `SUPABASE_URL` / `SUPABASE_ANON_KEY` point at a project with 0014 applied.
+  Verified by: `tests/backend/practiceSessions.test.ts`: the pure grouping and `resumable` always run; the rest (including resume within / after the window, empty-session deletion on end and on idle tidy-up) runs when `SUPABASE_URL` / `SUPABASE_ANON_KEY` point at a project with 0014 applied.
 
 ## 3. App (Vocal tab)
 
-- [x] 3.1 (M) `practice/practiceSession.js`: `IDLE_MS`, `lastActivityOf`, `rollover` (reuse / end-and-start), `endTimeFor`, `groupBySession`, `keepByDefault`, `budgetOf`, `formatBytes`, `debounce`.
+- [x] 3.1 (M) `practice/practiceSession.js`: `IDLE_MS`, `lastActivityOf`, `rollover` (reuse / end-and-start), `resumable`, `endTimeFor`, `groupBySession`, `groupSessionsBySong` (per-song summaries, most recently practised first), `keepByDefault`, `budgetOf`, `formatBytes`, `debounce`.
 
   Verified by: `app/tests/practiceSession.test.js`.
-- [x] 3.2 (M) `practice/usePracticeSession.js`: starts the session when the score is ready and the user is signed in, hands out the session id to attempts (rolling over when idle), ends it on leave, loads storage used.
+- [x] 3.2 (M) `practice/usePracticeSession.js`: resumes or starts the session when the song is open and the user is signed in (a resumed session brings its attempts into "This session"), hands out the session id to attempts (rolling over when idle), ends it on leave (deleting it if empty), loads storage used.
 - [x] 3.3 (M) `ShareAttempt.jsx`: optional `session` prop; saves with `session_id`, reports the saved row, "Keep recording" attaches / deletes the audio and defaults from the budget. Guitar keeps calling it without a session.
 - [x] 3.4 (M) `SessionAttempts.jsx`: "This session" under `RecordPanel` with time, score, part, play, autosaving note, rating, delete recording, storage used.
-- [x] 3.5 (M) `PracticeSessions.jsx`: the sessions view for a song (or all songs), sessions expand to their attempts with the same feedback controls. Reached from the song library and from Home's "Working on" (`App.jsx` → `VocalTab` `sessionsToOpen`).
+- [x] 3.5 (M) `PracticeSessions.jsx`: one card per song (summary line) with its sessions underneath as compact rows that expand to their attempts with the same feedback controls; the latest session open, and only the chosen song's card when opened for one song. Reached from the song library (every song), the open song's toolbar and Home's "Working on" (`App.jsx` → `VocalTab` `sessionsToOpen`).
 
-  Verified by: `npm --prefix app run lint`, `npm --prefix app test`, `npm --prefix app run build`, and a run in the browser (Playwright) against a local Supabase stack: open a song → record → "This session" row with the kept recording → note autosaves, rating saves, play through a signed URL → untick "Keep recording" frees the budget → Sessions view lists the sitting → "← Songs" ends it → Home's "Working on" opens the view.
+  Verified by: `npm --prefix app run lint`, `npm --prefix app test`, `npm --prefix app run build`, and a run in the browser (Playwright) against a local Supabase stack: open a song → record → "This session" row with the kept recording → note autosaves, rating saves, play through a signed URL → untick "Keep recording" frees the budget → Sessions view shows one song card with the sitting under it → "← Songs" ends it → reopening within the window resumes the same session with its attempt → leaving a song without an attempt leaves no session row → Home's "Working on" opens the view.
 
 ## 4. Integration
 
