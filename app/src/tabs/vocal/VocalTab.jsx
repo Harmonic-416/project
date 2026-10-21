@@ -24,6 +24,7 @@ import SharedAttemptPanel from './components/SharedAttemptPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
 import { melodyLine, scheduleFor } from './practice/practiceLogic.js'
+import { runsKey } from './practice/sessionRuns.js'
 import { extractPart, listParts, partOnTop } from './notation/partFilter.js'
 import { songLibrary } from './songs/songLibrary.js'
 import { fetchCatalogSong, fetchCloudNotation } from './songs/cloudLibrary.js'
@@ -390,6 +391,12 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   })
 
   const melody = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
+  // This session's practice scores are kept per song, part, accompaniment and mode.
+  const runsSetting = {
+    songKey: notation?.fingerprint,
+    partId: selectedPart?.id,
+    accompaniment: withOthers ? 'all' : 'solo',
+  }
 
   // The practice session at this song (change: practice-sessions): starts
   // once the score is ready for a signed-in user, ends on leaving the song.
@@ -697,9 +704,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               duration={playback.duration}
               sheetMusicRef={sheetMusicRef}
               backingNotes={withOthers ? otherPartNotes : null}
+              runsKey={runsKey({ ...runsSetting, mode: 'wait' })}
             />
           ) : scoreModel && practiceMode === 'trouble' ? (
-            <TroubleSpotsPlayer key={selectedPart?.id} melody={melody} playback={playback} sheetMusicRef={sheetMusicRef} />
+            <TroubleSpotsPlayer
+              key={selectedPart?.id}
+              melody={melody}
+              playback={playback}
+              sheetMusicRef={sheetMusicRef}
+              runsKey={runsKey({ ...runsSetting, mode: 'trouble' })}
+            />
           ) : (
             <PlaybackControls
               state={playback.state}

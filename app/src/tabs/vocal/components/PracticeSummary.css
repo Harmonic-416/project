@@ -1,0 +1,176 @@
+/* End-of-run score card (PracticeSummary.jsx) and its tries chart (RunProgress.jsx). */
+.practice-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e2dfd8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #24242c;
+}
+
+.practice-summary__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.practice-summary__score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-summary__number {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.practice-summary__out-of {
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.practice-summary__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+
+.practice-summary__trend {
+  font-size: 0.8rem;
+  color: #6c6a72;
+}
+
+.practice-summary__details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.practice-summary__details p,
+.practice-summary__details ul {
+  margin: 0;
+}
+
+.practice-summary__details ul {
+  padding-left: 1.2em;
+}
+
+/* Right / a half step off / missed counts, each with a swatch matching the note colours on the score. */
+.practice-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+  color: #24242c;
+}
+
+.practice-tally li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.practice-tally li::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.practice-tally__right::before { background: #2e9e5b; }
+.practice-tally__close::before { background: #e0a100; }
+.practice-tally__missed::before { background: #cf4b36; }
+
+.run-progress {
+  margin: 0;
+}
+
+.run-progress__plot {
+  max-width: 420px;
+}
+
+.run-progress__plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.run-progress__grid,
+.run-progress__baseline {
+  stroke: #ecebe7;
+  stroke-width: 1;
+}
+
+.run-progress__baseline { stroke: #d6d3cc; }
+
+.run-progress__tick,
+.run-progress__try {
+  font-size: 9px;
+  fill: #6c6a72;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-progress__try--latest {
+  font-weight: 700;
+  fill: #24242c;
+}
+
+.run-progress__value {
+  font-size: 10px;
+  font-weight: 600;
+  fill: #24242c;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-progress__bar { fill: #128789; }
+
+.run-progress__hit {
+  fill: transparent;
+}
+
+.run-progress__run {
+  cursor: default;
+  outline: none;
+}
+
+.run-progress__run--active .run-progress__hit { fill: #f0f7f7; }
+
+.run-progress__run:focus-visible .run-progress__hit {
+  stroke: #24242c;
+  stroke-width: 1.5;
+}
+
+.run-progress__caption {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: #6c6a72;
+}
+
+/* For screen readers only. */
+.run-progress__table {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Notes marked on the score by the practice scores (see PracticeModes.css for the others). */
+.practice-note--close path,
+.practice-note--close rect { fill: #e0a100; stroke: #e0a100; }
+.practice-note--slow path,
+.practice-note--slow rect { fill: #e0a100; stroke: #e0a100; }

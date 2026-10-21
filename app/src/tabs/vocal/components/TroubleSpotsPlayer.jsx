@@ -2,14 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
+import PracticeSummary from './PracticeSummary.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { findActiveNote, midiToNoteName } from '../audio/pitchDetector.js'
 import { createTroubleTracker, noteDistanceCents } from '../practice/practiceLogic.js'
+import { liveVerdict, STRICT_TROUBLE, summarizeTroubleRun } from '../practice/scoring.js'
+import { useSessionRuns } from '../practice/sessionRuns.js'
 import { getScoreSeconds } from '../playback/scoreClock.js'
 
 const MISSED_CLASS = 'practice-note--missed'
+const CLOSE_CLASS = 'practice-note--close'
 // Stopping this close to the end counts as finishing, so the last notes still get a verdict.
 const END_SLACK_SECONDS = 0.5
+const NEW_RUN = { right: 0, close: 0, missed: 0, finished: false, from: 0 }
 
 /** Playback clock in score seconds (at any tempo), or null while the transport isn't running (so paused frames aren't scored). */
 const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScoreSeconds() : null)
@@ -17,14 +22,21 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
 /**
  * "Trouble spots": normal playback that never waits. The mic runs alongside
  * and, as playback moves past each melody note, practiceLogic's tracker
- * decides whether it was sung (within a semitone, any octave); misses are
- * coloured red on the score and stay there until that passage is sung
- * again or the marks are cleared.
+ * decides whether it was sung on pitch (scoring.js STRICT_TROUBLE, any octave),
+ * a half step off, or missed. Half-step notes turn amber and missed ones
+ * red, and stay so until that passage is sung again or the marks are cleared.
+ *
+ * Scoring (practice/scoring.js): right = 1, a half step off = ½, missed = 0,
+ * counted live; reaching the end shows the score, and a run from the start
+ * joins this session's tries for `runsKey` (practice/sessionRuns.js).
  */
-function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
+function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey }) {
   const [missed, setMissed] = useState([])
   const missedRef = useRef([])
-  const [run, setRun] = useState(null) // { hit, checked, finished }
+  const [run, setRun] = useState(null) // { right, close, missed, finished, from }
+  const runRef = useRef(null)
+  const [summary, setSummary] = useState(null)
+  const [runs, addRun] = useSessionRuns(runsKey)
   const trackerRef = useRef(null)
   const lastTimeRef = useRef(0)
 
@@ -32,44 +44,66 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
   const mic = useMicPitch({ getTime: getTransportSeconds, onSample: handleSample })
   const listening = mic.status === 'listening'
 
+  const updateRun = useCallback((next) => {
+    runRef.current = next
+    setRun(next)
+  }, [])
+
   const applyVerdicts = useCallback(
-    ({ hit, missed: newlyMissed }) => {
+    ({ hit, missed: newlyMissed, close }) => {
       if (!hit.length && !newlyMissed.length) return
-      newlyMissed.forEach((note) => sheetMusicRef.current?.markNote(note.index, MISSED_CLASS))
+      const near = new Set(close)
+      newlyMissed.forEach((note) =>
+        sheetMusicRef.current?.markNote(note.index, near.has(note) ? CLOSE_CLASS : MISSED_CLASS),
+      )
       if (newlyMissed.length) {
         missedRef.current = [...missedRef.current, ...newlyMissed]
         setMissed(missedRef.current)
       }
-      setRun((r) => ({ ...r, hit: r.hit + hit.length, checked: r.checked + hit.length + newlyMissed.length }))
+      const r = runRef.current
+      if (r) {
+        updateRun({
+          ...r,
+          right: r.right + hit.length,
+          close: r.close + close.length,
+          missed: r.missed + newlyMissed.length - close.length,
+        })
+      }
     },
-    [sheetMusicRef],
+    [sheetMusicRef, updateRun],
   )
 
   /** Start judging from `from`; singing a passage again clears its old marks. */
   const startRun = useCallback(
     (from) => {
-      const tracker = createTroubleTracker(melody)
+      const tracker = createTroubleTracker(melody, STRICT_TROUBLE)
       tracker.skipTo(from)
       trackerRef.current = tracker
       lastTimeRef.current = from
       const keep = []
       for (const note of missedRef.current) {
         if (note.time + note.duration < from) keep.push(note)
-        else sheetMusicRef.current?.markNote(note.index, MISSED_CLASS, false)
+        else {
+          sheetMusicRef.current?.markNote(note.index, MISSED_CLASS, false)
+          sheetMusicRef.current?.markNote(note.index, CLOSE_CLASS, false)
+        }
       }
       missedRef.current = keep
       setMissed(keep)
-      setRun({ hit: 0, checked: 0, finished: false })
+      setSummary(null)
+      updateRun({ ...NEW_RUN, from })
     },
-    [melody, sheetMusicRef],
+    [melody, sheetMusicRef, updateRun],
   )
 
   const clearMarks = useCallback(() => {
     sheetMusicRef.current?.clearMarks(MISSED_CLASS)
+    sheetMusicRef.current?.clearMarks(CLOSE_CLASS)
     missedRef.current = []
     setMissed([])
-    setRun(null)
-  }, [sheetMusicRef])
+    updateRun(null)
+    setSummary(null)
+  }, [sheetMusicRef, updateRun])
 
   const play = useCallback(async () => {
     if (!(await mic.start())) return
@@ -99,8 +133,9 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
     return () => cancelAnimationFrame(raf)
   }, [playback.state, applyVerdicts])
 
-  // End of the song (or Stop): judge what's left if we got to the end, then release the mic.
-  // Only on the transition into 'stopped' — Play starts a run while the state is still 'stopped'.
+  // End of the song (or Stop): judge what's left if we got to the end, score
+  // the run, then release the mic. Only on the transition into 'stopped' —
+  // Play starts a run while the state is still 'stopped'.
   const prevStateRef = useRef(playback.state)
   useEffect(() => {
     const prev = prevStateRef.current
@@ -110,21 +145,35 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
     trackerRef.current = null
     const finished = lastTimeRef.current >= playback.duration - END_SLACK_SECONDS
     if (finished) applyVerdicts(tracker.collect(Infinity))
-    setRun((r) => r && { ...r, finished })
+    const r = runRef.current
+    if (r) {
+      updateRun({ ...r, finished })
+      if (finished) {
+        const result = summarizeTroubleRun(runRef.current)
+        // Only a run from the top is a fair comparison with the others.
+        const charted = result.total > 0 && r.from <= (melody[0]?.time ?? 0) + 1e-3
+        if (charted) addRun(result.score)
+        setSummary(result.total > 0 ? { ...result, charted } : null)
+      }
+    }
     mic.stop()
-  }, [playback.state, playback.duration, applyVerdicts, mic])
+  }, [playback.state, playback.duration, applyVerdicts, mic, melody, addRun, updateRun])
 
-  // Leaving the mode takes the red marks off the score.
+  // Leaving the mode takes the marks off the score.
   useEffect(() => {
     const viewer = sheetMusicRef.current
-    return () => viewer?.clearMarks(MISSED_CLASS)
+    return () => {
+      viewer?.clearMarks(MISSED_CLASS)
+      viewer?.clearMarks(CLOSE_CLASS)
+    }
   }, [sheetMusicRef])
 
   const live = mic.current
   const liveTarget = live ? findActiveNote(melody, live.time) : null
   const liveCents = live && liveTarget ? noteDistanceCents(live.midi, liveTarget.midi) : null
-  const liveVerdict = liveCents === null ? 'rest' : Math.abs(liveCents) <= 100 ? 'in-tune' : 'wrong'
+  const liveTone = liveCents === null ? 'rest' : liveVerdict(liveCents, STRICT_TROUBLE.toleranceCents)
   const playing = playback.state === 'playing'
+  const counted = run ? run.right + run.close + run.missed : 0
 
   return (
     <>
@@ -141,18 +190,13 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
       />
       <div className="practice-status" aria-live="polite">
         {listening && playing ? (
-          <span className={`practice-status__live practice-status__live--${liveVerdict}`}>
+          <span className={`practice-status__live practice-status__live--${liveTone}`}>
             {live
               ? `you: ${live.noteName}${liveTarget ? ` · note ${midiToNoteName(liveTarget.midi)}` : ' · rest'}`
               : 'listening…'}
           </span>
         ) : (
           !run && <span>Sing along with playback. Headphones help — otherwise the mic also hears the music.</span>
-        )}
-        {run?.finished && (
-          <strong>
-            Hit {run.hit} of {run.checked} notes
-          </strong>
         )}
         {missed.length > 0 && (
           <span className="practice-status__count">
@@ -166,7 +210,39 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled }) {
         )}
         {mic.status === 'error' && <span className="practice-status__error">{mic.error}</span>}
       </div>
+      {/* Outside the live region: it changes with every note. */}
+      {run && counted > 0 && !summary && <Tally run={run} />}
+      {(summary || runs.length > 0) && (
+        <PracticeSummary
+          title="Singing in time"
+          score={summary?.score ?? null}
+          runs={runs}
+          charted={summary?.charted ?? true}
+          chartLabel="Trouble spots scores this session, by try"
+        >
+          {summary && (
+            <>
+              <Tally run={summary} />
+              <p>
+                {summary.right} of {summary.total} notes on pitch. Notes a half step off count half; anything
+                further off, or not sung, is a miss.
+              </p>
+            </>
+          )}
+        </PracticeSummary>
+      )}
     </>
+  )
+}
+
+/** Right / a half step off / missed, coloured like the notes on the score. */
+function Tally({ run }) {
+  return (
+    <ul className="practice-tally" aria-label="Notes so far">
+      <li className="practice-tally__right">{run.right} right</li>
+      <li className="practice-tally__close">{run.close} a half step off (½)</li>
+      <li className="practice-tally__missed">{run.missed} missed</li>
+    </ul>
   )
 }
 

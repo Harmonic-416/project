@@ -80,6 +80,17 @@ describe('wait mode hold detector', () => {
     expect(d.update(69, 69, 500)).toBe(true)
   })
 
+  it('remembers when the singer first landed on the note', () => {
+    const d = createHoldDetector({ holdMs: 200 })
+    d.update(60, 69, 0) // wrong note
+    d.update(69, 69, 450)
+    d.update(69, 69, 550)
+    expect(d.update(69, 69, 650)).toBe(true)
+    expect(d.onsetMs).toBe(450)
+    d.reset()
+    expect(d.onsetMs).toBeNull()
+  })
+
   it('ignores wrong notes', () => {
     const d = createHoldDetector({ holdMs: 0 })
     expect(d.update(71, 69, 0)).toBe(false)
@@ -100,21 +111,44 @@ describe('trouble spot tracker', () => {
   it('marks notes missed only once playback is past them', () => {
     const tracker = createTroubleTracker(melody)
     sing(tracker, 60, 0.1, 0.8)
-    expect(tracker.collect(1.1)).toEqual({ hit: [], missed: [] }) // still within grace
+    expect(tracker.collect(1.1)).toEqual({ hit: [], missed: [], close: [] }) // still within grace
     const first = tracker.collect(1.25)
     expect(first.hit.map((n) => n.index)).toEqual([0])
     sing(tracker, 66, 1.1, 1.9) // a whole tone sharp
     sing(tracker, 52, 2.1, 2.9) // right note, an octave down
     const rest = tracker.collect(Infinity)
     expect(rest.missed.map((n) => n.index)).toEqual([1])
+    expect(rest.close).toEqual([]) // no half credit unless asked for (closeCents)
     expect(rest.hit.map((n) => n.index)).toEqual([2])
+  })
+
+  it('tells a half step off from further off', () => {
+    const tracker = createTroubleTracker(melody, { toleranceCents: 50, closeCents: 150 })
+    sing(tracker, 61, 0.1, 0.8) // a half step sharp: close
+    sing(tracker, 57, 1.1, 1.9) // a fifth below D: missed
+    // nothing during note 2: missed
+    const { hit, missed, close } = tracker.collect(Infinity)
+    expect(hit).toEqual([])
+    expect(missed.map((n) => n.index)).toEqual([0, 1, 2])
+    expect(close.map((n) => n.index)).toEqual([0])
+  })
+
+  it('doesn’t give a skipped note half credit for its neighbours', () => {
+    const tracker = createTroubleTracker(melody, { toleranceCents: 50, closeCents: 150, minOnPitchShare: 0.6, minFrames: 4 })
+    sing(tracker, 61, 0.1, 1.15) // note 0 a half step sharp, held a little into note 1 (D, a half step away)
+    sing(tracker, 63, 1.95, 2.9) // note 2 a half step flat, starting a touch early
+    const { close, missed } = tracker.collect(Infinity)
+    expect(missed.map((n) => n.index)).toEqual([0, 1, 2])
+    expect(close.map((n) => n.index)).toEqual([0, 2]) // note 1 wasn't sung
   })
 
   it('needs more than a stray frame', () => {
     const tracker = createTroubleTracker(melody, { minFrames: 3 })
     tracker.addSample({ time: 0.5, midi: 60 })
     tracker.addSample({ time: 0.52, midi: 60 })
-    expect(tracker.collect(1.5).missed.map((n) => n.index)).toEqual([0])
+    const { missed, close } = tracker.collect(1.5)
+    expect(missed.map((n) => n.index)).toEqual([0])
+    expect(close).toEqual([])
   })
 
   it('skips notes before a seek without a verdict', () => {
