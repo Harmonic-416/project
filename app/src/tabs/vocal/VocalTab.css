@@ -116,3 +116,17 @@
   font-size: 1.3rem;
   line-height: 1;
 }
+
+/* What the arranger did, over a song it just wrote. */
+.vocal-tab__arranged {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f0f7f7;
+  color: #3b3940;
+  font-size: 0.9rem;
+}
+
+.vocal-tab__arranged a {
+  color: #128789;
+}

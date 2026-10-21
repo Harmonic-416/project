@@ -26,7 +26,6 @@ import { loadRuntime } from './onnx.js'
 export const SAMPLE_RATE = 44100
 export const SEGMENT = 343980 // samples: the 7.8 s window the model was exported for
 export const SOURCES = ['drums', 'bass', 'other', 'vocals', 'guitar', 'piano']
-const GUITAR = SOURCES.indexOf('guitar')
 const NFFT = 4096
 const HOP = NFFT / 4
 const BINS = NFFT / 2 // the Nyquist bin is dropped
@@ -188,17 +187,17 @@ async function openSeparator(ort, model, providers) {
   return { session: await ort.InferenceSession.create(model, { executionProviders: ['wasm'] }), gpu: false }
 }
 
-/** The model on one window (`mix` and its `spec`): the guitar, [left, right]. */
-async function guitarOf({ session }, ort, mix, spec) {
+/** The model on one window (`mix` and its `spec`): source `source` (an index into SOURCES), [left, right]. */
+async function stemOf({ session }, ort, mix, spec, source) {
   const output = await session.run({
     mix: new ort.Tensor('float32', mix, [1, 2, SEGMENT]),
     spec: new ort.Tensor('float32', spec, [1, 2, BINS, FRAMES, 2]),
   })
   const time = output.time.data
-  const [l, r] = inverseSpectrogram(output.freq.data, GUITAR * 4 * BINS * FRAMES, SEGMENT)
+  const [l, r] = inverseSpectrogram(output.freq.data, source * 4 * BINS * FRAMES, SEGMENT)
   for (let k = 0; k < SEGMENT; k += 1) {
-    l[k] += time[(GUITAR * 2) * SEGMENT + k]
-    r[k] += time[(GUITAR * 2 + 1) * SEGMENT + k]
+    l[k] += time[(source * 2) * SEGMENT + k]
+    r[k] += time[(source * 2 + 1) * SEGMENT + k]
   }
   return [l, r]
 }
@@ -206,14 +205,18 @@ async function guitarOf({ session }, ort, mix, spec) {
 const finite = (channels) => channels.every((samples) => samples.every(Number.isFinite))
 
 /**
- * The guitar of `left`/`right` (44.1 kHz) as [left, right]. `onProgress`
+ * One source of `left`/`right` (44.1 kHz) as [left, right]: `source` is one
+ * of SOURCES ('guitar' for the drafts, 'vocals' for the Vocal tab's
+ * arrangements). `onProgress`
  * gets 0 … 1; `signal` (an AbortSignal) stops it between windows;
  * `onDevice('gpu' | 'cpu')` says where it runs, and again if the graphics
  * card gives out (lost, out of memory, or numbers that overflowed) and the
  * rest of the song goes to the CPU. `model` (URL or bytes), `runtime` (an
  * onnxruntime module) and `providers` are for the tests, which run in Node.
  */
-export async function separateGuitar([left, right], { onProgress, onDevice, signal, model = MODEL_URL, runtime, providers: testProviders } = {}) {
+export async function separateSource([left, right], { source = 'guitar', onProgress, onDevice, signal, model = MODEL_URL, runtime, providers: testProviders } = {}) {
+  const index = SOURCES.indexOf(source)
+  if (index < 0) throw new Error(`No such source: ${source}`)
   const { ort, providers } = runtime ? { ort: runtime, providers: testProviders } : await loadRuntime()
   // The tests' runtimes are their own; the app's separator is opened once.
   let current = runtime ? await openSeparator(ort, model, providers) : (separator ??= await openSeparator(ort, model, providers))
@@ -232,7 +235,7 @@ export async function separateGuitar([left, right], { onProgress, onDevice, sign
     spectrogram(mix.subarray(SEGMENT), spec, 1)
     let channels = null
     try {
-      channels = await guitarOf(current, ort, mix, spec)
+      channels = await stemOf(current, ort, mix, spec, index)
     } catch (err) {
       if (!current.gpu) throw err
       console.warn('[transcribe] The graphics card failed; finishing on the CPU.', err)
@@ -243,7 +246,7 @@ export async function separateGuitar([left, right], { onProgress, onDevice, sign
       current = await openSeparator(ort, model, ['wasm'])
       if (!runtime) separator = current
       onDevice?.('cpu')
-      channels = await guitarOf(current, ort, mix, spec)
+      channels = await stemOf(current, ort, mix, spec, index)
     }
     pieces.push({ start, channels })
     onProgress?.((i + 1) / starts.length)
@@ -251,3 +254,6 @@ export async function separateGuitar([left, right], { onProgress, onDevice, sign
   }
   return overlapAdd(pieces, length)
 }
+
+/** The guitar of `left`/`right` (44.1 kHz), as separateSource. */
+export const separateGuitar = (channels, options = {}) => separateSource(channels, { ...options, source: 'guitar' })

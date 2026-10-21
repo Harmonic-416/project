@@ -32,7 +32,7 @@ const NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
 export const chordId = (root, kind) => NAMES[root] + KIND_BY_QUALITY[kind].suffix
 
 /** Chord templates: { root, kind, id, vector } with `vector` the unit pitch-class profile. */
-const TEMPLATES = (() => {
+export const TEMPLATES = (() => {
   const templates = []
   for (const kind of VOCABULARY) {
     for (let root = 0; root < 12; root += 1) {
@@ -83,8 +83,8 @@ export function beatChroma(frames, frameTime, beats) {
   })
 }
 
-/** How well each template fits one beat's profile (cosine, with the kind's penalty and the bass bonus). */
-function scores({ chroma, bass }) {
+/** How well each template fits one beat's profile (cosine, with the kind's penalty and the bass bonus), in TEMPLATES' order. */
+export function chordScores({ chroma, bass }) {
   return TEMPLATES.map(({ root, kind, vector }) => {
     let s = 0
     for (let i = 0; i < 12; i += 1) s += chroma[i] * vector[i]
@@ -92,24 +92,28 @@ function scores({ chroma, bass }) {
   })
 }
 
-/**
- * The chord on each beat (null where there's none), smoothed by a Viterbi
- * pass over the beats: staying costs nothing, changing costs CHANGE_COST,
- * or CHANGE_AT_BAR on a bar's first beat (`beatsPerBar`, `firstDownbeat`).
- */
-export function recognizeChords(beatProfiles, { beatsPerBar = 4, firstDownbeat = 0 } = {}) {
-  const n = beatProfiles.length
-  if (!n) return []
-  const states = TEMPLATES.length + 1 // the last: no chord
-  const emission = beatProfiles.map((profile) => {
+/** Each beat's scores for every template and, last, for no chord (-1 … 1); a silent beat scores 1 for no chord. */
+export function chordEmission(beatProfiles, bonus = null) {
+  return beatProfiles.map((profile) => {
     if (profile.energy < SILENT) return [...TEMPLATES.map(() => -1), 1]
-    return [...scores(profile), NO_CHORD_SCORE]
+    const fit = chordScores(profile)
+    return [...(bonus ? fit.map((s, i) => s + bonus[i]) : fit), NO_CHORD_SCORE]
   })
+}
+
+/**
+ * The best path through `emission` (chordEmission's: a score per state per
+ * beat) when staying on a state costs nothing and moving to another costs
+ * `changeCost(t)` on beat `t`: the state index on each beat.
+ */
+export function smoothChords(emission, changeCost) {
+  const n = emission.length
+  if (!n) return []
+  const states = emission[0].length
   let best = emission[0].slice()
   const back = []
   for (let t = 1; t < n; t += 1) {
-    const atBar = (((t - firstDownbeat) % beatsPerBar) + beatsPerBar) % beatsPerBar === 0
-    const change = atBar ? CHANGE_AT_BAR : CHANGE_COST
+    const change = changeCost(t)
     let top = 0
     for (let s = 1; s < states; s += 1) if (best[s] > best[top]) top = s
     const next = new Array(states)
@@ -135,7 +139,20 @@ export function recognizeChords(beatProfiles, { beatsPerBar = 4, firstDownbeat =
     state = back[t][state]
     path.unshift(state)
   }
-  return path.map((s) => (s === TEMPLATES.length ? null : { root: TEMPLATES[s].root, kind: TEMPLATES[s].kind, id: TEMPLATES[s].id }))
+  return path
+}
+
+/** A path's states (smoothChords') as beat chords: { root, kind, id }, or null for no chord. */
+export const pathChords = (path) => path.map((s) => (s === TEMPLATES.length ? null : { root: TEMPLATES[s].root, kind: TEMPLATES[s].kind, id: TEMPLATES[s].id }))
+
+/**
+ * The chord on each beat (null where there's none), smoothed by a Viterbi
+ * pass over the beats: staying costs nothing, changing costs CHANGE_COST,
+ * or CHANGE_AT_BAR on a bar's first beat (`beatsPerBar`, `firstDownbeat`).
+ */
+export function recognizeChords(beatProfiles, { beatsPerBar = 4, firstDownbeat = 0 } = {}) {
+  const atBar = (t) => (((t - firstDownbeat) % beatsPerBar) + beatsPerBar) % beatsPerBar === 0
+  return pathChords(smoothChords(chordEmission(beatProfiles), (t) => (atBar(t) ? CHANGE_AT_BAR : CHANGE_COST)))
 }
 
 // ── Chord names ──────────────────────────────────────────────────────────
