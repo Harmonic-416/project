@@ -1,6 +1,6 @@
 # Harmonic — architecture
 
-Status: current as of 2026-09-30 (`main`). Owner: whole team. This is the
+Status: current as of 2026-10-21 (`main`). Owner: whole team. This is the
 "boxes and arrows" document for the rubric; the requirement-by-requirement
 design lives in `openspec/` and the capacity plan in `docs/scaling-plan.md`.
 
@@ -13,20 +13,24 @@ and each note of your part is marked sung or missed. **Guitar** tunes the
 guitar, teaches six open chords and checks by ear that you played the chord
 it asked for, and shows guitar songs as tab plus standard notation.
 
-**Everything happens on the device.** Rendering, playback, microphone
+**Almost everything happens on the device.** Rendering, playback, microphone
 analysis and scoring run in the browser; live audio is never uploaded, and
-songs you open (your own files) are never uploaded either (copyright). The
-server is used for exactly three things:
+songs you open (your own files) are never uploaded either (copyright).
+Supabase is the only backend service, used for:
 
 | What | Why it needs the server | Sign-in? |
 |---|---|---|
-| **Sharing an attempt** (the only thing the app writes) | the link has to work on someone else's phone | yes, to share and to open |
-| **Sign-in** (Google / GitHub) | sharing needs to know who you are | — |
+| **Attempts** (saved, shared by link or to friends, comments) | your history follows you; a friend's phone has to open it | yes |
+| **Practice sessions** and your notes on each attempt | history across devices | yes |
+| **Friends** (name#tag, invites) | other people | yes |
+| **Guitar progress** | lessons follow the account | yes, optional |
 | **Online catalog** (read-only) | a handful of public-domain songs the team curates | no |
+| **Arrangement jobs** (queue + results) | hands a YouTube link to the arranger worker | yes, team allow-list |
 
-Progress, run-through history, tempo preferences and "my songs" exist in the
-backend layer and database (built and tested) but **the app does not use
-them**; guitar unlocks are kept in the browser's `localStorage`.
+**One job runs on a machine of our own:** arranging a song from a YouTube
+link. It is minutes of machine-learning inference per song, which no part of
+Supabase or Vercel can run (Section 5 explains why, with measurements). It
+runs on a VM, talks to Supabase only over HTTPS, and keeps no state of its own.
 
 ## 1. System overview
 
@@ -35,45 +39,56 @@ flowchart TB
     subgraph DEVICE["ON THE DEVICE · React 19 + Vite PWA · installable, works offline"]
         direction LR
         MIC["Microphone<br/>analysed in the browser<br/>live audio never uploaded"]
-        VOCAL["Vocal tab<br/>sheet music · playback<br/>practice modes · pitch dots"]
-        GUITAR["Guitar tab<br/>tuner · chord practice<br/>tab songs"]
-        SHELL["App shell<br/>Home · sign-in card<br/>service worker"]
-        LOCAL[("Browser storage<br/>session · guitar unlocks<br/>built-in songs · your files")]
+        VOCAL["Vocal tab<br/>sheet music · practice modes<br/>sessions · attempt history<br/>arrange from a file"]
+        GUITAR["Guitar tab<br/>songs · learn · exercises<br/>fretboard · tuner"]
+        HOME["Home · Social<br/>continue practice · working on<br/>friends · my files"]
+        LOCAL[("Browser storage<br/>IndexedDB: your song files<br/>localStorage: settings")]
         MIC --> VOCAL & GUITAR
-        GUITAR --> LOCAL
+        HOME --> LOCAL
     end
 
-    subgraph API["src/lib · TypeScript SDK that runs in the browser · no server code of our own"]
+    subgraph API["src/lib · TypeScript that runs in the browser · no API server of our own"]
         direction LR
-        ATTLIB["attempts.ts<br/>share · open · recording URL"]
-        SONGSLIB["songs.ts<br/>catalog list · signed URLs"]
-        AUTHLIB["auth.ts<br/>Google / GitHub sign-in"]
-        IDLEAPI["progress.ts · song imports<br/>built and tested, not called"]
+        ATTLIB["attempts.ts<br/>practiceSessions.ts"]
+        SOCLIB["friends.ts · home.ts"]
+        ARRLIB["arrangements.ts<br/>queue a link · poll · download"]
+        OTHERLIB["auth.ts · songs.ts<br/>progress.ts"]
     end
 
-    subgraph SUPA["SUPABASE (managed) · sharing, sign-in, read-only catalog"]
+    subgraph SUPA["SUPABASE (managed) · Postgres with row-level security · Auth · Storage"]
         direction LR
-        SHARED[("shared_attempt<br/>pitch trace · score · part<br/>song = catalog id or SHA-256")]
-        REC[("recordings bucket<br/>webm of shared attempts")]
-        CAT[("Catalog, read-only<br/>public-domain songs<br/>4 vocal · 2 guitar")]
-        GOTRUE["Auth<br/>OAuth → JWT"]
-        IDLEDB[("progress tables · users' songs<br/>exist, unused")]
+        ATT[("shared_attempt · practice_session<br/>attempt_comment · attempt_recipient")]
+        REC[("recordings bucket<br/>webm, 100 MB per user")]
+        SOC[("profiles · friendship")]
+        CAT[("song catalog<br/>read-only")]
+        JOB[("arrangement_job queue<br/>arranger_access allow-list<br/>arrangements bucket")]
+        GP[("guitar_progress")]
     end
 
-    VOCAL -- "share / open an attempt" --> ATTLIB
-    VOCAL -- "browse catalog" --> SONGSLIB
-    SHELL -- "sign in" --> AUTHLIB
-    ATTLIB --> SHARED & REC
-    SONGSLIB --> CAT
-    AUTHLIB --> GOTRUE
-    IDLEAPI -.- IDLEDB
+    subgraph VM["ARRANGER WORKER · Node 22 on a Proxmox VM · 16 vCPU · 15 GB RAM"]
+        WORKER["worker/arranger<br/>yt-dlp · ffmpeg · ONNX Runtime · TensorFlow.js<br/>same arranger code as the browser"]
+    end
 
-    classDef idle fill:#f3f3f3,stroke:#9a9a9a,stroke-dasharray:4 3,color:#6c6a72
-    class IDLEAPI,IDLEDB idle
+    YT(["YouTube"])
+    LRC(["LRCLIB<br/>published lyrics"])
+
+    VOCAL --> ATTLIB & ARRLIB
+    HOME --> ATTLIB & SOCLIB
+    GUITAR --> ATTLIB & OTHERLIB
+    ATTLIB --> ATT & REC
+    SOCLIB --> SOC
+    OTHERLIB --> CAT & GP
+    ARRLIB --> JOB
+    WORKER -- "poll + claim a job,<br/>upload the MusicXML" --> JOB
+    WORKER -- "download audio" --> YT
+    WORKER -- "look up lyrics" --> LRC
+
+    classDef server fill:#fff4e5,stroke:#d08a2c,color:#3d2a10
+    class VM,WORKER server
 ```
 
-Arrows are runtime calls. Grey dashed boxes exist in the code and database,
-but nothing in the app calls them. Deploy is not a runtime part: on every push
+Arrows are runtime calls. The orange box is the only code that runs outside
+the browser (Section 5). Deploy is not a runtime part: on every push
 to `main`, GitHub Actions lints, type-checks, tests and builds, applies the
 Supabase migrations (`supabase db push`) and deploys the static build to
 Vercel, which serves the PWA (details in `docs/deploy.md`). Every call
@@ -148,7 +163,7 @@ flowchart LR
 
 Nothing in the Guitar tab talks to the server.
 
-## 4. Sharing an attempt (the only server write)
+## 4. Sharing an attempt
 
 ```mermaid
 sequenceDiagram
@@ -184,6 +199,126 @@ by the SHA-256 of the file, and the friend supplies their own copy. Shares
 can't be listed; a row is only readable through `get_shared_attempt(id)` by
 someone signed in who has the link, and only the recording attached to a
 share becomes readable to others.
+
+## 5. Arranging a song from a link (the one job on our own machine)
+
+The Vocal tab can arrange a song for voices two ways:
+
+- **From an audio file** the user owns: the whole pipeline below runs in the
+  browser, on the user's own CPU, and nothing is uploaded.
+- **From a YouTube link** (team allow-list): the browser only queues a job.
+  The pipeline runs on the **arranger worker**, a Node process on a VM.
+
+Both paths run the **same arranger code** (`app/src/tabs/vocal/arrange/`);
+the worker imports it from the app instead of having a copy.
+
+### 5.1 What the worker does with the CPU
+
+```mermaid
+flowchart LR
+    subgraph SUPA["SUPABASE"]
+        Q[("arrangement_job<br/>queued → running → done")]
+        B[("arrangements bucket<br/>user/job.musicxml")]
+    end
+
+    subgraph VM["ARRANGER WORKER · Proxmox VM · 16 vCPU (QEMU, no AVX) · 15 GB RAM · Node 22"]
+        direction TB
+        CLAIM["1 · claim_arrangement_job()<br/>polls every 5 s"]
+        DL["2 · yt-dlp + ffmpeg<br/>download, decode to 22 kHz stereo<br/><i>native binaries</i>"]
+        SEP["3 · Isolate the singer<br/>htdemucs_6s, 55 MB ONNX model<br/>ONNX Runtime (native)<br/><b>40% of the time · ~13 cores · ~4 GB RAM</b>"]
+        BP["4 · Melody + chords<br/>Basic Pitch on the vocals and the mix<br/>TensorFlow.js (WebAssembly)"]
+        WH["5 · Words<br/>Whisper small, word timestamps<br/>+ published lyrics from LRCLIB<br/><b>up to 30% of the time</b>"]
+        BT["6 · Beats and bars<br/>Beat This, ONNX"]
+        AR["7 · Write the parts<br/>chord pass in the song's scale,<br/>solo + TTBB / SATB voicing<br/><i>plain JavaScript, under a second</i>"]
+        CLAIM --> DL --> SEP --> BP --> WH --> BT --> AR
+    end
+
+    YT(["YouTube"])
+    Q -- job --> CLAIM
+    DL -- audio --> YT
+    AR -- "MusicXML" --> B
+    AR -- "status: done" --> Q
+
+    classDef heavy fill:#fde2e1,stroke:#c0392b,color:#3d1010
+    class SEP,WH heavy
+```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Singer
+    participant A as App (browser)
+    participant S as Supabase
+    participant W as Arranger worker (VM)
+    participant Y as YouTube
+
+    U->>A: paste a YouTube link, pick Solo + TTBB
+    A->>S: insert arrangement_job (RLS: only users on arranger_access)
+    loop every 5 s
+        W->>S: rpc claim_arrangement_job()
+    end
+    S-->>W: the job (now running)
+    W->>Y: yt-dlp downloads the audio
+    W->>W: separate, transcribe, find words, beats and chords, write the parts (about 3 min)
+    W->>S: progress updates (stage, percent)
+    A->>S: poll the job, show progress
+    W->>S: upload MusicXML to arrangements/{user}/{job}, status done
+    A->>S: signed URL for the result
+    A-->>U: opens the arrangement like any other song
+```
+
+The worker holds no state: the queue, the allow-list, the limits per user and
+the results all live in Supabase. If the worker restarts, it puts its running
+job back in the queue and claims it again.
+
+### 5.2 Measured cost of one arrangement
+
+Measured on 2026-10-21 with a 4-minute song ("Let It Be", 243 s of audio),
+run at low priority on the VM:
+
+| Stage | Time | Share | What runs |
+|---|---|---|---|
+| Download and decode | 6 s | 2% | yt-dlp, ffmpeg |
+| Isolate the singer | 132 s | 40% | htdemucs_6s on ONNX Runtime, about 13 cores, about 4.1 GB of memory |
+| Melody | 41 s | 12% | Basic Pitch on the separated vocals |
+| Words | 103 s | 31% | Whisper small (no published lyrics were found for this title) |
+| Chords | 40 s | 12% | Basic Pitch on the full mix |
+| Beats and bars | 9 s | 3% | Beat This |
+| Write the parts | under 1 s | 0% | the arranger itself |
+| **Total** | **332 s** | | about 1.4 s of compute per second of song |
+
+Production jobs so far took 189–265 s each for 2.5–3.5-minute songs. The
+model files cached on the VM take about 540 MB.
+
+### 5.3 Why a VM, and not Supabase, Vercel or the user's browser
+
+| Need of one arrangement | Supabase Edge Functions | Vercel Functions (Hobby) | User's browser | Our VM |
+|---|---|---|---|---|
+| CPU: about 3 minutes of near-continuous inference, on many cores | ❌ 2 s of CPU per request, 150 s wall clock (400 s on paid) | ❌ 300 s maximum | ⚠️ works from a file, but slower on a laptop and much slower on a phone; the tab must stay open | ✅ 16 vCPU, no time limit |
+| Memory: about 4 GB at peak | ❌ 256 MB | ❌ 2 GB maximum | ⚠️ heavy for a phone | ✅ 15 GB |
+| Native programs: yt-dlp, ffmpeg, ONNX Runtime | ❌ Deno sandbox, no binaries or native modules | ❌ 250 MB bundle; models and binaries are about 540 MB | ❌ cannot run them | ✅ installed in the user's home, no sudo |
+| Get the audio from YouTube | ❌ cloud IPs are routinely bot-blocked | ❌ same | ❌ the browser cannot fetch YouTube audio (CORS), and the app does not try | ✅ the campus IP resolves formats without a bot check |
+| Cost | free tier | free tier | free | free: club hardware we already have |
+
+So Supabase stays what it is good at, the **database, auth, storage and the
+queue**, and the one job that needs a real computer runs on one. The
+worker's whole interface to the rest of the system is the `arrangement_job`
+table and the `arrangements` bucket, over HTTPS with a service-role key.
+
+### 5.4 Limits and how this scales
+
+- **One job at a time.** Jobs queue; a second user waits for the first. The
+  allow-list and a daily limit per user (`arranger_daily_limit()`) keep the
+  queue short.
+- **CPU only.** The VM has no GPU, and its virtual CPU lacks AVX, which is why
+  TensorFlow.js runs on WebAssembly instead of its native build. A GPU would
+  cut a job from minutes to seconds; the progress bar already has GPU weights.
+- **Moving off the VM** needs no code changes: any host that can run Node 22
+  with ffmpeg (a cheap VPS, Fly.io, Railway, or a GPU job service such as
+  Modal or RunPod) can run `worker/arranger` with the same environment file.
+  YouTube access from datacenter IPs is the main risk of moving.
+- **Reliability.** The worker runs in a tmux session started by `run.sh`, which
+  restarts it if it exits; an `@reboot` cron entry starts it with the VM.
 
 ## Components
 

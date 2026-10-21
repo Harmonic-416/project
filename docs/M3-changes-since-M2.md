@@ -254,6 +254,9 @@ model inference using ffmpeg and ONNX Runtime. Any host that can run a Node
 process (a VM, Fly.io, a GPU job service) can run the same worker unchanged,
 because it talks to Supabase only over HTTPS.
 
+The diagrams, measured CPU and memory use, and the comparison with Supabase,
+Vercel and the browser are in [architecture.md, Section 5](architecture.md#5-arranging-a-song-from-a-link-the-one-job-on-our-own-machine).
+
 ## 5. Architecture Rationale (changes)
 
 ### 5.1 Scalability
