@@ -55,11 +55,12 @@ const wallClock = () => performance.now() / 1000
  *
  * Scoring (practice/scoring.js): each note is timed from when it's
  * highlighted to when the singer first lands on it, counting listening time
- * only. A run from the first note to the last gets a score and joins this
- * session's tries for `runsKey` (practice/sessionRuns.js); slow notes are
+ * only. A run from the first note to the last gets a score and joins the
+ * saved tries for `runsKey` (practice/sessionRuns.js; on the account too
+ * with `runsRemote`); slow notes are
  * marked amber on the score.
  */
-function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNotes = null, runsKey }) {
+function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNotes = null, runsKey, runsRemote = null }) {
   const [index, setIndex] = useState(0)
   const indexRef = useRef(0)
   const [detector] = useState(() => createHoldDetector(STRICT_HOLD))
@@ -69,7 +70,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
   const runRef = useRef({ fromStart: true, results: [] })
   const [lastMs, setLastMs] = useState(null)
   const [summary, setSummary] = useState(null)
-  const [runs, addRun] = useSessionRuns(runsKey)
+  const [runs, addRun] = useSessionRuns(runsKey, runsRemote)
   const deafUntilRef = useRef(0)
   const synthRef = useRef(null)
   const chordSynthRef = useRef(null)
@@ -117,7 +118,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
       sheetMusicRef.current?.markNote(r.index, SUNG_CLASS, false)
       sheetMusicRef.current?.markNote(r.index, SLOW_CLASS)
     }
-    if (charted) addRun(result.score)
+    if (charted) addRun(result.score, { total: result.notes, right: result.notes - result.slowNotes, half: result.slowNotes, missed: 0 })
     setSummary({ ...result, charted })
   }, [addRun, melody.length, sheetMusicRef])
 
@@ -279,7 +280,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
           score={summary?.score ?? null}
           runs={runs}
           charted={summary?.charted ?? true}
-          chartLabel="Wait for me scores this session, by try"
+          chartLabel="Wait for me scores, by try"
         >
           {summary && (
             <>

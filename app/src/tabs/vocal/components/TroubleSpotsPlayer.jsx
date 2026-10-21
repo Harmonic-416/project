@@ -28,15 +28,15 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
  *
  * Scoring (practice/scoring.js): right = 1, a half step off = ½, missed = 0,
  * counted live; reaching the end shows the score, and a run from the start
- * joins this session's tries for `runsKey` (practice/sessionRuns.js).
+ * joins the saved tries for `runsKey` (practice/sessionRuns.js; on the account too with `runsRemote`).
  */
-function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey }) {
+function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey, runsRemote = null }) {
   const [missed, setMissed] = useState([])
   const missedRef = useRef([])
   const [run, setRun] = useState(null) // { right, close, missed, finished, from }
   const runRef = useRef(null)
   const [summary, setSummary] = useState(null)
-  const [runs, addRun] = useSessionRuns(runsKey)
+  const [runs, addRun] = useSessionRuns(runsKey, runsRemote)
   const trackerRef = useRef(null)
   const lastTimeRef = useRef(0)
 
@@ -152,7 +152,7 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey
         const result = summarizeTroubleRun(runRef.current)
         // Only a run from the top is a fair comparison with the others.
         const charted = result.total > 0 && r.from <= (melody[0]?.time ?? 0) + 1e-3
-        if (charted) addRun(result.score)
+        if (charted) addRun(result.score, { total: result.total, right: result.right, half: result.close, missed: result.missed })
         setSummary(result.total > 0 ? { ...result, charted } : null)
       }
     }
@@ -218,7 +218,7 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey
           score={summary?.score ?? null}
           runs={runs}
           charted={summary?.charted ?? true}
-          chartLabel="Trouble spots scores this session, by try"
+          chartLabel="Trouble spots scores, by try"
         >
           {summary && (
             <>

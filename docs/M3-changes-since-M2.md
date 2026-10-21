@@ -22,7 +22,7 @@ Everything below is merged to `main` and deployed at
 | Vocal | Practise a song from a file or the catalog | Added detailed scoring taking in delays to hit note, and rewarding pitch accuracy + timing, and progress during your session, Also **arrange a song for voices** from an audio file or a YouTube link |
 | Guitar | Tuner, chord practice, tab songs | Songs, **Learn** (chord lessons, strum on the beat), **Exercises** (ear training), **Fretboard**, Tuner, audio-to-tab draft |
 | Playback | Fixed tempo | **Metronome** with count-in, **tempo** 50–100% |
-| Database | Migrations 0001–0005 | Migrations 0001–**0014** (0006–0014 new) |
+| Database | Migrations 0001–0005 | Migrations 0001–**0015** (0006–0015 new) |
 | Server-side jobs | None | One off-platform **arranger worker** (Section 4.6) |
 | Tests | 170 app + 37 backend | 65 app test files (component tests added with jsdom and Testing Library) and 12 backend test files; backend suite 97/97 against a local Supabase stack |
 
@@ -250,6 +250,7 @@ orange box is the only code that runs outside the browser.*
 | 0012 `solo_voicing` | the `solo_ttbb` voicing | — |
 | 0013 `guitar_progress` | one row per user: chords cleared, changes bests, strum steps | owner only |
 | 0014 `practice_sessions` | `practice_session`; on `shared_attempt`: `session_id`, `self_note`, `rating`, `recording_bytes`; recording budget trigger; `end_practice_session()`, `close_idle_practice_sessions()`, `recording_storage_used()` | owner only; `get_shared_attempt()` hides notes from others |
+| 0015 `practice_runs` | `practice_run`: every scored Wait for me / Trouble spots run with its note counts and session | owner only |
 
 The progress tables from M2 (`run_through`, `recording`, `lesson_progress`,
 `song_pref`) are still unused. `shared_attempt` became the attempt history
