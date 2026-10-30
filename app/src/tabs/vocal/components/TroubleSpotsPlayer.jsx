@@ -3,6 +3,7 @@ import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
 import PracticeSummary from './PracticeSummary.jsx'
+import DynamicsMeter from './DynamicsMeter.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { findActiveNote, midiToNoteName } from '../audio/pitchDetector.js'
 import { createTroubleTracker, noteDistanceCents } from '../practice/practiceLogic.js'
@@ -198,6 +199,7 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey
         ) : (
           !run && <span>Sing along with playback. Headphones help — otherwise the mic also hears the music.</span>
         )}
+        {listening && playing && <DynamicsMeter dynamics={mic.dynamics} />}
         {missed.length > 0 && (
           <span className="practice-status__count">
             {missed.length} trouble spot{missed.length === 1 ? '' : 's'}

@@ -9,6 +9,8 @@ import { judgeNotes } from '../share/sharedAttempt.js'
 import { getScoreSeconds } from '../playback/scoreClock.js'
 import ShareAttempt from './ShareAttempt.jsx'
 import SessionAttempts from './SessionAttempts.jsx'
+import DynamicsMeter from './DynamicsMeter.jsx'
+import { describeDynamics, summarizeDynamics } from '../audio/dynamics.js'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -108,6 +110,8 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     }
   }, [result, recording])
 
+  const dynamicsLine = useMemo(() => (result ? describeDynamics(summarizeDynamics(samples)) : null), [result, samples])
+
   const live = mic.current
   const liveTarget = live ? findActiveNote(melody, live.time) : null
   const liveCents = live && liveTarget ? centsOff(live.midi, liveTarget.midi) : null
@@ -138,6 +142,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
               : 'listening…'}
           </span>
         )}
+        {listening && <DynamicsMeter dynamics={mic.dynamics} />}
         {mic.status === 'error' && <span className="record-panel__error">{mic.error}</span>}
       </div>
 
@@ -150,6 +155,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
               {notes.missed.length ? ` · ${notes.missed.length} missed (red)` : ''}
             </span>
           )}
+          {dynamicsLine && <span>{dynamicsLine}</span>}
           <span>
             {result.inTune} of {result.scoredFrames} frames within 50¢
             {result.octaveAgnosticAccuracy > result.accuracy + 0.5
