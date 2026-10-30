@@ -132,8 +132,8 @@ export function ContinuePractice({ latest, recent, error, onOpenAttempt, onNavig
 /**
  * Songs you've practised, most recent first: tries, when, a bar for your
  * best score, your latest and best. `limit` cards (all when null), plus an
- * "Add a song" card with `showAdd`. A vocal song also links to its practice
- * sessions (`onOpenSessions`).
+ * "Add a song" card with `showAdd`. Each song also links to its practice
+ * sessions (`onOpenSessions`), in the tab it was practised in.
  */
 export function WorkingOnCards({ recent, error, limit = null, onOpenAttempt, onOpenSessions, onNavigate, showAdd = false }) {
   if (error) return <p className="home-tab__error">{error}</p>
@@ -173,12 +173,17 @@ export function WorkingOnCards({ recent, error, limit = null, onOpenAttempt, onO
               </span>
             </span>
           </button>
-          {onOpenSessions && song.instrument === 'voice' && (
+          {onOpenSessions && (
             <button
               type="button"
               className="hp-link hp-song__sessions"
               onClick={() =>
-                onOpenSessions({ songId: song.song_id, songFingerprint: song.song_fingerprint, songTitle: song.song_title })
+                onOpenSessions({
+                  songId: song.song_id,
+                  songFingerprint: song.song_fingerprint,
+                  songTitle: song.song_title,
+                  instrument: song.instrument,
+                })
               }
             >
               Practice sessions

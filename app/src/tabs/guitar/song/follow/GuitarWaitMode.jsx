@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import PlaybackControls from '../../../vocal/components/PlaybackControls.jsx'
+import ShareAttempt from '../../../vocal/components/ShareAttempt.jsx'
 import StringStates from '../../practice/StringStates.jsx'
 import { midiToNoteName } from '../../../vocal/audio/pitchDetector.js'
 import { entryIndexAtTime, fingeringLabel } from './songTimeline.js'
@@ -8,6 +9,7 @@ import { seekToTick } from './playerControls.js'
 import { useTuningReport } from '../../tuner/tuningReport.js'
 import { createWaitAttempts } from './waitListening.js'
 import { NUDGE_AFTER, initialWait, isDone, waitReducer, waitSummary } from './waitState.js'
+import { isFullRun, waitAccuracy, waitVerdicts } from './runHistory.js'
 
 // How long a Hint rings; the mic ignores it for that long.
 const HINT_MS = 1500
@@ -32,8 +34,13 @@ function lightsOf(result) {
  * and noise, a strum heard twice or a chord still ringing doesn't count as
  * playing at all (waitListening.js). Nothing plays while listening, so the
  * mic only hears the guitar.
+ *
+ * While signed in, a run played to the end is saved privately into the
+ * song's practice session, scored on the notes played first try, and can be
+ * shared like a Trouble spots run (change: guitar-run-history, F22).
+ * `shareSong` names the song (see vocal/components/ShareAttempt).
  */
-function GuitarWaitMode({ api, timeline, overlay, ready }) {
+function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
   const { entries, duration } = timeline
   const reducer = useMemo(() => waitReducer(entries), [entries])
   const [state, dispatch] = useReducer(reducer, entries, initialWait)
@@ -142,6 +149,7 @@ function GuitarWaitMode({ api, timeline, overlay, ready }) {
   const heard = state.heard
   const chordResult = target && lastResult?.index === target.index ? lastResult.result : null
   const summary = done ? waitSummary(state.results) : null
+  const savedVerdicts = useMemo(() => (done ? waitVerdicts(entries, state.results) : null), [done, entries, state.results])
   const stuck = state.misses >= NUDGE_AFTER
   const linkClass = `practice-status__link${stuck ? ' practice-status__link--nudge' : ''}`
 
@@ -214,6 +222,22 @@ function GuitarWaitMode({ api, timeline, overlay, ready }) {
         )}
         {listener.status === 'error' && <span className="practice-status__error">{listener.error}</span>}
       </div>
+      {summary && summary.scored > 0 && auth && shareSong && (
+        <ShareAttempt
+          auth={auth}
+          supabase={supabase}
+          song={shareSong}
+          accuracy={waitAccuracy(summary)}
+          recording={null}
+          instrument="guitar"
+          verdicts={savedVerdicts}
+          session={session}
+          mode="wait"
+          easy={easy}
+          fullRun={isFullRun(entries, savedVerdicts)}
+          onSaved={onSaved}
+        />
+      )}
       {target?.kind === 'chord' && (
         <div className="guitar-follow__strings">
           <StringStates chord={shapeOf(target)} strings={lightsOf(chordResult)} />

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './ShareAttempt.css'
-import { attachRecording, saveAttempt, sendAttemptToFriends, shareAttempt, shareAttemptLink } from '@backend/attempts'
+import { attachRecording, saveAttempt, sendAttemptToFriends, shareAttempt, shareAttemptLink, updateAttemptResult } from '@backend/attempts'
 import { deleteAttemptRecording } from '@backend/practiceSessions'
 import { formatHandle, listFriends } from '@backend/friends'
 import { displayNameFor } from '../../../auth/authHelpers.js'
@@ -30,8 +30,29 @@ import { namesList } from '../../home/homeFormat.js'
  * fits the recording budget, off once it doesn't; unticking it again deletes
  * the audio and keeps the attempt. Without a session (Guitar) the recording
  * is only uploaded when the attempt is shared or sent, as before.
+ *
+ * A guitar run also says what kind it was (change: guitar-run-history):
+ * `mode` ('wait' | 'trouble'), `easy` (the song's Easy version) and
+ * `fullRun` (first note to the end; only those count toward the song's last
+ * and best score). If `accuracy` / `verdicts` change after the save (a
+ * Trouble spots run re-checked note by note), the saved row is corrected.
+ * `onSaved(row)` hears about the save and any correction.
  */
-function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording, instrument = 'voice', verdicts = null, session = null }) {
+function ShareAttempt({
+  auth,
+  supabase,
+  song,
+  samples = [],
+  accuracy,
+  recording,
+  instrument = 'voice',
+  verdicts = null,
+  session = null,
+  mode = null,
+  easy = null,
+  fullRun = null,
+  onSaved = null,
+}) {
   const [includeRecording, setIncludeRecording] = useState(() =>
     session ? keepByDefault(recording?.size ?? 0, session.storage) : true,
   )
@@ -62,7 +83,12 @@ function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording,
     accuracy: Math.round(accuracy * 10) / 10,
     instrument,
     verdicts,
+    mode,
+    easy,
+    fullRun,
   }))
+  const onSavedRef = useRef(onSaved)
+  onSavedRef.current = onSaved
 
   // In a session, "Keep recording" acts at once: ticked stores the audio,
   // unticked (after it was kept) deletes it. The attempt stays either way.
@@ -114,6 +140,7 @@ function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording,
       savingRef.current
         .then((row) => {
           sessionRef.current?.addAttempt(row)
+          onSavedRef.current?.(row)
           if (includeRecording) keepRecording(true, row)
         })
         .catch(() => {})
@@ -132,6 +159,30 @@ function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording,
     // `includeRecording` / `keepRecording` only matter on the first run, which creates the save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, identifiable, supabase, details])
+
+  // A result that changed after the save (the note-by-note re-check): correct the saved row.
+  const savedId = saved?.id ?? null
+  useEffect(() => {
+    if (!savedId) return
+    const rounded = Math.round(accuracy * 10) / 10
+    if (rounded === details.accuracy && sameVerdicts(verdicts, details.verdicts)) return
+    let live = true
+    updateAttemptResult(supabase, savedId, { verdicts, accuracy: rounded }).then(
+      () => {
+        if (!live) return
+        const patch = { accuracy: rounded, verdicts }
+        setSaved((row) => (row ? { ...row, ...patch } : row))
+        sessionRef.current?.patchAttempt(savedId, patch)
+        onSavedRef.current?.({ ...saved, ...patch })
+      },
+      (err) => console.error(err),
+    )
+    return () => {
+      live = false
+    }
+    // `saved` rides along for onSaved; the row id, the result and the frozen details decide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedId, accuracy, verdicts, supabase, details])
 
   if (!auth.configured) return null
   if (!auth.user) {
@@ -249,6 +300,8 @@ function ShareAttempt({ auth, supabase, song, samples = [], accuracy, recording,
     </div>
   )
 }
+
+const sameVerdicts = (a, b) => a === b || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i]))
 
 /** Tick friends, then Send. */
 function FriendPicker({ supabase, onSend, onClose }) {

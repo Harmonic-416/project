@@ -22,8 +22,10 @@ const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
  * scored Wait for me / Trouble spots runs (with their note counts). Each
  * song card has Practise (open the song, continuing a recent session) and
  * New session (open it with a fresh session): `onPractise(entry, { fresh })`.
+ * `instrument` ('voice' | 'guitar') lists only that tab's sessions, so
+ * Practise opens the song where it was practised.
  */
-function PracticeSessions({ auth, supabase, song, onPractise = null }) {
+function PracticeSessions({ auth, supabase, song, instrument = null, onPractise = null }) {
   const [sessions, setSessions] = useState(null)
   const [storage, setStorage] = useState(null)
   const [error, setError] = useState(null)
@@ -35,10 +37,10 @@ function PracticeSessions({ auth, supabase, song, onPractise = null }) {
   const fetchAll = useCallback(
     () =>
       Promise.all([
-        listPracticeSessions(supabase, { songId, songFingerprint: songId ? null : fingerprint }),
+        listPracticeSessions(supabase, { songId, songFingerprint: songId ? null : fingerprint, instrument }),
         recordingStorageUsed(supabase),
       ]),
-    [supabase, songId, fingerprint],
+    [supabase, songId, fingerprint, instrument],
   )
 
   useEffect(() => {
@@ -85,7 +87,10 @@ function PracticeSessions({ auth, supabase, song, onPractise = null }) {
       {songs === null && !error && <p className="practice-sessions__hint">Loading…</p>}
       {songs?.length === 0 && (
         <p className="practice-sessions__hint">
-          {song ? 'No sessions at this song yet.' : 'No sessions yet.'} Open a song and record an attempt; each sitting shows up here.
+          {song ? 'No sessions at this song yet.' : 'No sessions yet.'}{' '}
+          {instrument === 'guitar'
+            ? 'Open a song and finish a Wait for me or Trouble spots run; each sitting shows up here.'
+            : 'Open a song and record an attempt; each sitting shows up here.'}
         </p>
       )}
       {songs?.length > 0 && (
