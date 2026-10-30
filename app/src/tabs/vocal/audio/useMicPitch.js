@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createDynamicsTracker } from './dynamics.js'
 import { createPitchTracker, midiToNoteName } from './pitchDetector.js'
 
 const UI_INTERVAL_MS = 50
@@ -10,11 +11,14 @@ const UI_INTERVAL_MS = 50
  * `getTime()` — the playback clock — so samples line up with the score.
  * A MediaRecorder runs alongside and yields a compressed webm/opus Blob on
  * stop(), the shape the backend's uploadRecording expects.
+ * `dynamics` is how loud the singing is and which way it is going
+ * ({ db, trend }, audio/dynamics.js), or null while nothing is sung.
  */
 export function useMicPitch({ getTime, onSample }) {
   const [status, setStatus] = useState('idle') // idle | requesting | listening | error
   const [error, setError] = useState(null)
   const [current, setCurrent] = useState(null)
+  const [dynamics, setDynamics] = useState(null)
   const rigRef = useRef(null)
   const samplesRef = useRef([])
   const getTimeRef = useRef(getTime)
@@ -42,6 +46,7 @@ export function useMicPitch({ getTime, onSample }) {
         const finish = () => {
           setStatus('idle')
           setCurrent(null)
+          setDynamics(null)
           resolve(rig.chunks.length ? new Blob(rig.chunks, { type: rig.recorder?.mimeType || 'audio/webm' }) : null)
         }
         // Stop the recorder first and wait for its final chunk; ending the
@@ -94,6 +99,7 @@ export function useMicPitch({ getTime, onSample }) {
         }
       }
 
+      const loudness = createDynamicsTracker()
       const rig = { stream, ctx, analyser, buffer, tracker, raf: 0, recorder, chunks, lastUi: 0 }
       rigRef.current = rig
       const tick = () => {
@@ -102,6 +108,8 @@ export function useMicPitch({ getTime, onSample }) {
         const result = tracker.analyze(buffer, ctx.sampleRate)
         const now = performance.now()
         if (result) {
+          // On the wall clock: the score clock stands still between runs.
+          const level = loudness.push(now / 1000, result.rms)
           const time = getTimeRef.current()
           const sample = { ...result, time, noteName: midiToNoteName(result.midi) }
           if (time !== null) {
@@ -111,10 +119,12 @@ export function useMicPitch({ getTime, onSample }) {
           if (now - rig.lastUi > UI_INTERVAL_MS) {
             rig.lastUi = now
             setCurrent(sample)
+            setDynamics(level)
           }
         } else if (now - rig.lastUi > UI_INTERVAL_MS) {
           rig.lastUi = now
           setCurrent(null)
+          setDynamics(loudness.read(now / 1000))
         }
         rig.raf = requestAnimationFrame(tick)
       }
@@ -135,5 +145,5 @@ export function useMicPitch({ getTime, onSample }) {
 
   const getSamples = useCallback(() => samplesRef.current, [])
 
-  return { status, error, current, start, stop, getSamples }
+  return { status, error, current, dynamics, start, stop, getSamples }
 }
