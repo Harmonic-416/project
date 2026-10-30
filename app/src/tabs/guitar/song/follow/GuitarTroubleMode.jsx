@@ -5,6 +5,7 @@ import ShareAttempt from '../../../vocal/components/ShareAttempt.jsx'
 import { downloadBlob, safeFilename } from '../../../vocal/notation/exportNotation.js'
 import LatencyCalibration from './LatencyCalibration.jsx'
 import { matchTranscription, toSongNotes } from './matchTranscription.js'
+import { isFullRun } from './runHistory.js'
 import { clearLoop, loopTicks, seekToTick } from './playerControls.js'
 import { judgeWindow } from './noteJudge.js'
 import { secondsToTicks, ticksToSeconds } from './songTimeline.js'
@@ -32,6 +33,11 @@ const ANCHOR_INTERVAL_MS = 40
  * afterwards (refineWithBasicPitch.js, matchTranscription.js), or share it
  * as a link — the verdict on every note, never the song (`shareSong` names
  * it; see vocal/components/ShareAttempt).
+ *
+ * While signed in, every finished run is saved privately into the song's
+ * practice session (`session`, usePracticeSession), and the re-check
+ * corrects the saved run (change: guitar-run-history, F22). `onSaved`
+ * hears about it, so the song's last and best score can update.
  */
 function GuitarTroubleMode({
   api,
@@ -47,6 +53,9 @@ function GuitarTroubleMode({
   auth,
   supabase,
   shareSong,
+  session = null,
+  easy = false,
+  onSaved = null,
   speed = 1,
 }) {
   const { entries, tempoMap, duration } = timeline
@@ -362,6 +371,11 @@ function GuitarTroubleMode({
           recording={summary.recording}
           instrument="guitar"
           verdicts={sharedVerdicts}
+          session={session}
+          mode="trouble"
+          easy={easy}
+          fullRun={isFullRun(entries, sharedVerdicts)}
+          onSaved={onSaved}
         />
       )}
       {calibrating && (

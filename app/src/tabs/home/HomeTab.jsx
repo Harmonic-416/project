@@ -26,7 +26,7 @@ const SONGS_SHOWN = 2
  * the Social tab.
  *
  * `onOpenAttempt` / `onOpenFile` open an attempt or a file in its
- * instrument's tab; `onOpenSessions` a song's practice sessions (Vocal).
+ * instrument's tab; `onOpenSessions` a song's practice sessions.
  */
 function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions }) {
   const { user, configured, ready } = auth

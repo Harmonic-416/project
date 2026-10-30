@@ -113,10 +113,11 @@ function App() {
   }, [])
   const fileOpened = useCallback(() => setFileToOpen(null), [])
 
-  // Home: a song's practice sessions (Vocal only for now).
-  const openSessions = useCallback(({ songId, songFingerprint, songTitle }) => {
-    setSessionsToOpen({ songId, songFingerprint, songTitle })
-    setActiveTab('vocal')
+  // Home: a song's practice sessions, in the tab it was practised in.
+  const openSessions = useCallback(({ songId, songFingerprint, songTitle, instrument }) => {
+    const tab = tabForInstrument(instrument ?? 'voice')
+    setSessionsToOpen({ songId, songFingerprint, songTitle, tab })
+    setActiveTab(tab)
   }, [])
   const sessionsOpened = useCallback(() => setSessionsToOpen(null), [])
 
@@ -135,7 +136,7 @@ function App() {
           onOpenAttempt={openAttempt}
           onOpenFile={openFile}
           onOpenSessions={openSessions}
-          sessionsToOpen={activeTab === 'vocal' ? sessionsToOpen : null}
+          sessionsToOpen={sessionsToOpen?.tab === activeTab ? sessionsToOpen : null}
           onSessionsOpened={sessionsOpened}
           learnProgressVersion={learnProgressVersion}
         />

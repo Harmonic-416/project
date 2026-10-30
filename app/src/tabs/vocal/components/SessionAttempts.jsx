@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './SessionAttempts.css'
 import { deleteAttemptRecording, getRecordingUrl, saveAttemptFeedback } from '@backend/practiceSessions'
-import { attemptNotesLine, attemptTime, budgetOf, debounce, formatBytes } from '../practice/practiceSession.js'
+import { RUN_MODE_LABEL, attemptNotesLine, attemptTime, budgetOf, debounce, formatBytes } from '../practice/practiceSession.js'
 
 const AUTOSAVE_MS = 600
 const RATINGS = [1, 2, 3, 4, 5]
@@ -166,6 +166,7 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
         <strong className="attempt-row__score">{Math.round(Number(attempt.accuracy))}%</strong>
         <span className="attempt-row__meta">
           {attemptTime(attempt.created_at)}
+          {attempt.mode ? ` · ${RUN_MODE_LABEL[attempt.mode] ?? attempt.mode}${attempt.easy ? ' (Easy)' : ''}` : ''}
           {attempt.part_name ? ` · ${attempt.part_name}` : ''}
           {attempt.recording_bytes ? ` · ${formatBytes(attempt.recording_bytes)}` : ''}
         </span>
@@ -186,7 +187,9 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
         </span>
         {actions}
       </div>
-      {attemptNotesLine(attempt.verdicts) && <p className="attempt-row__notes">{attemptNotesLine(attempt.verdicts)}</p>}
+      {attemptNotesLine(attempt.verdicts, attempt.mode) && (
+        <p className="attempt-row__notes">{attemptNotesLine(attempt.verdicts, attempt.mode)}</p>
+      )}
 
       {!showAudio ? null : attempt.recording_path ? (
         <div className="attempt-row__audio">

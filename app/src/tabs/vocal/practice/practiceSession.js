@@ -270,10 +270,22 @@ export function verdictCounts(verdicts) {
   return counts
 }
 
-/** "105 of 472 notes hit · 367 missed" for an attempt, or '' without verdicts. */
-export function attemptNotesLine(verdicts) {
+/**
+ * "105 of 472 notes hit · 367 missed" for an attempt, or '' without
+ * verdicts. A guitar Wait for me run (`mode` 'wait') reads "40 of 52 first
+ * try · 9 after a few tries · 3 skipped": there 'close' means played after a
+ * wrong try and 'miss' passed with Skip (guitar/song/follow/waitState.js).
+ */
+export function attemptNotesLine(verdicts, mode = null) {
   const c = verdictCounts(verdicts)
   if (!c) return ''
+  if (mode === 'wait') {
+    const missed = c.missed - c.close
+    const parts = [`${c.hit} of ${c.hit + c.close + missed} first try`]
+    if (c.close) parts.push(`${c.close} after a few tries`)
+    if (missed) parts.push(`${missed} skipped`)
+    return parts.join(' · ')
+  }
   const parts = [`${c.hit} of ${c.total} notes hit`]
   if (c.missed) parts.push(`${c.missed} missed`)
   if (c.skipped) parts.push(`${c.skipped} not reached`)

@@ -671,6 +671,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           auth={auth}
           supabase={supabase}
           song={sessionsFor}
+          instrument="voice"
           onPractise={practiseFromSessions}
         />
       </div>
