@@ -725,7 +725,14 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
       />
       {!ready && !viewingShared && <p className="guitar-score__status">Loading guitar sound… {Math.round(player.loaded * 100)}%</p>}
       {viewingShared && (
-        <GuitarSharedPanel attempt={shared.attempt} entries={entries} overlay={overlay} supabase={supabase} />
+        <GuitarSharedPanel
+          attempt={shared.attempt}
+          entries={entries}
+          overlay={overlay}
+          supabase={supabase}
+          api={api}
+          ready={ready}
+        />
       )}
       {!viewingShared && <PracticeModeToggle mode={mode} onChange={changeMode} disabled={!ready} modes={modes} />}
       {hasOthers && !viewingShared && (
