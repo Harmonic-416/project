@@ -94,6 +94,20 @@ export interface NewSharedAttempt {
 export const MAX_TRACE_SAMPLES = 30000
 
 /**
+ * A recording as an upload body: its raw bytes under a plain media type.
+ * Sent as a Blob, supabase-js wraps it in a form, and that upload of a
+ * recorder's Blob failed in Firefox with "NetworkError when attempting to
+ * fetch resource" while the rest of the app reached Supabase fine. Reading
+ * the bytes first also turns a recording that can't be read into its own
+ * error rather than a network one.
+ */
+async function recordingBody(recording: Blob): Promise<{ body: ArrayBuffer; contentType: string }> {
+  const body = await recording.arrayBuffer()
+  const [type] = (recording.type || 'audio/webm').split(';')
+  return { body, contentType: type?.trim() || 'audio/webm' }
+}
+
+/**
  * Thrown before uploading a recording that wouldn't fit the owner's budget
  * (migration 0014; the database refuses it too). The message is for the user.
  */
@@ -164,9 +178,8 @@ async function insertAttempt(
   if (recording) {
     await assertRecordingFits(supabase, recording.size)
     recordingPath = `${userData.user.id}/${id}.webm`
-    const { error } = await supabase.storage
-      .from('recordings')
-      .upload(recordingPath, recording, { contentType: recording.type || 'audio/webm' })
+    const { body, contentType } = await recordingBody(recording)
+    const { error } = await supabase.storage.from('recordings').upload(recordingPath, body, { contentType })
     if (error) throw error
   }
 
@@ -487,9 +500,8 @@ export async function attachRecording(
   if (attempt.recording_path) return attempt
   await assertRecordingFits(supabase, recording.size)
   const path = `${attempt.user_id}/${attempt.id}.webm`
-  const { error: uploadError } = await supabase.storage
-    .from('recordings')
-    .upload(path, recording, { contentType: recording.type || 'audio/webm', upsert: true })
+  const { body, contentType } = await recordingBody(recording)
+  const { error: uploadError } = await supabase.storage.from('recordings').upload(path, body, { contentType, upsert: true })
   if (uploadError) throw uploadError
   const { error } = await supabase
     .from('shared_attempt')
