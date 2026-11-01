@@ -10,6 +10,7 @@ import { useTuningReport } from '../../tuner/tuningReport.js'
 import { createWaitAttempts } from './waitListening.js'
 import { NUDGE_AFTER, initialWait, isDone, waitReducer, waitSummary } from './waitState.js'
 import { isFullRun, waitAccuracy, waitVerdicts } from './runHistory.js'
+import { waitTiming } from './recordingTiming.js'
 
 // How long a Hint rings; the mic ignores it for that long.
 const HINT_MS = 1500
@@ -43,6 +44,8 @@ function lightsOf(result) {
  * The run is recorded from the first Play to the last note (Pause only
  * pauses the recording), so whoever it's shared with hears the playing
  * itself, not the song's MIDI. Stop, or a seek after the end, starts over.
+ * Each time the cursor moves on is noted against the recording
+ * (recordingTiming.waitTiming), so their cursor moves with it.
  */
 function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
   const { entries, duration } = timeline
@@ -51,8 +54,10 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   const [attempts] = useState(() => createWaitAttempts())
   const reportTuning = useTuningReport()
   const [lastResult, setLastResult] = useState(null) // { index, result }
-  const [take, setTake] = useState(null) // { recording } once a finished run's audio is in
+  const [take, setTake] = useState(null) // { recording, timing } once a finished run's audio is in
   const finishedRef = useRef(false) // this run's recording is being (or was) collected
+  const stepsRef = useRef([]) // { at, time }: when (into the recording) the cursor moved to which note
+  const secondsAtRef = useRef(null) // listener.recordingSecondsAt
   const stateRef = useRef(state)
   const done = isDone(entries, state)
   const target = done ? null : entries[state.index]
@@ -70,16 +75,28 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
     [reducer],
   )
 
+  // The cursor moved on to entry `index` (or past the last note) at page time `wall`.
+  const noteStep = useCallback(
+    (wall, index) => {
+      const at = secondsAtRef.current?.(wall) ?? null
+      const entry = entries[Math.min(index, entries.length - 1)]
+      if (at !== null && entry) stepsRef.current.push({ at, time: entry.time })
+    },
+    [entries],
+  )
+
   // Skip, Retry, a seek, Play, Stop: the gesture being listened to is over.
   const restart = useCallback(
     (action) => {
       attempts.reset()
       if (action) {
         setTake(null)
+        const from = stateRef.current.index
         apply(action)
+        if (stateRef.current.index !== from) noteStep(performance.now(), stateRef.current.index)
       }
     },
-    [apply, attempts],
+    [apply, attempts, noteStep],
   )
 
   const handleWindow = useCallback(
@@ -98,13 +115,17 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
         if (action.result.verdict === 'hit') reportTuning(action.result.cents) // single notes carry cents
         apply(action)
       }
+      if (stateRef.current.index !== index) noteStep(w.wall, stateRef.current.index)
     },
-    [apply, attempts, entries, reportTuning],
+    [apply, attempts, entries, noteStep, reportTuning],
   )
 
   const listener = useGuitarListener({ onWindow: handleWindow, record: true })
   const listening = listener.status === 'listening'
   const micOpen = listening || listener.status === 'paused'
+  useEffect(() => {
+    secondsAtRef.current = listener.recordingSecondsAt
+  }, [listener.recordingSecondsAt])
 
   // The song is ours while this mode is up: stop playback, leave a clean score behind.
   useEffect(() => {
@@ -136,12 +157,17 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
     }
     if (finishedRef.current) return
     finishedRef.current = true
-    Promise.resolve(micOpen ? stopListening() : null).then((recording) => setTake({ recording }))
+    Promise.resolve(micOpen ? stopListening() : null).then((recording) =>
+      setTake({ recording, timing: recording ? waitTiming(stepsRef.current) : null }),
+    )
   }, [done, micOpen, stopListening])
 
   const play = async () => {
     restart(done ? { type: 'reset' } : null)
-    await listener.start()
+    const fresh = !micOpen
+    if (!(await listener.start())) return
+    // A new recording: the cursor starts on the note it's sitting on.
+    if (fresh) stepsRef.current = [{ at: 0, time: entries[stateRef.current.index]?.time ?? 0 }]
   }
 
   const pause = () => {
@@ -246,6 +272,7 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
           song={shareSong}
           accuracy={waitAccuracy(summary)}
           recording={take.recording}
+          timing={take.timing}
           instrument="guitar"
           verdicts={savedVerdicts}
           session={session}

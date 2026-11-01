@@ -6,6 +6,7 @@ import { downloadBlob, safeFilename } from '../../../vocal/notation/exportNotati
 import LatencyCalibration from './LatencyCalibration.jsx'
 import { matchTranscription, toSongNotes } from './matchTranscription.js'
 import { isFullRun } from './runHistory.js'
+import { troubleTiming } from './recordingTiming.js'
 import { clearLoop, loopTicks, seekToTick } from './playerControls.js'
 import { judgeWindow } from './noteJudge.js'
 import { secondsToTicks, ticksToSeconds } from './songTimeline.js'
@@ -32,7 +33,9 @@ const ANCHOR_INTERVAL_MS = 40
  * is recorded: download it, have basic-pitch check it note by note
  * afterwards (refineWithBasicPitch.js, matchTranscription.js), or share it
  * as a link — the verdict on every note, never the song (`shareSong` names
- * it; see vocal/components/ShareAttempt).
+ * it; see vocal/components/ShareAttempt). The run's clock anchors go with
+ * it as timing (recordingTiming.troubleTiming), so the person it's shared
+ * with sees the cursor follow the recording.
  *
  * While signed in, every finished run is saved privately into the song's
  * practice session (`session`, usePracticeSession), and the re-check
@@ -66,7 +69,7 @@ function GuitarTroubleMode({
   const latencyRef = useRef(latencyMs)
   const reportTuning = useTuningReport()
   const [runFrom, setRunFrom] = useState(null)
-  const [summary, setSummary] = useState(null) // { from, to, finished, recording, anchors, recordingStartWall, speed }
+  const [summary, setSummary] = useState(null) // { from, to, finished, recording, anchors, recordingStartWall, speed, timing }
   const [refine, setRefine] = useState({ status: 'idle', progress: 0, error: null })
   const [loop, setLoop] = useState(null) // { bar }
   const [calibrating, setCalibrating] = useState(false)
@@ -208,6 +211,9 @@ function GuitarTroubleMode({
         anchors: run.anchors,
         recordingStartWall: run.recordingStartWall,
         speed: run.speed,
+        timing: recording
+          ? troubleTiming(run.anchors, { recordingStartWall: run.recordingStartWall, latencyMs: latencyRef.current })
+          : null,
       })
     })
   }, [api, duration, player.state, settle, stopListening, tempoMap])
@@ -369,6 +375,7 @@ function GuitarTroubleMode({
           song={shareSong}
           accuracy={(counts.hit / counts.scored) * 100}
           recording={summary.recording}
+          timing={summary.timing}
           instrument="guitar"
           verdicts={sharedVerdicts}
           session={session}

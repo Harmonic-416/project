@@ -36,7 +36,9 @@ import { namesList } from '../../home/homeFormat.js'
  * `fullRun` (first note to the end; only those count toward the song's last
  * and best score). If `accuracy` / `verdicts` change after the save (a
  * Trouble spots run re-checked note by note), the saved row is corrected.
- * `onSaved(row)` hears about the save and any correction.
+ * `onSaved(row)` hears about the save and any correction. `timing` says
+ * where in the song the recording is (guitar/song/follow/recordingTiming),
+ * so whoever opens it sees the cursor follow the playing.
  */
 function ShareAttempt({
   auth,
@@ -51,6 +53,7 @@ function ShareAttempt({
   mode = null,
   easy = null,
   fullRun = null,
+  timing = null,
   onSaved = null,
 }) {
   const [includeRecording, setIncludeRecording] = useState(() =>
@@ -86,6 +89,7 @@ function ShareAttempt({
     mode,
     easy,
     fullRun,
+    timing,
   }))
   const onSavedRef = useRef(onSaved)
   onSavedRef.current = onSaved

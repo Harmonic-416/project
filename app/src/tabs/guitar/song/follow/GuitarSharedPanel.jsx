@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getSharedRecordingUrl } from '@backend/attempts'
 import '../../../vocal/components/ShareAttempt.css'
 import { RUN_MODE_LABEL, attemptNotesLine } from '../../../vocal/practice/practiceSession.js'
 import { troubleSummary } from './troubleTracker.js'
+import { entryAt, songTimeAt } from './recordingTiming.js'
+import { seekToTick } from './playerControls.js'
 
 const LEGEND = [
   ['hit', 'played'],
@@ -27,9 +29,15 @@ const WAIT_LEGEND = [
  * boxed on the tab and their score. The verdicts are indexed by the song
  * timeline, so they line up as long as both copies of the song are the
  * same file.
+ *
+ * While the recording plays, the tab's cursor follows it note by note
+ * (`attempt.timing`, recordingTiming.js; `api` is the score's alphaTab,
+ * `ready` once its player is up). Runs saved before that have no timing,
+ * and their cursor stays put.
  */
-function GuitarSharedPanel({ attempt, entries, overlay, supabase }) {
+function GuitarSharedPanel({ attempt, entries, overlay, supabase, api = null, ready = false }) {
   const [recordingUrl, setRecordingUrl] = useState(null)
+  const audioRef = useRef(null)
   const [recordingError, setRecordingError] = useState(null)
   const verdicts = attempt.verdicts ?? []
 
@@ -56,6 +64,47 @@ function GuitarSharedPanel({ attempt, entries, overlay, supabase }) {
     }
   }, [attempt, supabase])
 
+  // The cursor on the note being played at this point of the recording.
+  const timing = attempt.timing
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || !timing?.length || !api || !ready || !entries.length) return undefined
+    let raf = null
+    let shown = null
+    const show = () => {
+      const entry = entryAt(entries, songTimeAt(timing, audio.currentTime))
+      if (!entry || entry === shown) return
+      shown = entry
+      seekToTick(api, entry.tick)
+      api.scrollToCursor()
+    }
+    const follow = () => {
+      show()
+      raf = requestAnimationFrame(follow)
+    }
+    const onPlay = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(follow)
+    }
+    const onStop = () => {
+      cancelAnimationFrame(raf)
+      show()
+    }
+    audio.addEventListener('play', onPlay)
+    audio.addEventListener('pause', onStop)
+    audio.addEventListener('ended', onStop)
+    audio.addEventListener('seeked', onStop)
+    show()
+    if (!audio.paused) onPlay()
+    return () => {
+      cancelAnimationFrame(raf)
+      audio.removeEventListener('play', onPlay)
+      audio.removeEventListener('pause', onStop)
+      audio.removeEventListener('ended', onStop)
+      audio.removeEventListener('seeked', onStop)
+    }
+  }, [recordingUrl, timing, api, ready, entries])
+
   const counts = troubleSummary(verdicts)
   const who = attempt.sharer_name || 'Someone'
   const when = new Date(attempt.created_at).toLocaleDateString()
@@ -73,7 +122,7 @@ function GuitarSharedPanel({ attempt, entries, overlay, supabase }) {
       {recordingUrl && (
         <div className="guitar-shared__listen">
           <span className="guitar-shared__listen-label">Listen to {who} play</span>
-          <audio className="shared-attempt__audio" controls preload="metadata" src={recordingUrl}>
+          <audio ref={audioRef} className="shared-attempt__audio" controls preload="metadata" src={recordingUrl}>
             Your browser can’t play this recording.
           </audio>
         </div>

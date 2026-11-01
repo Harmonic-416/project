@@ -23,7 +23,8 @@ const QUIET_MS = 2500 // this long below it while listening: "couldn't hear you"
  *
  * pause() stops hearing (and recording) but keeps the microphone open, and
  * start() picks up again where it left off, so a paused run still ends up
- * as one recording.
+ * as one recording. recordingSecondsAt(wall) says how far into that
+ * recording a page time falls, paused time left out.
  */
 export function useGuitarListener({ onWindow, record = false } = {}) {
   const [status, setStatus] = useState('idle') // idle | requesting | listening | paused | error
@@ -72,8 +73,11 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
     const open = rigRef.current
     if (open) {
       if (open.paused) {
+        const now = performance.now()
+        open.pausedMs += now - open.pausedAt
         open.paused = false
-        open.lastSound = performance.now()
+        open.pausedAt = null
+        open.lastSound = now
         open.collector.reset()
         if (open.recorder?.state === 'paused') open.recorder.resume()
         setStatus('listening')
@@ -136,7 +140,7 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
       }
 
       const now = performance.now()
-      rig = { capture, collector, recorder, chunks, map: { position: 0, wall: now }, lastSound: now, lastUi: 0, recordingStartWall: now, paused: false }
+      rig = { capture, collector, recorder, chunks, map: { position: 0, wall: now }, lastSound: now, lastUi: 0, recordingStartWall: now, paused: false, pausedAt: null, pausedMs: 0 }
       rigRef.current = rig
       setStatus('listening')
       return true
@@ -153,6 +157,7 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
     const rig = rigRef.current
     if (!rig || rig.paused) return
     rig.paused = true
+    rig.pausedAt = performance.now()
     if (rig.recorder?.state === 'recording') rig.recorder.pause()
     setStatus('paused')
     setLive(null)
@@ -167,6 +172,13 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
 
   const getRecordingStartWall = useCallback(() => rigRef.current?.recordingStartWall ?? null, [])
 
+  const recordingSecondsAt = useCallback((wall) => {
+    const rig = rigRef.current
+    if (!rig?.recorder) return null
+    const heard = rig.paused ? Math.min(wall, rig.pausedAt) : wall
+    return Math.max(0, (heard - rig.recordingStartWall - rig.pausedMs) / 1000)
+  }, [])
+
   useEffect(
     () => () => {
       sessionRef.current += 1
@@ -178,5 +190,5 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
     [],
   )
 
-  return { status, error, live, quiet, start, stop, pause, muteFor, getRecordingStartWall }
+  return { status, error, live, quiet, start, stop, pause, muteFor, getRecordingStartWall, recordingSecondsAt }
 }

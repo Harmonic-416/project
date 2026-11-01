@@ -27,6 +27,9 @@ export type RunMode = 'wait' | 'trouble'
 /** One pitch frame: [seconds on the playback clock, fractional MIDI note]. */
 export type TraceSample = [number, number]
 
+/** Where a guitar run's recording is in the song (0018): [seconds into the recording, song seconds], read piecewise linearly. */
+export type TimingPoint = [number, number]
+
 export interface SharedAttempt {
   id: string
   user_id: string
@@ -57,6 +60,8 @@ export interface SharedAttempt {
   mode: RunMode | null
   easy: boolean | null
   full_run: boolean | null
+  /** Guitar runs with a recording (0018): follows the recording along the song, so a viewer's cursor can. */
+  timing: TimingPoint[] | null
 }
 
 export interface NewSharedAttempt {
@@ -82,6 +87,8 @@ export interface NewSharedAttempt {
   mode?: RunMode | null
   easy?: boolean | null
   fullRun?: boolean | null
+  /** Guitar runs with a recording (0018): where in the song the recording is. */
+  timing?: TimingPoint[] | null
 }
 
 export const MAX_TRACE_SAMPLES = 30000
@@ -144,7 +151,11 @@ async function insertAttempt(
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) throw userError ?? new Error('Sign in to share an attempt')
   if (!attempt.songId && !attempt.songFingerprint) throw new Error('A shared attempt needs a catalog song or a file fingerprint')
-  if (attempt.samples.length > MAX_TRACE_SAMPLES || (attempt.verdicts?.length ?? 0) > MAX_TRACE_SAMPLES) {
+  if (
+    attempt.samples.length > MAX_TRACE_SAMPLES ||
+    (attempt.verdicts?.length ?? 0) > MAX_TRACE_SAMPLES ||
+    (attempt.timing?.length ?? 0) > MAX_TRACE_SAMPLES
+  ) {
     throw new Error('That attempt is too long to share')
   }
 
@@ -183,6 +194,8 @@ async function insertAttempt(
       mode: attempt.mode ?? null,
       easy: attempt.easy ?? null,
       full_run: attempt.fullRun ?? null,
+      // Only written when there is some, so Vocal attempts don't depend on 0018.
+      ...(attempt.timing ? { timing: attempt.timing } : {}),
     })
     .select()
     .single()

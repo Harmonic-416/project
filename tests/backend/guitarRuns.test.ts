@@ -69,6 +69,16 @@ describe.skipIf(!hasSupabaseEnv)('guitar run history (0017)', () => {
     expect(opened?.verdicts).toEqual(['hit', 'hit', 'hit', 'close'])
   }, 30_000)
 
+  it('keeps a run’s recording timing, which the person it’s shared with reads (0018)', async () => {
+    const timing: [number, number][] = [[0, 0], [1.5, 1.2], [1.501, 1.8]]
+    const saved = await saveAttempt(owner.supabase, { ...run, timing })
+    expect(saved.timing).toEqual(timing)
+    const opened = await getSharedAttempt(owner.supabase, saved.id)
+    expect(opened?.timing).toEqual(timing)
+    const without = await saveAttempt(owner.supabase, run)
+    expect(without.timing).toBeNull()
+  }, 30_000)
+
   it('lists one instrument’s sessions when asked', async () => {
     const guitar = await startPracticeSession(owner.supabase, { songFingerprint: fingerprint, songTitle: 'Ode to Joy', instrument: 'guitar' })
     const voice = await startPracticeSession(owner.supabase, { songFingerprint: fingerprint, songTitle: 'Ode to Joy' })
