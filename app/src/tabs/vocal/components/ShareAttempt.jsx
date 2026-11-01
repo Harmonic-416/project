@@ -28,8 +28,12 @@ import { namesList } from '../../home/homeFormat.js'
  * attempt is saved into the open practice session and reported back to it,
  * and "Keep recording" stores the audio right away — on by default while it
  * fits the recording budget, off once it doesn't; unticking it again deletes
- * the audio and keeps the attempt. Without a session (Guitar) the recording
- * is only uploaded when the attempt is shared or sent, as before.
+ * the audio and keeps the attempt. Without a session the recording is only
+ * uploaded when the attempt is shared or sent.
+ *
+ * A guitar run always keeps its recording (no checkbox): it's uploaded as
+ * soon as the run is saved, retried if the connection drops, and a share or
+ * send never goes out without it. The person it's shared with hears it.
  *
  * A guitar run also says what kind it was (change: guitar-run-history):
  * `mode` ('wait' | 'trouble'), `easy` (the song's Easy version) and
@@ -56,8 +60,9 @@ function ShareAttempt({
   timing = null,
   onSaved = null,
 }) {
+  const alwaysKeep = instrument === 'guitar'
   const [includeRecording, setIncludeRecording] = useState(() =>
-    session ? keepByDefault(recording?.size ?? 0, session.storage) : true,
+    session && !alwaysKeep ? keepByDefault(recording?.size ?? 0, session.storage) : true,
   )
   const [audioBusy, setAudioBusy] = useState(false)
   const audioOp = useRef(null) // the attach / delete in flight
@@ -96,39 +101,46 @@ function ShareAttempt({
 
   // In a session, "Keep recording" acts at once: ticked stores the audio,
   // unticked (after it was kept) deletes it. The attempt stays either way.
-  // One operation at a time; `row` is the saved attempt to act on.
+  // A guitar run stores it at once, session or not. One operation at a
+  // time; `row` is the saved attempt to act on.
   const sessionRef = useRef(session)
   sessionRef.current = session
   const keepRecording = useCallback(
     (wantKept, row) => {
       const live = sessionRef.current
-      if (!live || !row || !recording || audioOp.current) return
+      if ((!live && !alwaysKeep) || !row || !recording || audioOp.current) return
       const isKept = Boolean(row.recording_path)
       if (wantKept === isKept) return
       setAudioBusy(true)
       setMessage(null)
       const op = wantKept
-        ? attachRecording(supabase, row, recording)
+        ? withRetries(() => attachRecording(supabase, row, recording))
         : deleteAttemptRecording(supabase, row).then(() => ({ ...row, recording_path: null, recording_bytes: null }))
       audioOp.current = op
       op.then(
         (next) => {
           setSaved(next)
-          live.patchAttempt(next.id, { recording_path: next.recording_path, recording_bytes: next.recording_bytes, recording_url: null })
-          live.refreshStorage()
+          setState((current) => (current === 'error' ? 'idle' : current))
+          live?.patchAttempt(next.id, { recording_path: next.recording_path, recording_bytes: next.recording_bytes, recording_url: null })
+          live?.refreshStorage()
         },
         (err) => {
           console.error(err)
-          setMessage(err.message || (wantKept ? 'Could not keep the recording.' : 'Could not delete the recording.'))
+          setMessage(
+            wantKept
+              ? `Couldn’t upload your recording: ${err.message || 'unknown error'}`
+              : err.message || 'Could not delete the recording.',
+          )
           setState('error')
-          setIncludeRecording(isKept)
+          // A guitar run still wants its recording: Retry, or the next share tries again.
+          if (!alwaysKeep) setIncludeRecording(isKept)
         },
       ).finally(() => {
         audioOp.current = null
         setAudioBusy(false)
       })
     },
-    [supabase, recording],
+    [supabase, recording, alwaysKeep],
   )
 
   // Save once per finished attempt (the ref survives StrictMode's re-run),
@@ -194,12 +206,14 @@ function ShareAttempt({
   }
   if (!identifiable) return null
 
-  /** The saved row, with the recording attached if asked for. */
+  /** The saved row, with the recording attached if asked for (an upload in flight is waited for). */
   const ready = async () => {
     let row = saved ?? (await savingRef.current?.catch(() => null))
     if (!row) return null
+    if (audioOp.current) row = (await audioOp.current.catch(() => null)) ?? row
     if (includeRecording && recording && !row.recording_path) {
-      row = await attachRecording(supabase, row, recording)
+      const unattached = row
+      row = await withRetries(() => attachRecording(supabase, unattached, recording))
       setSaved(row)
     }
     return row
@@ -242,7 +256,16 @@ function ShareAttempt({
     }
   }
 
-  const status = saved ? 'Saved to your Home page.' : saveFailed ? null : 'Saving…'
+  const status = !saved
+    ? saveFailed
+      ? null
+      : 'Saving…'
+    : alwaysKeep && recording
+      ? saved.recording_path
+        ? 'Saved with your recording.'
+        : 'Saved. Uploading your recording…'
+      : 'Saved to your Home page.'
+  const uploadFailed = alwaysKeep && recording && saved && !saved.recording_path && !audioBusy && state === 'error'
 
   return (
     <div className="share-attempt">
@@ -267,7 +290,7 @@ function ShareAttempt({
       >
         Send to friends
       </button>
-      {recording && (
+      {recording && !alwaysKeep && (
         <label className="share-attempt__option">
           <input
             type="checkbox"
@@ -281,10 +304,15 @@ function ShareAttempt({
           {session ? `Keep recording (${formatBytes(recording.size)})` : 'Include my recording'}
         </label>
       )}
-      {recording && !includeRecording && (
+      {recording && !alwaysKeep && !includeRecording && (
         <span className="share-attempt__hint">Without the recording, whoever you share it with sees your marks but can’t hear you.</span>
       )}
       {message && <span className={state === 'error' ? 'share-attempt__error' : 'share-attempt__hint'}>{message}</span>}
+      {uploadFailed && (
+        <button type="button" className="share-attempt__button share-attempt__button--quiet" onClick={() => keepRecording(true, saved)}>
+          Retry upload
+        </button>
+      )}
       {status && !message && <span className="share-attempt__hint">{status}</span>}
       {picking && saved && (
         <FriendPicker
@@ -306,6 +334,20 @@ function ShareAttempt({
       )}
     </div>
   )
+}
+
+// A dropped connection is worth another try; a full recording budget or a refusal isn't.
+const NETWORK_ERROR = /networkerror|failed to fetch|load failed|network request failed/i
+
+async function withRetries(task, delaysMs = [1000, 3000]) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await task()
+    } catch (err) {
+      if (attempt >= delaysMs.length || !NETWORK_ERROR.test(err?.message ?? '')) throw err
+      await new Promise((resolve) => setTimeout(resolve, delaysMs[attempt]))
+    }
+  }
 }
 
 const sameVerdicts = (a, b) => a === b || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i]))
