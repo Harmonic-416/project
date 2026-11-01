@@ -139,6 +139,16 @@
   margin: 0;
 }
 
+.guitar-shared__listen {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guitar-shared__listen-label {
+  font-weight: 600;
+}
+
 .guitar-shared__legend {
   display: flex;
   flex-wrap: wrap;

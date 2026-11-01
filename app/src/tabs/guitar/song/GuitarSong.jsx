@@ -721,9 +721,9 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         trackIndexes={trackIndexes}
         onApi={setApi}
         onSpeedChange={setSpeed}
-        controlsDisabled={mode === 'trouble' && player.state === 'playing'}
+        controlsDisabled={viewingShared || (mode === 'trouble' && player.state === 'playing')}
       />
-      {!ready && <p className="guitar-score__status">Loading guitar sound… {Math.round(player.loaded * 100)}%</p>}
+      {!ready && !viewingShared && <p className="guitar-score__status">Loading guitar sound… {Math.round(player.loaded * 100)}%</p>}
       {viewingShared && (
         <GuitarSharedPanel attempt={shared.attempt} entries={entries} overlay={overlay} supabase={supabase} />
       )}
@@ -783,7 +783,9 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           <SongTransportExtras api={api} disabled={!ready || player.state === 'playing'} />
         </>
       ) : (
-        timeline && (
+        // Someone's shared run plays their recording (GuitarSharedPanel), never the song's MIDI.
+        timeline &&
+        !viewingShared && (
           <>
             <PlaybackControls
               state={player.state}

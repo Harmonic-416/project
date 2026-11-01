@@ -9,8 +9,8 @@ import { formatBytes, keepByDefault } from '../practice/practiceSession.js'
 import { namesList } from '../../home/homeFormat.js'
 
 /**
- * Shown under a finished attempt (Vocal: a recorded run; Guitar: a Trouble
- * spots run). While signed in, the attempt is saved privately as soon as it
+ * Shown under a finished attempt (Vocal: a recorded run; Guitar: a Wait for
+ * me or Trouble spots run). While signed in, the attempt is saved privately as soon as it
  * appears, so Home can show the song under "Working on" and give feedback on
  * it. From here it can also go further:
  *
@@ -276,6 +276,9 @@ function ShareAttempt({
           />
           {session ? `Keep recording (${formatBytes(recording.size)})` : 'Include my recording'}
         </label>
+      )}
+      {recording && !includeRecording && (
+        <span className="share-attempt__hint">Without the recording, whoever you share it with sees your marks but can’t hear you.</span>
       )}
       {message && <span className={state === 'error' ? 'share-attempt__error' : 'share-attempt__hint'}>{message}</span>}
       {status && !message && <span className="share-attempt__hint">{status}</span>}
