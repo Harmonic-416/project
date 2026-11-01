@@ -39,6 +39,10 @@ function lightsOf(result) {
  * song's practice session, scored on the notes played first try, and can be
  * shared like a Trouble spots run (change: guitar-run-history, F22).
  * `shareSong` names the song (see vocal/components/ShareAttempt).
+ *
+ * The run is recorded from the first Play to the last note (Pause only
+ * pauses the recording), so whoever it's shared with hears the playing
+ * itself, not the song's MIDI. Stop, or a seek after the end, starts over.
  */
 function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
   const { entries, duration } = timeline
@@ -47,6 +51,8 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   const [attempts] = useState(() => createWaitAttempts())
   const reportTuning = useTuningReport()
   const [lastResult, setLastResult] = useState(null) // { index, result }
+  const [take, setTake] = useState(null) // { recording } once a finished run's audio is in
+  const finishedRef = useRef(false) // this run's recording is being (or was) collected
   const stateRef = useRef(state)
   const done = isDone(entries, state)
   const target = done ? null : entries[state.index]
@@ -68,7 +74,10 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   const restart = useCallback(
     (action) => {
       attempts.reset()
-      if (action) apply(action)
+      if (action) {
+        setTake(null)
+        apply(action)
+      }
     },
     [apply, attempts],
   )
@@ -93,8 +102,9 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
     [apply, attempts, entries, reportTuning],
   )
 
-  const listener = useGuitarListener({ onWindow: handleWindow })
+  const listener = useGuitarListener({ onWindow: handleWindow, record: true })
   const listening = listener.status === 'listening'
+  const micOpen = listening || listener.status === 'paused'
 
   // The song is ours while this mode is up: stop playback, leave a clean score behind.
   useEffect(() => {
@@ -116,11 +126,18 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
     api.scrollToCursor()
   }, [api, ready, target])
 
-  // Last note played: release the microphone.
+  // Last note played (or skipped): release the microphone and keep the
+  // run's recording for the save below. Once per run.
   const { stop: stopListening } = listener
   useEffect(() => {
-    if (done && listening) stopListening()
-  }, [done, listening, stopListening])
+    if (!done) {
+      finishedRef.current = false
+      return
+    }
+    if (finishedRef.current) return
+    finishedRef.current = true
+    Promise.resolve(micOpen ? stopListening() : null).then((recording) => setTake({ recording }))
+  }, [done, micOpen, stopListening])
 
   const play = async () => {
     restart(done ? { type: 'reset' } : null)
@@ -128,7 +145,7 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   }
 
   const pause = () => {
-    listener.stop()
+    listener.pause()
     restart()
   }
 
@@ -222,13 +239,13 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
         )}
         {listener.status === 'error' && <span className="practice-status__error">{listener.error}</span>}
       </div>
-      {summary && summary.scored > 0 && auth && shareSong && (
+      {summary && summary.scored > 0 && take && auth && shareSong && (
         <ShareAttempt
           auth={auth}
           supabase={supabase}
           song={shareSong}
           accuracy={waitAccuracy(summary)}
-          recording={null}
+          recording={take.recording}
           instrument="guitar"
           verdicts={savedVerdicts}
           session={session}
