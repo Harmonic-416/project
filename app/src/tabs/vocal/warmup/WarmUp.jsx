@@ -4,6 +4,9 @@ import TempoControl from '../../../audio/tempo/TempoControl.jsx'
 import { useSongTempo } from '../../../audio/tempo/useSongTempo.js'
 import { parseMidiFile } from '../midi/parseMidi.js'
 import { VOICE_PARTS, WARMUP_URL, noteName, splitWarmup, voicePart, warmupShifts } from './warmupLogic.js'
+import { HARMONY_URL, TEST_NOTES, splitHarmony } from './pitchTestLogic.js'
+import HarmonyTest from './HarmonyTest.jsx'
+import PitchTest from './PitchTest.jsx'
 import './WarmUp.css'
 
 const VOICE_KEY = 'harmonic.voicePart'
@@ -57,6 +60,10 @@ function Instructions() {
 export default function WarmUp() {
   const [patterns, setPatterns] = useState(null)
   const [loadError, setLoadError] = useState(null)
+  const [harmony, setHarmony] = useState(null)
+  const [harmonyError, setHarmonyError] = useState(null)
+  // null, 'harmony' or 'pitch' while one of the tests is open
+  const [test, setTest] = useState(null)
   const [voice, setVoice] = useState(loadVoice)
   // null, or { direction, shifts, rep, phase: 'sing' | 'listen', done } while a
   // warm-up is under way or just finished
@@ -79,6 +86,14 @@ export default function WarmUp() {
       .then(parseMidiFile)
       .then((midi) => live && setPatterns(splitWarmup(midi)))
       .catch((err) => live && setLoadError(err.message || 'Could not load the warm-up.'))
+    fetch(HARMONY_URL)
+      .then((response) => {
+        if (!response.ok) throw new Error('Could not load the harmony test.')
+        return response.arrayBuffer()
+      })
+      .then(parseMidiFile)
+      .then((midi) => live && setHarmony(splitHarmony(midi)))
+      .catch((err) => live && setHarmonyError(err.message || 'Could not load the harmony test.'))
     return () => {
       live = false
     }
@@ -150,6 +165,13 @@ export default function WarmUp() {
   }
 
   const part = voicePart(voice)
+
+  if (test === 'harmony' && harmony && part) {
+    return <HarmonyTest harmony={harmony} part={part} onExit={() => setTest(null)} />
+  }
+  if (test === 'pitch' && part) {
+    return <PitchTest part={part} onExit={() => setTest(null)} />
+  }
 
   if (run) {
     const pattern = patterns[run.direction]
@@ -270,6 +292,43 @@ export default function WarmUp() {
           </button>
         )
       })}
+
+      <h2 className="vocal-tab__section-title">Tests</h2>
+      <p className="warm-up__hint">These listen through your microphone. Headphones help.</p>
+      {harmonyError && <p className="warm-up__error">{harmonyError}</p>}
+      <button
+        type="button"
+        className="vocal-tab__search-songs"
+        disabled={!harmony || !part}
+        onClick={() => setTest('harmony')}
+      >
+        <span className="vocal-tab__search-icon" aria-hidden="true">
+          🎶
+        </span>
+        <span>
+          <strong>Harmony test</strong>
+          <small>
+            {!part
+              ? 'Choose your voice part first'
+              : harmony
+                ? `Hold the middle note of each chord, starting on ${noteName(TEST_NOTES[part.id].harmony)}`
+                : 'Loading…'}
+          </small>
+        </span>
+      </button>
+      <button type="button" className="vocal-tab__search-songs" disabled={!part} onClick={() => setTest('pitch')}>
+        <span className="vocal-tab__search-icon" aria-hidden="true">
+          👂
+        </span>
+        <span>
+          <strong>Pitch test</strong>
+          <small>
+            {part
+              ? `Sing back random notes from ${noteName(TEST_NOTES[part.id].low)}–${noteName(TEST_NOTES[part.id].low + 12)}`
+              : 'Choose your voice part first'}
+          </small>
+        </span>
+      </button>
     </div>
   )
 }

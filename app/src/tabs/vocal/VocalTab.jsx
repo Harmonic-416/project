@@ -568,7 +568,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           <span className="vocal-tab__search-icon" aria-hidden="true">🎹</span>
           <span>
             <strong>Warm up</strong>
-            <small>Sing along as the piano climbs or drops through your range</small>
+            <small>Sing along through your range, or test your pitch and harmony</small>
           </span>
         </button>
 
