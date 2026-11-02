@@ -16,6 +16,7 @@ import RecordPanel from './components/RecordPanel.jsx'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
 import WarmUp from './warmup/WarmUp.jsx'
+import AccountChip from '../../auth/AccountChip.jsx'
 import { usePracticeSession } from './practice/usePracticeSession.js'
 import MetronomeControl from '../../audio/metronome/MetronomeControl.jsx'
 import { useMetronomeSettings } from '../../audio/metronome/useMetronomeSettings.js'
@@ -44,6 +45,13 @@ const NO_TIMESTAMPS = []
 const NO_BEATS = []
 const OTHER_PART_CLASS = 'practice-note--other-part'
 
+const SECTIONS = [
+  { id: 'songs', label: 'Songs' }, // search, practice sessions, the song list and uploads
+  { id: 'exercises', label: 'Exercises' }, // pitch and harmony tests
+  { id: 'compose', label: 'Compose' }, // arrange a song for voices
+  { id: 'warmup', label: 'Warm Up' }, // upper and lower range
+]
+
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
 // playback, export, the online catalog (Supabase, via the shared backend
 // layer), recording a sung attempt, and shared attempts. Songs are never
@@ -57,7 +65,8 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 // "Working on") opens the Practice sessions view for that song;
 // `onSessionsOpened` tells App it has.
 function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
-  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | arrange | shared | detail | sessions | warmup
+  const [section, setSection] = useState('songs') // songs | exercises | compose | warmup (the capsule bar)
+  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
   // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
   const [sessionsFor, setSessionsFor] = useState(null)
   // Where the sessions view goes back to: the library, or the open song.
@@ -79,6 +88,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const sheetMusicRef = useRef(null)
 
   const beginLoad = useCallback(() => {
+    setSection('songs')
     setView('detail')
     setStatus('loading')
     setError(null)
@@ -214,6 +224,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         title: sessionsToOpen.songTitle ?? '',
       })
       setSessionsReturnTo('library')
+      setSection('songs')
       setView('sessions')
       onSessionsOpened?.()
     }, 0)
@@ -429,7 +440,11 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     userId: auth.user?.id ?? null,
     song: sessionSong,
     freshStart: freshStartRef,
-    enabled: status === 'ready' && shared?.phase !== 'open' && (view === 'detail' || (view === 'sessions' && sessionsReturnTo === 'detail')),
+    enabled:
+      section === 'songs' &&
+      status === 'ready' &&
+      shared?.phase !== 'open' &&
+      (view === 'detail' || (view === 'sessions' && sessionsReturnTo === 'detail')),
   })
 
   // Wait for me / Trouble spots runs saved on the account (migration 0015).
@@ -531,371 +546,376 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     setArrangement(null)
   }, [playback, returnTo])
 
-  if (view === 'library') {
-    return (
-      <div className="vocal-tab">
-        <header className="vocal-tab__header">
-          <h1>Vocal</h1>
-          <p>Choose a song, or upload your own MIDI or MusicXML file.</p>
-        </header>
-
-        <button type="button" className="vocal-tab__search-songs" onClick={() => setView('search')}>
-          <span className="vocal-tab__search-icon" aria-hidden="true">🔍</span>
-          <span>
-            <strong>Search songs</strong>
-            <small>Browse the online song catalog</small>
-          </span>
-        </button>
-
-        <button
-          type="button"
-          className="vocal-tab__search-songs"
-          onClick={() => {
-            setSessionsFor(null)
-            setSessionsReturnTo('library')
-            setView('sessions')
-          }}
-        >
-          <span className="vocal-tab__search-icon" aria-hidden="true">🗓</span>
-          <span>
-            <strong>Practice sessions</strong>
-            <small>Your previous sittings, attempts and notes</small>
-          </span>
-        </button>
-
-        <button type="button" className="vocal-tab__search-songs" onClick={() => setView('warmup')}>
-          <span className="vocal-tab__search-icon" aria-hidden="true">🎹</span>
-          <span>
-            <strong>Warm up</strong>
-            <small>Sing along through your range, or test your pitch and harmony</small>
-          </span>
-        </button>
-
-        <h2 className="vocal-tab__section-title">Built-in songs</h2>
-        <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
-        <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
-
-        <button type="button" className="vocal-tab__search-songs" onClick={() => setView('arrange')}>
-          <span className="vocal-tab__search-icon" aria-hidden="true">🎼</span>
-          <span>
-            <strong>Arrange a song for voices</strong>
-            <small>Turn a recording into TTBB, SATB or two-part harmony</small>
-          </span>
-        </button>
-      </div>
-    )
+  const openSection = (next) => {
+    if (next === section) return
+    if (section === 'songs') playback.stop()
+    // Back to an open song: the viewer renders the score again; the panels wait for it.
+    if (next === 'songs' && view === 'detail') setScoreModel(null)
+    setSection(next)
   }
 
-  if (view === 'arrange') {
-    return (
-      <div className="vocal-tab">
-        <div className="vocal-tab__toolbar">
-          <button type="button" className="vocal-tab__back" onClick={() => setView('library')}>
-            ← Songs
+  // The Songs section: the song list, search, practice sessions, a shared
+  // attempt, or the open song.
+  const renderSongs = () => {
+    if (view === 'library') {
+      return (
+        <div className="vocal-tab">
+          <header className="vocal-tab__header">
+            <p>Choose a song, or upload your own MIDI or MusicXML file.</p>
+          </header>
+
+          <button type="button" className="vocal-tab__search-songs" onClick={() => setView('search')}>
+            <span className="vocal-tab__search-icon" aria-hidden="true">🔍</span>
+            <span>
+              <strong>Search songs</strong>
+              <small>Browse the online song catalog</small>
+            </span>
           </button>
-          <span className="vocal-tab__song-title">Arrange a song</span>
-        </div>
-        <ArrangePanel onArranged={handleArranged} auth={auth} supabase={supabase} />
-      </div>
-    )
-  }
 
-  if (view === 'warmup') {
-    return (
-      <div className="vocal-tab">
-        <div className="vocal-tab__toolbar">
-          <button type="button" className="vocal-tab__back" onClick={() => setView('library')}>
-            ← Songs
+          <button
+            type="button"
+            className="vocal-tab__search-songs"
+            onClick={() => {
+              setSessionsFor(null)
+              setSessionsReturnTo('library')
+              setView('sessions')
+            }}
+          >
+            <span className="vocal-tab__search-icon" aria-hidden="true">🗓</span>
+            <span>
+              <strong>Practice sessions</strong>
+              <small>Your previous sittings, attempts and notes</small>
+            </span>
           </button>
-          <span className="vocal-tab__song-title">Warm up</span>
-        </div>
-        <WarmUp />
-      </div>
-    )
-  }
 
-  if (view === 'search') {
-    return (
-      <div className="vocal-tab">
-        <div className="vocal-tab__toolbar">
-          <button type="button" className="vocal-tab__back" onClick={() => setView('library')}>
-            ← Songs
-          </button>
-          <span className="vocal-tab__song-title">Search songs</span>
+          <h2 className="vocal-tab__section-title">Built-in songs</h2>
+          <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
+          <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
         </div>
-        <OnlineSongs configured={auth.configured} supabase={supabase} onSelectSong={handleCloudSongSelected} />
-      </div>
-    )
-  }
-
-  // Practise / + New session on a song card in Practice sessions: back to the
-  // song if it is the one open, else open it (catalog, built-in, or a file
-  // kept on this device), continuing a recent session or starting a new one.
-  const practiseFromSessions = async (entry, { fresh = false } = {}) => {
-    const sameSong =
-      notation &&
-      (entry.song_id ? notation.catalogSongId === entry.song_id : notation.fingerprint === entry.song_fingerprint)
-    if (sameSong && sessionsReturnTo === 'detail') {
-      if (fresh) practiceSession.startNew()
-      setScoreModel(null) // the viewer renders the score again; the panels wait for it
-      setView('detail')
-      return
+      )
     }
-    freshStartRef.current = fresh
-    setReturnTo('library')
-    const title = entry.song_title
-    try {
-      if (entry.song_id) {
-        beginLoad()
-        const song = await fetchCatalogSong(supabase, entry.song_id)
-        if (!song) throw new Error('This catalog song is no longer available.')
-        const bytes = await fetchCloudNotation(supabase, song)
-        await loadFromArrayBuffer(bytes, `${song.title ?? title}.musicxml`, { title: song.title ?? title, catalogSongId: entry.song_id })
-        return
-      }
-      for (const song of songLibrary) {
-        const response = await fetch(song.url)
-        if (!response.ok) continue
-        const bytes = await response.arrayBuffer()
-        if ((await fingerprintBytes(bytes)) === entry.song_fingerprint) {
-          await loadFromArrayBuffer(bytes, song.filename, { builtin: true })
-          return
-        }
-      }
-      const mine = await loadMyFile(entry.song_fingerprint)
-      if (mine) {
-        await loadFromArrayBuffer(mine.bytes, mine.name)
-        return
-      }
-      throw new Error(`Open ${title ? `“${title}”` : 'this song'}’s file once on this device to practise it again.`)
-    } catch (err) {
-      freshStartRef.current = false
-      beginLoad()
-      fail(err, 'Could not open that song.')
-    }
-  }
 
-  if (view === 'sessions') {
-    const toSong = sessionsReturnTo === 'detail' && notation
-    const back = () => {
-      if (toSong) {
+    if (view === 'search') {
+      return (
+        <div className="vocal-tab">
+          <div className="vocal-tab__toolbar">
+            <button type="button" className="vocal-tab__back" onClick={() => setView('library')}>
+              ← Songs
+            </button>
+            <span className="vocal-tab__song-title">Search songs</span>
+          </div>
+          <OnlineSongs configured={auth.configured} supabase={supabase} onSelectSong={handleCloudSongSelected} />
+        </div>
+      )
+    }
+
+    // Practise / + New session on a song card in Practice sessions: back to the
+    // song if it is the one open, else open it (catalog, built-in, or a file
+    // kept on this device), continuing a recent session or starting a new one.
+    const practiseFromSessions = async (entry, { fresh = false } = {}) => {
+      const sameSong =
+        notation &&
+        (entry.song_id ? notation.catalogSongId === entry.song_id : notation.fingerprint === entry.song_fingerprint)
+      if (sameSong && sessionsReturnTo === 'detail') {
+        if (fresh) practiceSession.startNew()
         setScoreModel(null) // the viewer renders the score again; the panels wait for it
         setView('detail')
         return
       }
-      setView('library')
-      setStatus('idle')
-      setNotation(null)
-      setScoreModel(null)
+      freshStartRef.current = fresh
+      setReturnTo('library')
+      const title = entry.song_title
+      try {
+        if (entry.song_id) {
+          beginLoad()
+          const song = await fetchCatalogSong(supabase, entry.song_id)
+          if (!song) throw new Error('This catalog song is no longer available.')
+          const bytes = await fetchCloudNotation(supabase, song)
+          await loadFromArrayBuffer(bytes, `${song.title ?? title}.musicxml`, { title: song.title ?? title, catalogSongId: entry.song_id })
+          return
+        }
+        for (const song of songLibrary) {
+          const response = await fetch(song.url)
+          if (!response.ok) continue
+          const bytes = await response.arrayBuffer()
+          if ((await fingerprintBytes(bytes)) === entry.song_fingerprint) {
+            await loadFromArrayBuffer(bytes, song.filename, { builtin: true })
+            return
+          }
+        }
+        const mine = await loadMyFile(entry.song_fingerprint)
+        if (mine) {
+          await loadFromArrayBuffer(mine.bytes, mine.name)
+          return
+        }
+        throw new Error(`Open ${title ? `“${title}”` : 'this song'}’s file once on this device to practise it again.`)
+      } catch (err) {
+        freshStartRef.current = false
+        beginLoad()
+        fail(err, 'Could not open that song.')
+      }
     }
+
+    if (view === 'sessions') {
+      const toSong = sessionsReturnTo === 'detail' && notation
+      const back = () => {
+        if (toSong) {
+          setScoreModel(null) // the viewer renders the score again; the panels wait for it
+          setView('detail')
+          return
+        }
+        setView('library')
+        setStatus('idle')
+        setNotation(null)
+        setScoreModel(null)
+      }
+      return (
+        <div className="vocal-tab">
+          <div className="vocal-tab__toolbar">
+            <button type="button" className="vocal-tab__back" onClick={back}>
+              {toSong ? `← ${notation.title}` : '← Songs'}
+            </button>
+            <span className="vocal-tab__song-title">Practice sessions</span>
+          </div>
+          <PracticeSessions
+            key={sessionsFor ? (sessionsFor.songId ?? sessionsFor.fingerprint ?? sessionsFor.title) : 'all'}
+            auth={auth}
+            supabase={supabase}
+            song={sessionsFor}
+            instrument="voice"
+            onPractise={practiseFromSessions}
+          />
+        </div>
+      )
+    }
+
+    const sharedGate =
+      shared ??
+      (!auth.ready
+        ? { phase: 'loading' }
+        : !auth.configured
+          ? { phase: 'error', error: 'Shared attempts need the cloud, which isn’t configured on this copy of the app.' }
+          : !auth.user
+            ? { phase: 'signin' }
+            : { phase: 'loading' })
+
+    if (view === 'shared') {
+      return (
+        <div className="vocal-tab">
+          <SharedAttemptGate
+            shared={sharedGate}
+            onNavigateHome={() => onNavigate('home')}
+            onFileSelected={handleSharedFile}
+            onOpenAnyway={handleSharedOpenAnyway}
+            onClose={closeShared}
+          />
+        </div>
+      )
+    }
+
+    const viewingShared = shared?.phase === 'open'
+    // What a shared attempt needs to name this song without uploading it.
+    const shareSong = notation && {
+      songId: notation.catalogSongId,
+      title: notation.title,
+      format: notation.format,
+      fingerprint: notation.fingerprint,
+      builtin: notation.builtin,
+      partId: selectedPart?.id ?? null,
+      partName: selectedPart?.name ?? scoreModel?.partNames?.[0] ?? null,
+      withOthers,
+    }
+
     return (
       <div className="vocal-tab">
         <div className="vocal-tab__toolbar">
-          <button type="button" className="vocal-tab__back" onClick={back}>
-            {toSong ? `← ${notation.title}` : '← Songs'}
+          <button type="button" className="vocal-tab__back" onClick={viewingShared ? closeShared : handleBack}>
+            {viewingShared ? '← Close' : returnTo === 'search' ? '← Search' : '← Songs'}
           </button>
-          <span className="vocal-tab__song-title">Practice sessions</span>
+          <span className="vocal-tab__song-title">{notation?.title}</span>
+          {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
+          {notation && (
+            <div className="vocal-tab__actions">
+              {!viewingShared && auth.user && supabase && (
+                <button
+                  type="button"
+                  className="vocal-tab__sessions-link"
+                  onClick={() => {
+                    playback.stop()
+                    setSessionsFor(sessionSong)
+                    setSessionsReturnTo('detail')
+                    setView('sessions')
+                  }}
+                >
+                  Sessions
+                </button>
+              )}
+              <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
+            </div>
+          )}
         </div>
-        <PracticeSessions
-          key={sessionsFor ? (sessionsFor.songId ?? sessionsFor.fingerprint ?? sessionsFor.title) : 'all'}
-          auth={auth}
-          supabase={supabase}
-          song={sessionsFor}
-          instrument="voice"
-          onPractise={practiseFromSessions}
-        />
+
+        {status === 'loading' && <p className="vocal-tab__status">Loading…</p>}
+        {status === 'error' && <p className="vocal-tab__status vocal-tab__status--error">{error}</p>}
+
+        {notation && arrangement && (
+          <p className="vocal-tab__arranged">
+            Arranged for {arrangement.voicing} in {arrangement.key}
+            {arrangement.shift % 12 !== 0 &&
+              ` (moved ${arrangement.shift > 0 ? 'up' : 'down'} ${Math.abs(arrangement.shift % 12)} semitone${Math.abs(arrangement.shift % 12) === 1 ? '' : 's'} from the recording)`}
+            , with the melody in {arrangement.melodyPart}.{' '}
+            {arrangement.video && (
+              <>
+                From{' '}
+                <a href={arrangement.video.url} target="_blank" rel="noreferrer">
+                  {arrangement.video.title ?? 'this YouTube video'}
+                </a>
+                .{' '}
+              </>
+            )}
+            {arrangement.lyrics === 'official' && 'The lyrics are the published ones, placed by ear. '}
+            {arrangement.lyrics === 'heard' && 'The lyrics are as heard by ear, so check them. '}
+            The harmony is written new from the song’s chords, and the notes are heard by ear: give it a listen and fix
+            what’s off.
+          </p>
+        )}
+
+        {notation && (
+          <>
+            <PartTabs parts={parts} selected={selectedPart?.id} onSelect={handlePartChange} />
+            <SheetMusicViewer
+              ref={sheetMusicRef}
+              content={viewerContent}
+              onReady={handleSheetReady}
+              onError={handleSheetError}
+              tempoFactor={tempo / 100}
+            />
+            {!viewingShared && (
+              <PracticeModeToggle mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
+            )}
+            {multiPart && !viewingShared && (
+              <AccompanimentToggle
+                value={accompaniment}
+                mode={practiceMode}
+                onChange={handleAccompanimentChange}
+                disabled={!scoreModel}
+              />
+            )}
+            <SolfegeToggle
+              on={solfegeOn}
+              doName={solfege?.doName}
+              onChange={handleSolfegeChange}
+              disabled={!scoreModel}
+            />
+            {/* Wait for me has no transport to click along with or slow down. */}
+            {scoreModel && practiceMode !== 'wait' && (
+              <>
+                <MetronomeControl settings={metronome} onChange={setMetronome} beat={playback.beat} />
+                <TempoControl
+                  pct={tempo}
+                  onChange={setTempo}
+                  bpm={scoreModel.startBpm}
+                  disabled={playback.state === 'counting'}
+                />
+              </>
+            )}
+            {scoreModel && practiceMode === 'wait' ? (
+              // Keyed by part so switching parts starts the mode fresh on the new line.
+              <WaitModePlayer
+                key={selectedPart?.id}
+                melody={melody}
+                duration={playback.duration}
+                sheetMusicRef={sheetMusicRef}
+                backingNotes={withOthers ? otherPartNotes : null}
+                runsKey={runsKey({ ...runsSetting, mode: 'wait' })}
+                runsRemote={runsRemotes.wait}
+              />
+            ) : scoreModel && practiceMode === 'trouble' ? (
+              <TroubleSpotsPlayer
+                key={selectedPart?.id}
+                melody={melody}
+                playback={playback}
+                sheetMusicRef={sheetMusicRef}
+                runsKey={runsKey({ ...runsSetting, mode: 'trouble' })}
+                runsRemote={runsRemotes.trouble}
+              />
+            ) : (
+              <PlaybackControls
+                state={playback.state}
+                position={playback.position}
+                duration={playback.duration}
+                rate={playback.rate}
+                onPlay={playback.play}
+                onPause={playback.pause}
+                onStop={playback.stop}
+                onSeek={playback.seek}
+                disabled={!scoreModel}
+              />
+            )}
+            {scoreModel && viewingShared && (
+              <SharedAttemptPanel
+                attempt={shared.attempt}
+                scoreModel={scoreModel}
+                sheetMusicRef={sheetMusicRef}
+                supabase={supabase}
+                viewerId={userId}
+                onOpenAttempt={openTry}
+              />
+            )}
+            {scoreModel && practiceMode === 'listen' && !viewingShared && (
+              <RecordPanel
+                key={selectedPart?.id}
+                scoreModel={scoreModel}
+                playback={playback}
+                sheetMusicRef={sheetMusicRef}
+                title={notation.title}
+                auth={auth}
+                supabase={supabase}
+                shareSong={shareSong}
+                session={auth.user && supabase ? practiceSession : null}
+              />
+            )}
+          </>
+        )}
       </div>
     )
-  }
-
-  const sharedGate =
-    shared ??
-    (!auth.ready
-      ? { phase: 'loading' }
-      : !auth.configured
-        ? { phase: 'error', error: 'Shared attempts need the cloud, which isn’t configured on this copy of the app.' }
-        : !auth.user
-          ? { phase: 'signin' }
-          : { phase: 'loading' })
-
-  if (view === 'shared') {
-    return (
-      <div className="vocal-tab">
-        <SharedAttemptGate
-          shared={sharedGate}
-          onNavigateHome={() => onNavigate('home')}
-          onFileSelected={handleSharedFile}
-          onOpenAnyway={handleSharedOpenAnyway}
-          onClose={closeShared}
-        />
-      </div>
-    )
-  }
-
-  const viewingShared = shared?.phase === 'open'
-  // What a shared attempt needs to name this song without uploading it.
-  const shareSong = notation && {
-    songId: notation.catalogSongId,
-    title: notation.title,
-    format: notation.format,
-    fingerprint: notation.fingerprint,
-    builtin: notation.builtin,
-    partId: selectedPart?.id ?? null,
-    partName: selectedPart?.name ?? scoreModel?.partNames?.[0] ?? null,
-    withOthers,
   }
 
   return (
-    <div className="vocal-tab">
-      <div className="vocal-tab__toolbar">
-        <button type="button" className="vocal-tab__back" onClick={viewingShared ? closeShared : handleBack}>
-          {viewingShared ? '← Close' : returnTo === 'search' ? '← Search' : '← Songs'}
-        </button>
-        <span className="vocal-tab__song-title">{notation?.title}</span>
-        {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
-        {notation && (
-          <div className="vocal-tab__actions">
-            {!viewingShared && auth.user && supabase && (
-              <button
-                type="button"
-                className="vocal-tab__sessions-link"
-                onClick={() => {
-                  playback.stop()
-                  setSessionsFor(sessionSong)
-                  setSessionsReturnTo('detail')
-                  setView('sessions')
-                }}
-              >
-                Sessions
-              </button>
-            )}
-            <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
+    <div className="vocal-frame">
+      <div className="vocal-frame__top">
+        <nav className="vocal-frame__sections" aria-label="Vocal">
+          {SECTIONS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`vocal-frame__section ${section === item.id ? 'vocal-frame__section--active' : ''}`}
+              aria-pressed={section === item.id}
+              onClick={() => openSection(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <AccountChip auth={auth} onNavigate={onNavigate} />
+      </div>
+      <div className="vocal-frame__body">
+        {section === 'exercises' ? (
+          <div className="vocal-tab">
+            <WarmUp show="tests" />
           </div>
+        ) : section === 'compose' ? (
+          <div className="vocal-tab">
+            <ArrangePanel onArranged={handleArranged} auth={auth} supabase={supabase} />
+          </div>
+        ) : section === 'warmup' ? (
+          <div className="vocal-tab">
+            <WarmUp show="warmups" />
+          </div>
+        ) : (
+          renderSongs()
         )}
       </div>
-
-      {status === 'loading' && <p className="vocal-tab__status">Loading…</p>}
-      {status === 'error' && <p className="vocal-tab__status vocal-tab__status--error">{error}</p>}
-
-      {notation && arrangement && (
-        <p className="vocal-tab__arranged">
-          Arranged for {arrangement.voicing} in {arrangement.key}
-          {arrangement.shift % 12 !== 0 &&
-            ` (moved ${arrangement.shift > 0 ? 'up' : 'down'} ${Math.abs(arrangement.shift % 12)} semitone${Math.abs(arrangement.shift % 12) === 1 ? '' : 's'} from the recording)`}
-          , with the melody in {arrangement.melodyPart}.{' '}
-          {arrangement.video && (
-            <>
-              From{' '}
-              <a href={arrangement.video.url} target="_blank" rel="noreferrer">
-                {arrangement.video.title ?? 'this YouTube video'}
-              </a>
-              .{' '}
-            </>
-          )}
-          {arrangement.lyrics === 'official' && 'The lyrics are the published ones, placed by ear. '}
-          {arrangement.lyrics === 'heard' && 'The lyrics are as heard by ear, so check them. '}
-          The harmony is written new from the song’s chords, and the notes are heard by ear: give it a listen and fix
-          what’s off.
-        </p>
-      )}
-
-      {notation && (
-        <>
-          <PartTabs parts={parts} selected={selectedPart?.id} onSelect={handlePartChange} />
-          <SheetMusicViewer
-            ref={sheetMusicRef}
-            content={viewerContent}
-            onReady={handleSheetReady}
-            onError={handleSheetError}
-            tempoFactor={tempo / 100}
-          />
-          {!viewingShared && (
-            <PracticeModeToggle mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
-          )}
-          {multiPart && !viewingShared && (
-            <AccompanimentToggle
-              value={accompaniment}
-              mode={practiceMode}
-              onChange={handleAccompanimentChange}
-              disabled={!scoreModel}
-            />
-          )}
-          <SolfegeToggle
-            on={solfegeOn}
-            doName={solfege?.doName}
-            onChange={handleSolfegeChange}
-            disabled={!scoreModel}
-          />
-          {/* Wait for me has no transport to click along with or slow down. */}
-          {scoreModel && practiceMode !== 'wait' && (
-            <>
-              <MetronomeControl settings={metronome} onChange={setMetronome} beat={playback.beat} />
-              <TempoControl
-                pct={tempo}
-                onChange={setTempo}
-                bpm={scoreModel.startBpm}
-                disabled={playback.state === 'counting'}
-              />
-            </>
-          )}
-          {scoreModel && practiceMode === 'wait' ? (
-            // Keyed by part so switching parts starts the mode fresh on the new line.
-            <WaitModePlayer
-              key={selectedPart?.id}
-              melody={melody}
-              duration={playback.duration}
-              sheetMusicRef={sheetMusicRef}
-              backingNotes={withOthers ? otherPartNotes : null}
-              runsKey={runsKey({ ...runsSetting, mode: 'wait' })}
-              runsRemote={runsRemotes.wait}
-            />
-          ) : scoreModel && practiceMode === 'trouble' ? (
-            <TroubleSpotsPlayer
-              key={selectedPart?.id}
-              melody={melody}
-              playback={playback}
-              sheetMusicRef={sheetMusicRef}
-              runsKey={runsKey({ ...runsSetting, mode: 'trouble' })}
-              runsRemote={runsRemotes.trouble}
-            />
-          ) : (
-            <PlaybackControls
-              state={playback.state}
-              position={playback.position}
-              duration={playback.duration}
-              rate={playback.rate}
-              onPlay={playback.play}
-              onPause={playback.pause}
-              onStop={playback.stop}
-              onSeek={playback.seek}
-              disabled={!scoreModel}
-            />
-          )}
-          {scoreModel && viewingShared && (
-            <SharedAttemptPanel
-              attempt={shared.attempt}
-              scoreModel={scoreModel}
-              sheetMusicRef={sheetMusicRef}
-              supabase={supabase}
-              viewerId={userId}
-              onOpenAttempt={openTry}
-            />
-          )}
-          {scoreModel && practiceMode === 'listen' && !viewingShared && (
-            <RecordPanel
-              key={selectedPart?.id}
-              scoreModel={scoreModel}
-              playback={playback}
-              sheetMusicRef={sheetMusicRef}
-              title={notation.title}
-              auth={auth}
-              supabase={supabase}
-              shareSong={shareSong}
-              session={auth.user && supabase ? practiceSession : null}
-            />
-          )}
-        </>
-      )}
     </div>
   )
 }
