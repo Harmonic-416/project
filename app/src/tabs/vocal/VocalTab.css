@@ -1,15 +1,90 @@
-.vocal-tab {
+.vocal-frame {
   box-sizing: border-box;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px 16px;
 }
 
-.vocal-tab__header h1 {
-  font-size: 1.5rem;
-  margin: 0 0 4px;
+/* Songs | Exercises | Compose | Warm Up, like the guitar's switch; account button on the right. */
+.vocal-frame__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 16px 0;
+}
+
+.vocal-frame__sections {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #e2dfd8;
+  align-self: center;
+}
+
+.vocal-frame__section {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 20px;
+  background: none;
+  color: #6c6a72;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vocal-frame__section--active {
+  background: #ffffff;
+  color: #128789;
+}
+
+.vocal-frame__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Four sections + the account button: tighten the switch on phones so it all fits. */
+@media (max-width: 480px) {
+  .vocal-frame__top .vocal-frame__section {
+    padding: 6px 7px;
+    font-size: 0.9rem;
+  }
+
+  .vocal-frame__top .account-chip {
+    max-width: 30%;
+  }
+}
+
+/* Small phones: signed in, the account button shows just the picture ("Sign in" still fits). */
+@media (max-width: 440px) {
+  .vocal-frame__top .account-chip:has(.hm-avatar) {
+    padding: 0 4px;
+  }
+
+  .vocal-frame__top .account-chip:has(.hm-avatar) .account-chip__name {
+    display: none;
+  }
+}
+
+/* Very narrow phones: the account button shows just the picture. */
+@media (max-width: 380px) {
+  .vocal-frame__top .account-chip {
+    padding: 0 4px;
+  }
+
+  .vocal-frame__top .account-chip__name {
+    display: none;
+  }
+}
+
+.vocal-tab {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 16px;
 }
 
 .vocal-tab__header p {
