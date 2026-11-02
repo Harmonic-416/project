@@ -174,9 +174,9 @@ Every judged note is marked on the score: green (right), amber (close: the wrong
 - **Solfège (new at M4, reworked November 2).** A **Lyrics / Solfège** switch under the vocal score shows a syllable for every sung note. Until November 1 the syllables were a second lyric line under the words; since #50 they take the place of the words while the switch is on, so the singer reads one line and the staff keeps its height. Movable do: do is the major tonic of the written key, so a minor key sings from la; key changes are followed, and when the notes clearly don't fit the written key (a MIDI file with no key signature arrives as C major) do is worked out from the notes and the hint says where it is ("Do is C. In a minor key, home is la."). Chromatic notes are named from their spelling (G♯ in C is si, A♭ is le) when the spelling can be trusted; MIDI files spell every black key as a sharp, so their chromatic notes get the usual choice by pitch (di me fi le te, and si in a minor song). Only the viewer's copy changes; exports, sharing and scoring are untouched.
 - **Export:** MIDI and MusicXML (vocal), MIDI and Guitar Pro (guitar).
 
-![Ode to Joy with "Do re mi" on: mi mi fa sol sol fa mi re do do re mi mi re re under the lyrics](images/m4-vocal-solfege.png)
+![Ode to Joy with Solfège on: mi mi fa so so fa mi re do do re mi mi re re in place of the words, and the Lyrics / Solfège switch with "Do is C. In a minor key, home is la."](images/m4-vocal-solfege-song.png)
 
-*Figure 2.6. Solfège on Ode to Joy, in C, as it was on November 1 (a line under the words). Since November 2 the syllables replace the words.*
+*Figure 2.6. Solfège on Ode to Joy, in C, since November 2: the syllables take the place of the words.*
 
 ### 2.7 Vocal Arranger
 
