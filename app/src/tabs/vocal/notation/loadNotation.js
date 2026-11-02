@@ -12,12 +12,23 @@ import { readLyricStreams } from '../midi/lyrics.js'
  *   MIDI      → midiToMusicXml (our converter)  → MusicXML string
  *   MusicXML  → validated text                  → MusicXML string
  *   MXL       → unzipped, root file located     → MusicXML string
+ *
+ * MuseScore's own files (.mscz, .mscx) are offered in the picker but not
+ * read: they are MuseScore's internal format, not MusicXML. Opening one says
+ * how to export it from MuseScore (MusicXML, MXL or MIDI all open here).
  */
 
 export const NOTATION_EXTENSIONS = ['mid', 'midi', 'musicxml', 'xml', 'mxl']
 
+/** MuseScore's native files: pickable, so opening one can explain the export. */
+export const MUSESCORE_EXTENSIONS = ['mscz', 'mscx']
+
+export const MUSESCORE_MESSAGE =
+  'This is a MuseScore file. In MuseScore, choose File → Export, pick MusicXML (or MIDI), and open that file here.'
+
 export const NOTATION_ACCEPT = [
   ...NOTATION_EXTENSIONS.map((ext) => `.${ext}`),
+  ...MUSESCORE_EXTENSIONS.map((ext) => `.${ext}`),
   'audio/midi',
   'audio/x-midi',
   'application/vnd.recordare.musicxml+xml',
@@ -33,6 +44,7 @@ export function titleFromFilename(filename) {
 export function detectNotationFormat(filename, bytes) {
   const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? '').toLowerCase()
   if (ext === 'mid' || ext === 'midi') return 'midi'
+  if (MUSESCORE_EXTENSIONS.includes(ext)) return 'musescore'
   if (ext === 'mxl') return 'mxl'
   if (ext === 'musicxml' || ext === 'xml') return 'musicxml'
   const head = String.fromCharCode(...new Uint8Array(bytes).subarray(0, 4))
@@ -53,11 +65,16 @@ export async function unzipMxl(arrayBuffer) {
     Object.values(zip.files).find(
       (file) => !file.dir && !file.name.startsWith('META-INF/') && /\.(musicxml|xml)$/i.test(file.name),
     )
-  if (!entry) throw new Error('This MXL archive has no MusicXML file inside.')
+  if (!entry) {
+    // A MuseScore file under another name is a zip too, with a .mscx inside.
+    if (Object.keys(zip.files).some((name) => /\.mscx$/i.test(name))) throw new Error(MUSESCORE_MESSAGE)
+    throw new Error('This MXL archive has no MusicXML file inside.')
+  }
   return entry.async('string')
 }
 
 function validateMusicXml(text) {
+  if (/<museScore[\s>]/.test(text)) throw new Error(MUSESCORE_MESSAGE)
   if (/<score-timewise[\s>]/.test(text)) {
     throw new Error('Timewise MusicXML is not supported yet — export the file as partwise.')
   }
@@ -70,6 +87,7 @@ function validateMusicXml(text) {
 export async function loadNotation(arrayBuffer, filename, { title } = {}) {
   const format = detectNotationFormat(filename, arrayBuffer)
   const resolvedTitle = title ?? titleFromFilename(filename)
+  if (format === 'musescore') throw new Error(MUSESCORE_MESSAGE)
 
   if (format === 'midi') {
     const midi = await parseMidiFile(arrayBuffer)
