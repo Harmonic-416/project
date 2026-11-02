@@ -25,12 +25,23 @@ const VIEWS = [
  * lessons and strum on the beat, with progress kept on the account when
  * signed in; `learnProgressVersion` from App.jsx), Exercises to practise on
  * your own, the Fretboard (every note on the neck), and the Tuner. Opens on Songs; a shared guitar
- * attempt (`sharedAttemptId`, from a share link via App.jsx) opens there too.
+ * attempt (`sharedAttemptId`, from a share link via App.jsx) opens there too,
+ * and so does a song's practice sessions from Home (`sessionsToOpen`).
  * Until the guitar has been tuned this session, Songs shows a "Tune first?"
  * prompt, and the songs' single notes keep an ear out for it drifting
  * (tuneSession.js); Tune now leads back to where you were.
  */
-function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, learnProgressVersion }) {
+function GuitarTab({
+  auth,
+  onNavigate,
+  sharedAttemptId,
+  onSharedAttemptDone,
+  fileToOpenId,
+  onFileOpened,
+  sessionsToOpen,
+  onSessionsOpened,
+  learnProgressVersion,
+}) {
   const [view, setView] = useState('song')
   const [returnTo, setReturnTo] = useState(null) // the view "Tune now" came from
   const [tuned, setTuned] = useState(isTunedThisSession)
@@ -114,6 +125,8 @@ function GuitarTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fil
                 onSharedAttemptDone={onSharedAttemptDone}
                 fileToOpenId={fileToOpenId}
                 onFileOpened={onFileOpened}
+                sessionsToOpen={sessionsToOpen}
+                onSessionsOpened={onSessionsOpened}
               />
             </Suspense>
           )}

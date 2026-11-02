@@ -63,6 +63,7 @@
 
 .guitar-song__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -129,6 +130,13 @@
 .guitar-song__status {
   margin: 0;
   color: #6c6a72;
+}
+
+/* The open song's last and best full run in this mode (run history, F22). */
+.guitar-song__history {
+  margin: 0;
+  color: #6c6a72;
+  font-size: 0.9rem;
 }
 
 .guitar-song__status--error {

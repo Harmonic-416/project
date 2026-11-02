@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Instrument, NoteVerdict, SharedAttempt } from './attempts'
+import type { Instrument, NoteVerdict, RunMode, SharedAttempt } from './attempts'
 
 /**
  * Practice sessions (change: practice-sessions, migration 0014): one row per
@@ -60,6 +60,10 @@ export interface SessionAttempt {
   self_note: string | null
   rating: number | null
   created_at: string
+  /** Guitar runs (0017): Wait for me or Trouble spots, Easy version, first note to the end; null otherwise. */
+  mode?: RunMode | null
+  easy?: boolean | null
+  full_run?: boolean | null
   /** Short-lived URL for the recording (listSessionAttempts only), or null. */
   recording_url?: string | null
 }
@@ -83,7 +87,7 @@ export const IDLE_MS = 30 * 60 * 1000
 export const MAX_SELF_NOTE_LENGTH = 2000
 
 const ATTEMPT_COLUMNS =
-  'id, session_id, song_id, song_fingerprint, song_title, part_name, instrument, accuracy, verdicts, recording_path, recording_bytes, self_note, rating, created_at'
+  'id, session_id, song_id, song_fingerprint, song_title, part_name, instrument, accuracy, verdicts, recording_path, recording_bytes, self_note, rating, created_at, mode, easy, full_run'
 
 // Attempts are read through their session (an inner join on a table whose
 // RLS shows only your own rows), so an attempt a friend sent you never shows
@@ -226,6 +230,8 @@ export interface ListSessionsOptions {
   songId?: string | null
   /** …or at this file. Neither: every song. */
   songFingerprint?: string | null
+  /** Only one instrument's sessions (each tab lists its own). Omitted: both. */
+  instrument?: Instrument | null
   limit?: number
 }
 
@@ -235,11 +241,12 @@ export interface ListSessionsOptions {
  */
 export async function listPracticeSessions(
   supabase: SupabaseClient,
-  { songId = null, songFingerprint = null, limit = 50 }: ListSessionsOptions = {},
+  { songId = null, songFingerprint = null, instrument = null, limit = 50 }: ListSessionsOptions = {},
 ): Promise<PracticeSessionWithAttempts[]> {
   let query = supabase.from('practice_session').select('*').order('started_at', { ascending: false }).limit(limit)
   if (songId) query = query.eq('song_id', songId)
   else if (songFingerprint) query = query.eq('song_fingerprint', songFingerprint)
+  if (instrument) query = query.eq('instrument', instrument)
   const { data, error } = await query
   if (error) throw new Error(error.message)
   const sessions = (data ?? []) as PracticeSession[]

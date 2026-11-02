@@ -21,8 +21,14 @@ export type Instrument = 'voice' | 'guitar'
 /** A guitar attempt's verdict on one note of its song timeline, or null where the run didn't reach. */
 export type NoteVerdict = 'hit' | 'close' | 'miss' | 'skipped' | null
 
+/** What kind of guitar run an attempt was (0017): Wait for me or Trouble spots. */
+export type RunMode = 'wait' | 'trouble'
+
 /** One pitch frame: [seconds on the playback clock, fractional MIDI note]. */
 export type TraceSample = [number, number]
+
+/** Where a guitar run's recording is in the song (0018): [seconds into the recording, song seconds], read piecewise linearly. */
+export type TimingPoint = [number, number]
 
 export interface SharedAttempt {
   id: string
@@ -50,6 +56,12 @@ export interface SharedAttempt {
   rating: number | null
   /** Size of the kept recording, counted against the owner's budget (0014). */
   recording_bytes: number | null
+  /** Guitar runs (0017): the mode, the Easy version, and whether it went from the first note to the end. */
+  mode: RunMode | null
+  easy: boolean | null
+  full_run: boolean | null
+  /** Guitar runs with a recording (0018): follows the recording along the song, so a viewer's cursor can. */
+  timing: TimingPoint[] | null
 }
 
 export interface NewSharedAttempt {
@@ -71,9 +83,29 @@ export interface NewSharedAttempt {
   verdicts?: NoteVerdict[] | null
   /** The open practice session to attach it to (0014). */
   sessionId?: string | null
+  /** Guitar runs (0017): Wait for me or Trouble spots, Easy version, first note to the end. */
+  mode?: RunMode | null
+  easy?: boolean | null
+  fullRun?: boolean | null
+  /** Guitar runs with a recording (0018): where in the song the recording is. */
+  timing?: TimingPoint[] | null
 }
 
 export const MAX_TRACE_SAMPLES = 30000
+
+/**
+ * A recording as an upload body: its raw bytes under a plain media type.
+ * Sent as a Blob, supabase-js wraps it in a form, and that upload of a
+ * recorder's Blob failed in Firefox with "NetworkError when attempting to
+ * fetch resource" while the rest of the app reached Supabase fine. Reading
+ * the bytes first also turns a recording that can't be read into its own
+ * error rather than a network one.
+ */
+async function recordingBody(recording: Blob): Promise<{ body: ArrayBuffer; contentType: string }> {
+  const body = await recording.arrayBuffer()
+  const [type] = (recording.type || 'audio/webm').split(';')
+  return { body, contentType: type?.trim() || 'audio/webm' }
+}
 
 /**
  * Thrown before uploading a recording that wouldn't fit the owner's budget
@@ -133,7 +165,11 @@ async function insertAttempt(
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) throw userError ?? new Error('Sign in to share an attempt')
   if (!attempt.songId && !attempt.songFingerprint) throw new Error('A shared attempt needs a catalog song or a file fingerprint')
-  if (attempt.samples.length > MAX_TRACE_SAMPLES || (attempt.verdicts?.length ?? 0) > MAX_TRACE_SAMPLES) {
+  if (
+    attempt.samples.length > MAX_TRACE_SAMPLES ||
+    (attempt.verdicts?.length ?? 0) > MAX_TRACE_SAMPLES ||
+    (attempt.timing?.length ?? 0) > MAX_TRACE_SAMPLES
+  ) {
     throw new Error('That attempt is too long to share')
   }
 
@@ -142,9 +178,8 @@ async function insertAttempt(
   if (recording) {
     await assertRecordingFits(supabase, recording.size)
     recordingPath = `${userData.user.id}/${id}.webm`
-    const { error } = await supabase.storage
-      .from('recordings')
-      .upload(recordingPath, recording, { contentType: recording.type || 'audio/webm' })
+    const { body, contentType } = await recordingBody(recording)
+    const { error } = await supabase.storage.from('recordings').upload(recordingPath, body, { contentType })
     if (error) throw error
   }
 
@@ -169,6 +204,11 @@ async function insertAttempt(
       verdicts: attempt.verdicts ?? null,
       link_shared: linkShared,
       session_id: attempt.sessionId ?? null,
+      mode: attempt.mode ?? null,
+      easy: attempt.easy ?? null,
+      full_run: attempt.fullRun ?? null,
+      // Only written when there is some, so Vocal attempts don't depend on 0018.
+      ...(attempt.timing ? { timing: attempt.timing } : {}),
     })
     .select()
     .single()
@@ -279,6 +319,66 @@ export async function deleteSharedAttempt(supabase: SupabaseClient, attempt: Sha
 export async function shareAttemptLink(supabase: SupabaseClient, attemptId: string): Promise<void> {
   const { error } = await supabase.from('shared_attempt').update({ link_shared: true }).eq('id', attemptId)
   if (error) throw error
+}
+
+/**
+ * Correct a saved attempt's result: a guitar run re-checked note by note
+ * after it was saved (GuitarTroubleMode's "Check my run more accurately").
+ */
+export async function updateAttemptResult(
+  supabase: SupabaseClient,
+  attemptId: string,
+  { verdicts, accuracy }: { verdicts: NoteVerdict[] | null; accuracy: number },
+): Promise<void> {
+  if ((verdicts?.length ?? 0) > MAX_TRACE_SAMPLES) throw new Error('That attempt is too long to save')
+  const { error } = await supabase.from('shared_attempt').update({ verdicts, accuracy }).eq('id', attemptId)
+  if (error) throw error
+}
+
+/** One full run's score, for a song's last and best (listSongScores). */
+export interface SongScore {
+  id: string
+  accuracy: number
+  created_at: string
+}
+
+export interface SongScoresQuery {
+  /** A catalog song… */
+  songId?: string | null
+  /** …or a file, by its SHA-256. */
+  songFingerprint?: string | null
+  instrument: Instrument
+  mode: RunMode
+  easy?: boolean
+  partId?: string | null
+  limit?: number
+}
+
+/**
+ * Your full runs at one song, mode, part and version (Easy or not), newest
+ * first: what "Last run · best" on the open song is worked out from. Runs
+ * that were looped or stopped early (full_run false) aren't counted.
+ */
+export async function listSongScores(
+  supabase: SupabaseClient,
+  { songId = null, songFingerprint = null, instrument, mode, easy = false, partId = null, limit = 50 }: SongScoresQuery,
+): Promise<SongScore[]> {
+  if (!songId && !songFingerprint) return []
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError || !userData.user) return []
+  let query = supabase
+    .from('shared_attempt')
+    .select('id, accuracy, created_at')
+    .eq('user_id', userData.user.id)
+    .eq('instrument', instrument)
+    .eq('mode', mode)
+    .eq('easy', easy)
+    .eq('full_run', true)
+  query = songId ? query.eq('song_id', songId) : query.eq('song_fingerprint', songFingerprint ?? '')
+  if (partId !== null) query = query.eq('part_id', partId)
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(limit)
+  if (error) throw error
+  return ((data ?? []) as SongScore[]).map((row) => ({ ...row, accuracy: Number(row.accuracy) }))
 }
 
 // ── sending to friends (0010) ───────────────────────────────────────────
@@ -400,9 +500,8 @@ export async function attachRecording(
   if (attempt.recording_path) return attempt
   await assertRecordingFits(supabase, recording.size)
   const path = `${attempt.user_id}/${attempt.id}.webm`
-  const { error: uploadError } = await supabase.storage
-    .from('recordings')
-    .upload(path, recording, { contentType: recording.type || 'audio/webm', upsert: true })
+  const { body, contentType } = await recordingBody(recording)
+  const { error: uploadError } = await supabase.storage.from('recordings').upload(path, body, { contentType, upsert: true })
   if (uploadError) throw uploadError
   const { error } = await supabase
     .from('shared_attempt')

@@ -75,6 +75,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const [practiceMode, setPracticeMode] = useState('listen') // listen | wait | trouble (see practice/practiceLogic.js)
   const [practicePart, setPracticePart] = useState(undefined) // part id; undefined = the first part
   const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
+  const [solfege, setSolfege] = useState(loadSolfegeSetting) // solfège labels under the notes (notation/solfege.js)
   const [arrangement, setArrangement] = useState(null) // what the arranger did, for the song it just wrote (arrange/pipeline.js)
   const sheetMusicRef = useRef(null)
 
@@ -365,6 +366,22 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       return notation.content
     }
   }, [notation, selectedPart, withOthers])
+  // Solfège is drawn as one more lyric line, on the viewer's copy only (exports keep the score as it was),
+  // in the key of the whole score so every part shares one do.
+  const solfegeKey = useMemo(() => (solfege && notation ? scoreKey(notation.content) : null), [solfege, notation])
+  const viewerContent = useMemo(() => {
+    if (!solfege || !partContent) return partContent
+    try {
+      return addSolfege(partContent, solfegeKey)
+    } catch (err) {
+      console.error(err)
+      return partContent
+    }
+  }, [partContent, solfege, solfegeKey])
+  const handleSolfegeChange = useCallback((on) => {
+    setSolfege(on)
+    saveSolfegeSetting(on)
+  }, [])
 
   // Solfège: the same score with do re mi in place of its lyrics. MIDI files
   // spell every black key as a sharp, so their chromatic notes go by pitch.
@@ -702,6 +719,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           auth={auth}
           supabase={supabase}
           song={sessionsFor}
+          instrument="voice"
           onPractise={practiseFromSessions}
         />
       </div>
@@ -812,6 +830,13 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           {!viewingShared && (
             <PracticeModeToggle mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
           )}
+          {/* Redrawing the score mid-run would move the cursor out from under the singer. */}
+          <SolfegeToggle
+            on={solfege}
+            solfegeKey={solfegeKey}
+            onChange={handleSolfegeChange}
+            disabled={!scoreModel || playback.state === 'playing' || playback.state === 'counting'}
+          />
           {multiPart && !viewingShared && (
             <AccompanimentToggle
               value={accompaniment}

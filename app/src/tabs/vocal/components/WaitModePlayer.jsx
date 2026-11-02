@@ -3,6 +3,7 @@ import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
 import PracticeSummary from './PracticeSummary.jsx'
+import DynamicsMeter from './DynamicsMeter.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { frequencyToMidi, midiToNoteName } from '../audio/pitchDetector.js'
 import { createHoldDetector, noteDistanceCents, soundingAt } from '../practice/practiceLogic.js'
@@ -266,6 +267,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
             {live ? `you: ${live.noteName} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : 'listening…'}
           </span>
         )}
+        {listening && !done && <DynamicsMeter dynamics={mic.dynamics} />}
         {lastMs !== null && !done && <span>last note: found in {formatSeconds(lastMs)}</span>}
         {target && (
           <button type="button" className="practice-status__link" onClick={hearNote}>
