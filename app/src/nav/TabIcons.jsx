@@ -82,3 +82,22 @@ export function SocialIcon() {
     </svg>
   )
 }
+/** Feedback: a speech bubble with three dots cut out. */
+export function FeedbackIcon() {
+  const mask = useId()
+  return (
+    <svg {...svgProps}>
+      <mask id={mask}>
+        <rect width="32" height="32" fill="#fff" />
+        <circle cx="10.5" cy="14.5" r="1.7" fill="#000" />
+        <circle cx="16" cy="14.5" r="1.7" fill="#000" />
+        <circle cx="21.5" cy="14.5" r="1.7" fill="#000" />
+      </mask>
+      <path
+        d="M7.6 5h16.8A4.6 4.6 0 0 1 29 9.6v9.8a4.6 4.6 0 0 1-4.6 4.6H15l-5.8 4.4c-.8.6-1.9 0-1.9-1V24A4.6 4.6 0 0 1 3 19.4V9.6A4.6 4.6 0 0 1 7.6 5z"
+        fill="currentColor"
+        mask={`url(#${mask})`}
+      />
+    </svg>
+  )
+}

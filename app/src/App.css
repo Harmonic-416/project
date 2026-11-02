@@ -82,3 +82,8 @@
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+/* Feedback opens a dialog rather than a tab, so it sits a little apart. */
+.tab-button--feedback {
+  flex: 0.8;
+}

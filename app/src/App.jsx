@@ -6,7 +6,8 @@ import VocalTab from './tabs/vocal/VocalTab.jsx'
 import SocialTab from './tabs/social/SocialTab.jsx'
 import { useSession } from './auth/useSession.js'
 import { useLearnProgressSync } from './tabs/guitar/learn/useLearnProgressSync.js'
-import { GuitarIcon, HomeIcon, MicIcon, SocialIcon } from './nav/TabIcons.jsx'
+import { FeedbackIcon, GuitarIcon, HomeIcon, MicIcon, SocialIcon } from './nav/TabIcons.jsx'
+import FeedbackDialog from './feedback/FeedbackDialog.jsx'
 import { readSharedAttemptId, readSharedAttemptInstrument } from './tabs/vocal/share/sharedAttempt.js'
 import { readInviteCode } from '@backend/friends'
 
@@ -77,6 +78,9 @@ function App() {
   const auth = useSession()
   // Guitar → Learn's progress follows the account (signing in merges it, signing out clears it here).
   const learnProgressVersion = useLearnProgressSync(auth.user?.id ?? null)
+  // "Feedback" at the end of the tab bar opens a dialog over whichever tab is showing.
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const closeFeedback = useCallback(() => setFeedbackOpen(false), [])
   const ActiveComponent = TABS.find((tab) => tab.id === activeTab).Component
 
   const sharedAttemptDone = useCallback(() => {
@@ -157,7 +161,21 @@ function App() {
             <span className="tab-label">{tab.label}</span>
           </button>
         ))}
+        <button
+          type="button"
+          className="tab-button tab-button--feedback"
+          aria-haspopup="dialog"
+          aria-expanded={feedbackOpen}
+          onClick={() => setFeedbackOpen(true)}
+        >
+          <span className="tab-icon" aria-hidden="true">
+            <FeedbackIcon />
+          </span>
+          <span className="tab-label">Feedback</span>
+        </button>
       </nav>
+
+      {feedbackOpen && <FeedbackDialog tab={activeTab} signedIn={Boolean(auth.user)} onClose={closeFeedback} />}
     </div>
   )
 }

@@ -1,0 +1,145 @@
+/* The feedback dialog: a sheet over the app, in the sign-in screens' colours
+   (auth/authTheme.css), so it follows dark mode. */
+.feedback-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.4);
+}
+
+.feedback-dialog {
+  width: min(440px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--hm-border);
+  border-radius: 16px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+
+.feedback-dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.feedback-dialog__head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.feedback-dialog__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--hm-text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.feedback-dialog__close:hover {
+  color: var(--hm-text);
+  background: color-mix(in srgb, var(--hm-text) 8%, transparent);
+}
+
+.feedback-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--hm-text-muted);
+}
+
+.feedback-dialog__field legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.feedback-dialog__field select,
+.feedback-dialog__field textarea,
+.feedback-dialog__field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--hm-border);
+  border-radius: 10px;
+  background: var(--hm-surface);
+  color: var(--hm-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.feedback-dialog__field textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.feedback-dialog__field :focus-visible {
+  outline: 2px solid var(--hm-accent);
+  outline-offset: 1px;
+}
+
+.feedback-dialog__rating div {
+  display: flex;
+  gap: 2px;
+}
+
+.feedback-dialog__rating button {
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--hm-border);
+  font-size: 1.7rem;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.feedback-dialog__rating button.is-on {
+  color: #e8a33d;
+}
+
+.feedback-dialog__error {
+  margin: 0 0 12px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--hm-danger-soft);
+  color: var(--hm-danger);
+  font-size: 0.9rem;
+}
+
+.feedback-dialog__hint,
+.feedback-dialog__sent p {
+  margin: 0 0 14px;
+  color: var(--hm-text-muted);
+}
+
+.feedback-dialog__send {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  background: var(--hm-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feedback-dialog__send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
