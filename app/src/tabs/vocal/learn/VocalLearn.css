@@ -1,0 +1,499 @@
+/* Vocal → Learn (VocalLearn.jsx): solfège and rhythm lessons. Colours follow the Vocal tab's. */
+.vocal-learn {
+  --learn-accent: #128789;
+  --learn-accent-soft: #e3f3f3;
+  --learn-border: #e2dfd8;
+  --learn-text: #24242c;
+  --learn-muted: #6c6a72;
+  --learn-good: #4f8f3a;
+  --learn-bad: #cf4b36;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.learn-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.learn-intro {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.learn-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--learn-muted);
+}
+
+.learn-prompt {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.learn-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--learn-border);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--learn-text);
+}
+
+.learn-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.learn-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.learn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Buttons ── */
+.learn-button {
+  padding: 8px 14px;
+  border: 1px solid var(--learn-border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--learn-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.learn-button:hover:not(:disabled) {
+  background: #f0f7f7;
+}
+
+.learn-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.learn-button--primary,
+.learn-button--primary:hover:not(:disabled) {
+  border-color: var(--learn-accent);
+  background: var(--learn-accent);
+  color: #ffffff;
+}
+
+.learn-segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--learn-border);
+  border-radius: 999px;
+  background: #f6f5f2;
+}
+
+.learn-segmented--wide {
+  align-self: stretch;
+}
+
+.learn-segmented--wide .learn-segmented__option {
+  flex: 1;
+}
+
+.learn-segmented__option {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--learn-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.learn-segmented__option--on {
+  background: #ffffff;
+  color: var(--learn-accent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+/* ── Staff ── */
+.learn-staff {
+  display: block;
+  width: 100%;
+  max-width: 460px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.learn-staff__line,
+.learn-staff__stem {
+  stroke: var(--learn-text);
+  stroke-width: 1.1;
+}
+
+.learn-staff__clef {
+  font-family: 'Bravura', 'Noto Music', 'Apple Symbols', 'Segoe UI Symbol', serif;
+  font-size: 58px;
+  fill: var(--learn-text);
+}
+
+.learn-staff__note ellipse {
+  fill: var(--learn-text);
+  transition: fill 0.12s;
+}
+
+.learn-staff__label {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--learn-muted);
+}
+
+.learn-staff__note--active ellipse,
+.learn-staff__note--next ellipse {
+  fill: var(--learn-accent);
+}
+
+.learn-staff__note--active .learn-staff__stem,
+.learn-staff__note--next .learn-staff__stem {
+  stroke: var(--learn-accent);
+}
+
+.learn-staff__note--active .learn-staff__label,
+.learn-staff__note--next .learn-staff__label {
+  fill: var(--learn-accent);
+}
+
+.learn-staff__note--good .learn-staff__label {
+  fill: var(--learn-good);
+}
+
+.learn-staff__note--bad ellipse,
+.learn-staff__note--bad .learn-staff__label {
+  fill: var(--learn-bad);
+}
+
+/* ── Solfège boxes ── */
+.learn-boxes {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.learn-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 0 8px;
+  border: 1px solid var(--learn-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--learn-text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    transform 0.12s;
+}
+
+.learn-box:hover:not(:disabled) {
+  border-color: var(--learn-accent);
+}
+
+.learn-box:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.learn-box__syllable {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.learn-box__letter {
+  font-size: 0.72rem;
+  color: var(--learn-muted);
+}
+
+.learn-box--active {
+  border-color: var(--learn-accent);
+  background: var(--learn-accent);
+  color: #ffffff;
+  transform: translateY(-3px);
+}
+
+.learn-box--active .learn-box__letter {
+  color: #e3f3f3;
+}
+
+.learn-box--wrong {
+  border-color: var(--learn-bad);
+  background: #fbeae6;
+  animation: learn-shake 0.3s;
+}
+
+@keyframes learn-shake {
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+/* ── Ear quiz answer slots ── */
+.learn-slots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.learn-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  border: 2px dashed var(--learn-border);
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.learn-slot__picked {
+  font-size: 1.15rem;
+}
+
+.learn-slot__answer {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--learn-good);
+}
+
+.learn-slot__answer::before {
+  content: '→ ';
+}
+
+.learn-slot--next {
+  border-color: var(--learn-accent);
+}
+
+.learn-slot--playing {
+  border-style: solid;
+  border-color: var(--learn-accent);
+  background: var(--learn-accent-soft);
+}
+
+.learn-slot--good {
+  border-style: solid;
+  border-color: var(--learn-good);
+  color: var(--learn-good);
+}
+
+.learn-slot--bad {
+  border-style: solid;
+  border-color: var(--learn-bad);
+  color: var(--learn-bad);
+}
+
+/* ── Rhythm ── */
+.learn-tempo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.learn-tempo span {
+  min-width: 64px;
+}
+
+.learn-tempo input {
+  flex: 1;
+  accent-color: var(--learn-accent);
+}
+
+.learn-now {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f6f5f2;
+  text-align: center;
+}
+
+.learn-now strong {
+  font-size: 1.15rem;
+}
+
+.learn-now span {
+  font-size: 0.9rem;
+  color: var(--learn-muted);
+}
+
+.learn-counts {
+  display: grid;
+}
+
+.learn-lane--counts {
+  opacity: 1;
+}
+
+.learn-count {
+  padding: 4px 0;
+  border-radius: 6px;
+  color: var(--learn-muted);
+  font-size: 0.72rem;
+  text-align: left;
+  padding-left: 3px;
+  overflow: hidden;
+}
+
+.learn-count--bar {
+  box-shadow: inset 2px 0 0 #b9b5ab;
+}
+
+.learn-count--beat {
+  color: var(--learn-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.learn-count--on {
+  background: var(--learn-accent);
+  color: #ffffff;
+}
+
+.learn-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.learn-lane {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.75;
+}
+
+.learn-lane--active {
+  opacity: 1;
+}
+
+.learn-lane__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.learn-lane--active .learn-lane__label {
+  color: var(--learn-accent);
+}
+
+.learn-lane__track {
+  position: relative;
+  height: 40px;
+  border: 1px solid var(--learn-border);
+  border-radius: 8px;
+  background: #fbfaf8;
+  overflow: hidden;
+}
+
+.learn-lane--active .learn-lane__track {
+  border-color: var(--learn-accent);
+}
+
+.learn-lane__grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dotted #e8e6e0;
+}
+
+.learn-lane__grid--beat {
+  border-left: 1px solid #dcd9d1;
+}
+
+.learn-lane__grid--bar {
+  border-left: 2px solid #b9b5ab;
+}
+
+.learn-lane__grid:first-child {
+  border-left: none;
+}
+
+.learn-lane__note {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding-left: 1px;
+  border: 1px solid #b7dcdc;
+  border-radius: 6px;
+  background: var(--learn-accent-soft);
+  color: var(--learn-text);
+  transition: background-color 0.06s;
+}
+
+.learn-lane__note--on {
+  border-color: var(--learn-accent);
+  background: var(--learn-accent);
+  color: #ffffff;
+}
+
+.learn-lane__head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--learn-bad);
+}
+
+.learn-glyph {
+  flex: none;
+  width: 14px;
+  height: 21px;
+}
+
+@media (max-width: 480px) {
+  .learn-boxes {
+    gap: 4px;
+  }
+
+  .learn-box__syllable {
+    font-size: 0.92rem;
+  }
+
+  .learn-lane {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .learn-lane--counts > span:first-child {
+    display: none;
+  }
+
+  .learn-count {
+    font-size: 0.6rem;
+  }
+}

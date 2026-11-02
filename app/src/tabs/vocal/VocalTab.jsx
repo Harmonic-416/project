@@ -16,6 +16,7 @@ import RecordPanel from './components/RecordPanel.jsx'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
 import WarmUp from './warmup/WarmUp.jsx'
+import VocalLearn from './learn/VocalLearn.jsx'
 import AccountChip from '../../auth/AccountChip.jsx'
 import { usePracticeSession } from './practice/usePracticeSession.js'
 import MetronomeControl from '../../audio/metronome/MetronomeControl.jsx'
@@ -47,6 +48,7 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 
 const SECTIONS = [
   { id: 'songs', label: 'Songs' }, // search, practice sessions, the song list and uploads
+  { id: 'learn', label: 'Learn' }, // solfège and rhythm lessons
   { id: 'exercises', label: 'Exercises' }, // pitch and harmony tests
   { id: 'compose', label: 'Compose' }, // arrange a song for voices
   { id: 'warmup', label: 'Warm Up' }, // upper and lower range
@@ -65,7 +67,7 @@ const SECTIONS = [
 // "Working on") opens the Practice sessions view for that song;
 // `onSessionsOpened` tells App it has.
 function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
-  const [section, setSection] = useState('songs') // songs | exercises | compose | warmup (the capsule bar)
+  const [section, setSection] = useState('songs') // songs | learn | exercises | compose | warmup (the capsule bar)
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
   // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
   const [sessionsFor, setSessionsFor] = useState(null)
@@ -911,6 +913,10 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         ) : section === 'warmup' ? (
           <div className="vocal-tab">
             <WarmUp show="warmups" />
+          </div>
+        ) : section === 'learn' ? (
+          <div className="vocal-tab">
+            <VocalLearn />
           </div>
         ) : (
           renderSongs()
