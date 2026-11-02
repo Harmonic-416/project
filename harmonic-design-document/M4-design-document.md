@@ -1,8 +1,8 @@
 # Design Document for Harmonic — Milestone 4
 
-**Last Updated: Milestone 4 (Sunday, November 1, 2026)**
+**Last Updated: Milestone 4 (Monday, November 2, 2026)**
 
-*Milestone 3 review: Wednesday, October 21, 2026. This document describes the whole app as built at Milestone 4, for both instruments. It replaces the [M3 design document](harmonic-design-document.md) and the [M3 guitar design document](harmonic-design-document-m3-guitar.md) as the current design. Features that were dropped have been taken out of the design and are explained in the new trade-offs section (Section 7). The feature-by-feature status is in [M4 implementation of planned features](M4-implementation-of-planned-features.md), and testing is in the [M4 test plan](M4-test-plan.md). Deployed at **https://harmonic-vert.vercel.app**.*
+*Milestone 3 review: Wednesday, October 21, 2026. This document describes the whole app as built at Milestone 4, for both instruments. It replaces the [M3 design document](harmonic-design-document.md) and the [M3 guitar design document](harmonic-design-document-m3-guitar.md) as the current design. Features that were dropped have been taken out of the design and are explained in the new trade-offs section (Section 7). The feature-by-feature status is in [M4 implementation of planned features](M4-implementation-of-planned-features.md), and testing is in the [M4 test plan](M4-test-plan.md). Deployed at **https://harmonic-vert.vercel.app**. Updated on November 2 for the Vocal tab's new sections, Learn, Exercises and Warm Up, and its new layout (pull requests #50, #51, #53 and #54).*
 
 ### Changes since Milestone 3 at a glance
 
@@ -11,10 +11,13 @@
 | Guitar history | Runs could be shared as a link, never saved | Wait for me and Trouble spots runs saved into practice sessions, with "Last run · best" on the song and a Guitar Practice sessions view (#44) |
 | Sharing a guitar run | The friend saw the marks and heard the song's MIDI | The friend hears the player's recording, and the tab cursor follows it (#45, #46) |
 | Recordings | Opt-in for every attempt | Vocal: opt-in. Guitar: always kept, uploads retried (#47, #48) |
-| Vocal notation | Notes and lyrics | **Solfège** labels on request: movable do (#43) |
+| Vocal notation | Notes and lyrics | **Solfège** on request, movable do: first as a line under the words (#43), since November 2 in place of the words (#50) |
 | Vocal listening | Pitch only | Pitch and **dynamics**: louder / softer while singing, swells and fades after an attempt (#43) |
+| Vocal tab layout | One Songs view, with Warm up and Arrange as buttons under the list | Five sections like Guitar: **Songs · Learn · Exercises · Compose · Warm Up** (#53, November 2) |
+| Vocal lessons | None | **Learn**: solfège (the scale, sight-reading, an ear quiz) and rhythm (clapping note values to a click) (#54, November 2) |
+| Vocal warm-up and tests | None | **Warm Up** through the voice part's range; **Exercises**: a harmony test and a pitch test judged by the microphone (#50, #51, November 2) |
 | Database | Migrations 0001–0015 | Adds 0017 (run mode, Easy, full run) and 0018 (recording timing) |
-| Tests | 62 app test files, 551 tests | 66 app test files, 601 tests; 14 backend files |
+| Tests | 62 app test files, 551 tests | 71 app test files (3 of them opt-in benchmarks), 620 tests; 14 backend files |
 | Design docs | The lesson map, vocal "couldn't hear you" and early / late ratings still described | Removed from the design; explained as trade-offs (Section 7) |
 
 ---
@@ -28,7 +31,7 @@ Harmonic uses a Supabase backend for accounts, a shared song catalog, the user's
 What the app is, at M4:
 
 1. **A practice tool with live feedback,** for both instruments: three practice modes (Listen, Wait for me, Trouble spots), a note-by-note verdict, and a history of every try.
-2. **A guitar learning path:** a tuner, 20 chord lessons that unlock in order, strumming in time, and ear training.
+2. **A learning path for each instrument.** Guitar: a tuner, 20 chord lessons that unlock in order, strumming in time, and ear training. Vocal (new on November 2): solfège and rhythm lessons, pitch and harmony tests, and a warm-up through the singer's range.
 3. **A way to share practice:** a finished try is sent to friends, who hear it, see where it went wrong, and comment.
 4. **A tool that writes music:** vocal arrangements from a recording, and guitar tab from any MIDI or MusicXML file or, as a draft, from a recording.
 
@@ -38,7 +41,11 @@ What the app is, at M4:
 
 ### 2.1 Design
 
-The bottom bar has four tabs: **Home, Guitar, Vocal, Social**. The Guitar tab has five views: **Songs · Learn · Exercises · Fretboard · Tuner**.
+The bottom bar has four tabs: **Home, Guitar, Vocal, Social**. The Guitar tab has five views: **Songs · Learn · Exercises · Fretboard · Tuner**. Since November 2 the Vocal tab has the same shape, with five sections of its own, **Songs · Learn · Exercises · Compose · Warm Up**, and the account chip in the same corner (#53). Songs holds the song list, search, uploads and practice sessions; Compose is the vocal arranger (Section 2.7); Learn, Exercises and Warm Up are the vocal learning path (Section 2.9).
+
+![The Vocal tab since November 2: the Songs, Learn, Exercises, Compose and Warm Up sections across the top, with the Songs view open](images/m4-vocal-sections.png)
+
+*Figure 2.1. The Vocal tab's five sections, the same frame as Guitar.*
 
 The UI is a thin reactive shell over the scoring engine and the notation renderers. It renders the state it is given and sends user actions (play, skip, hint, tempo) back down; it owns no music logic itself. Each practice activity is a pure state machine that takes "what the microphone heard" and "what the user pressed" and returns a new state. The React components own only the timers, the microphone and the drawing. Because the state machines have no browser dependencies, they are unit-tested in Node without an instrument.
 
@@ -48,7 +55,7 @@ M1 planned a Duolingo-style map of lessons, each going concept → instrument-fr
 
 - **Learn** is an exercise path. **Chord lessons** cover 20 chords in teaching order (the open major and minor chords, a small F, six dominant sevenths, three suspended chords and two major sevenths), and a chord unlocks when the one before is cleared. **Strum on the beat** has five steps: muted strums at 60 BPM, E minor at 60, 80 and 100 BPM, then down-up eighth notes at 70 BPM.
 - **Exercises** holds ear training, the instrument-free drill. Players choose when to do it.
-- **Vocal has no lessons.** It is a training tool for singers who are learning a part; its learning loop is practice sessions and attempt history (Section 2.4).
+- **Vocal has a shorter path of its own** (Section 2.9, new on November 2): Learn teaches solfège and rhythm, Exercises tests pitch and harmony through the microphone, and Warm Up takes the voice through its range. There is no map and nothing unlocks: a singer learning a part still works mainly from the song, through practice sessions and attempt history (Section 2.4).
 
 Each chord can be learned in four modes:
 
@@ -164,16 +171,16 @@ Every judged note is marked on the score: green (right), amber (close: the wrong
 - **Formats in:** MusicXML, MXL, MIDI, Guitar Pro and alphaTex. Every file becomes one internal score per instrument (Section 5.3).
 - **Built-in songs.** Guitar: Ode to Joy, Four-Chord Strum and House of the Rising Sun. Vocal: Amazing Grace, Because, C Major Scale, I've Got a Dream (a cappella), Ode to Joy, Oh Darling and Paint It Black. An online public-domain catalog adds more.
 - **Generated tab.** A MIDI or MusicXML file without tab gets it: a Viterbi search chooses a string and fret for every note, keeping the hand's movement small and never stretching past four frets. Parts that don't fit are moved by octaves, and unplayable chords are reduced. A notice says the tab was generated.
-- **Solfège (new at M4).** A **Notes only / Do re mi** switch under the vocal score adds a syllable under every note, on its own line beneath the words. It uses movable do (minor keys start on la), raises or lowers chromatic notes as spelled, and works out do from the notes for MIDI files with no key signature. Only the viewer's copy is labelled.
+- **Solfège (new at M4, reworked November 2).** A **Lyrics / Solfège** switch under the vocal score shows a syllable for every sung note. Until November 1 the syllables were a second lyric line under the words; since #50 they take the place of the words while the switch is on, so the singer reads one line and the staff keeps its height. Movable do: do is the major tonic of the written key, so a minor key sings from la; key changes are followed, and when the notes clearly don't fit the written key (a MIDI file with no key signature arrives as C major) do is worked out from the notes and the hint says where it is ("Do is C. In a minor key, home is la."). Chromatic notes are named from their spelling (G♯ in C is si, A♭ is le) when the spelling can be trusted; MIDI files spell every black key as a sharp, so their chromatic notes get the usual choice by pitch (di me fi le te, and si in a minor song). Only the viewer's copy changes; exports, sharing and scoring are untouched.
 - **Export:** MIDI and MusicXML (vocal), MIDI and Guitar Pro (guitar).
 
 ![Ode to Joy with "Do re mi" on: mi mi fa sol sol fa mi re do do re mi mi re re under the lyrics](images/m4-vocal-solfege.png)
 
-*Figure 2.6. Solfège labels on Ode to Joy, in C.*
+*Figure 2.6. Solfège on Ode to Joy, in C, as it was on November 1 (a line under the words). Since November 2 the syllables replace the words.*
 
 ### 2.7 Vocal Arranger
 
-Vocal → **Arrange a song for voices**. Harmonic listens to a song's lead vocal and chords and writes an arrangement for voices, which opens as a normal multi-part score to hear, practise one part at a time, and export.
+Vocal → **Compose** (until November 2, the **Arrange a song for voices** button under the song list). Harmonic listens to a song's lead vocal and chords and writes an arrangement for voices, which opens as a normal multi-part score to hear, practise one part at a time, and export.
 
 - **Voicings:** Solo + TTBB (default), TTBB, SATB, and two parts (TB).
 - **Two ways in:** an audio file the user owns, arranged entirely in the browser; or a **YouTube link**, arranged on the team's server for users on an allow-list, which also adds **lyrics**.
@@ -193,6 +200,40 @@ Vocal → **Arrange a song for voices**. Harmonic listens to a song's lead vocal
 ![Tab the guitar from a song: a recording being transcribed, at the "Isolating the guitar" stage](images/m3-guitar-audio-to-tab.png)
 
 *Figure 2.8b. Audio to tab in progress.*
+
+### 2.9 Vocal Learning: Learn, Exercises and Warm Up
+
+New on November 2 (#50, #51, #54). Three of the Vocal tab's five sections teach rather than practise a song. None of them needs an account, nothing they do is saved yet (only the singer's voice part is remembered on the device), and all three run entirely in the browser: two small MIDI files, Tone.js for the piano and the click, and the same pitch tracker the practice modes use.
+
+**Learn** has two lessons, chosen with a switch at the top:
+
+- **Solfège.** The C major scale on a treble staff, C4 to C5, with eight boxes (do re mi fa so la ti do); **Play the scale** plays it, and tapping a box sounds its note. **Read it** draws a six-note melody in C major, names its first note ("The first note is mi. What is note 2?") and asks for the solfège of each note after it; every tap sounds its note, and a wrong one flashes and counts as a miss. **Hear it** plays four notes starting on do, fills in the do, and asks for the other three in order, then marks each answer right or wrong. Melodies never repeat a note and never leap more than a fifth, so they read like tunes; low and high do both count as do.
+- **Rhythm.** Choose **4/4** or **12/8** and a tempo (4/4: ♩ = 50 to 120, default 80; 12/8: ♩. = 40 to 90, default 60). After a one-bar count-in, a C sounds for every note of four phases, two bars each: quarter notes, half notes, whole notes and eighth notes, with the click underneath and a hint for each phase ("Clap on 1 and 3, holding through 2 and 4."). The counts light up as they pass. The lesson does not listen; the singer claps along.
+
+![Learn → Solfège: the C major scale with its do re mi boxes, and Read it asking for note 2 of a melody whose first note is mi](images/m4-vocal-learn-solfege.png)
+
+*Figure 2.9a. Learn → Solfège: the scale, and a sight-reading melody.*
+
+![Learn → Rhythm in 4/4 at ♩ = 80: the quarter-note phase under way, with the count lit and the four note-value rows](images/m4-vocal-learn-rhythm.png)
+
+*Figure 2.9b. Learn → Rhythm: two bars of quarter notes, the count lit as it passes.*
+
+**Exercises** are two tests that listen through the microphone. Both start from the singer's **voice part** (Soprano, Alto, Tenor, Baritone or Bass), which is kept on the device and shared with Warm Up.
+
+- **Harmony test.** A short MIDI file of three-note chords, transposed so the first chord's middle note suits the part (soprano G4, alto D4, tenor A3, baritone E3, bass C3). The piano plays the outer two notes of each chord; the singer holds the middle one. Each bar holds one chord for three beats and strikes it again on beat 4, when an arrow shows whether the next chord moves a half step up or down. After each move the singer has 0.3 s to get there; a bar passes if the voice is in tune (within 50 cents, or the right note an octave off, since men and women may sing the same line) for at least half of the rest of the bar. The result is "Passed: you held the middle note through every chord" or "In tune on 7 of 8 chords. Try again."
+- **Pitch test.** Three to six random notes from the octave above the part's low note (tenor E3 to E4, for example), never the same note twice in a row. They play once (**Hear them again** repeats them); the singer sings them back in the same order. A sung note counts once it has been held steadily for 0.3 s, and each one is judged against its target, the right note an octave off included: "Every note in the right order" or "3 of 4 right", with the wrong notes named.
+
+![Exercises → Harmony test for a tenor: the chord to hold and the note being heard](images/m4-vocal-harmony-test.png)
+
+*Figure 2.9c. The harmony test under way.*
+
+**Warm Up** takes the voice through its range. One MIDI file holds two two-bar exercises, the first for the upper range and the second for the lower. The piano plays the chosen exercise over and over, a half step higher (upper) or lower (lower) each time, from a start that suits the voice part until the next round would leave the part's range (typical choral ranges stretched five half steps each way; tenor G2 to D5). The last two notes of every round are the piano moving a half step and sounding the next starting note, so the screen says **Sing**, then **Listen** ("Next starting note: don't sing these two, just listen"), and counts the starting notes. The tempo dial slows it to 50 to 100%. It does not listen; the singer stops when they reach their limit.
+
+![Warm Up for a tenor: the upper-range exercise, the Listen cue with the next starting note E3, the tempo dial and the Stop button](images/m4-vocal-warmup.png)
+
+*Figure 2.9d. Warm Up, upper range, for a tenor: the piano is moving up to the next starting note.*
+
+The notes, melodies, rhythm plans and judging rules live in plain modules (`learn/learnLogic.js`, `warmup/warmupLogic.js`, `warmup/pitchTestLogic.js`) with no DOM or audio, so they are unit-tested in Node like the practice state machines.
 
 ---
 
@@ -214,7 +255,7 @@ Lapsed players with some technique left. Tempo control and the Easy version let 
 
 ### 3.4 Choir and A Cappella Singers
 
-Singers learning a part. They practise their own part with or without the others, see each note marked, keep a history of their tries, read the part in solfège if that is how they learn, and use the arranger for songs that have no published arrangement.
+Singers learning a part. They practise their own part with or without the others, see each note marked, keep a history of their tries, read the part in solfège if that is how they learn, warm up through their range and check their pitch and harmony before a rehearsal, learn to read solfège and rhythm in Learn, and use the arranger for songs that have no published arrangement.
 
 ---
 
@@ -224,12 +265,12 @@ Singers learning a part. They practise their own part with or without the others
 
 - **App:** React 19 + Vite, packaged as an installable PWA that works offline. Heavy parts (alphaTab, the models) load only when first used.
 - **Notation:** OpenSheetMusicDisplay for voice, whose cursor gives the timing and expected notes, so playback, cursor and scoring share one clock. alphaTab for guitar, the only web renderer that draws tab; the song timeline is built from its own MIDI ticks.
-- **Playback:** Tone.js for voice; alphaTab's synth for guitar; Tone.js `PluckSynth` for chords and hints.
+- **Playback:** Tone.js for voice, and for the Learn, Exercises and Warm Up pianos and the rhythm click; alphaTab's synth for guitar; Tone.js `PluckSynth` for chords and hints.
 - **Listening:**
   - Voice: pitchy (McLeod pitch method) about 50 times a second, which also gives the level for dynamics.
   - Guitar: a shared AudioWorklet capture feeding the tuner, the lessons and the song judge. The song judge is score-informed: it looks for the notes the score expects (each one's fundamental and overtones) among the spectral peaks just after a pick or strum, using an FFT written in JavaScript.
 - **Models, loaded only when used:** Basic Pitch (TensorFlow.js); Demucs, YAMNet and Beat This! (ONNX Runtime Web, on the graphics card through WebGPU when there is one).
-- **Browser storage:** IndexedDB for My Files and transcription drafts; localStorage for settings (tempo, Easy, metronome, latency, label and solfège switches, ear-training statistics) and the browser's copy of Learn progress.
+- **Browser storage:** IndexedDB for My Files and transcription drafts; localStorage for settings (tempo, Easy, metronome, latency, label and solfège switches, the singer's voice part, ear-training statistics) and the browser's copy of Learn progress.
 - **Live audio never leaves the device.** Only finished tries, their recordings, and progress are uploaded.
 
 ### 4.2 Backend and System Overview
@@ -310,11 +351,13 @@ The app calls a small TypeScript layer in the browser, not a server, which talks
 
 *Figure 4.6a. The guitar listening pipeline.*
 
-**Voice: dynamics and solfège (new at M4).** Dynamics reads the level pitchy already measures for every frame, so no new audio processing was added. Solfège is computed from the score, not the microphone: it adds a lyric line to the viewer's copy of the MusicXML.
+**Voice: dynamics and solfège (new at M4).** Dynamics reads the level pitchy already measures for every frame, so no new audio processing was added. Solfège is computed from the score, not the microphone: it rewrites the lyrics of the viewer's copy of the MusicXML (until November 1 it added a second lyric line instead, which is what Figure 4.6b shows).
+
+**Voice: the Exercises (new November 2).** The harmony and pitch tests use the same microphone hook and pitch tracker as a recorded attempt. The harmony test judges each bar from its pitch frames after a 0.3 s settle: in tune within 50 cents, or the right note an octave off, for at least half of the bar. The pitch test catches sung notes out of the frame stream (a note counts once it has held for 0.3 s) and matches them to the notes it played, in order. Warm Up and the Learn lessons don't listen at all.
 
 ![Dynamics: microphone, pitchy frame, level and slope, the level bar; after the attempt, the level curve and swings, and the result line. Solfège: key, movable do, one syllable per note, an extra lyric line](images/m4-solfege-dynamics.png)
 
-*Figure 4.6b. How dynamics and solfège work. Both run in the browser.*
+*Figure 4.6b. How dynamics and solfège work. Both run in the browser. The solfège branch shows the November 1 version, an extra lyric line; since November 2 the syllables replace the words.*
 
 **Audio to tab.** Decode, detect the guitar (YAMNet), separate it (Demucs), transcribe its notes (Basic Pitch), clean up, find the beat (Beat This!), and write a draft score.
 
@@ -360,7 +403,7 @@ The app accepts music files in any common format, processed on the user's device
 
 ### 5.4 Code Leanness
 
-There is no custom API server. Authorization lives in Postgres: every table has row-level security scoped to the signed-in user, friends' access goes through `can_view_attempt()` and security-definer functions, and the catalog is the only public data. The M4 features added four columns in two migrations, and no new tables. The arranger worker holds no state of its own.
+There is no custom API server. Authorization lives in Postgres: every table has row-level security scoped to the signed-in user, friends' access goes through `can_view_attempt()` and security-definer functions, and the catalog is the only public data. The M4 features added four columns in two migrations, and no new tables; the November 2 vocal sections added nothing to the backend at all, only two MIDI files and client code. The arranger worker holds no state of its own.
 
 ### 5.5 Storage Budget
 
@@ -374,6 +417,7 @@ Supabase's free tier allows 1 GB of file storage, 5 GB of egress a month and 50 
 - **Firefox recording uploads.** Uploads failed in Firefox; PR #48 sends recordings as raw bytes, which still needs a confirming test there.
 - **Vocal summaries can't be clicked** to jump to a spot (F24). Guitar has Loop bar.
 - **Vocal noise rejection** is only a clarity threshold and a level floor (N6).
+- **Vocal Learn, Exercises and Warm Up keep no history.** Test results and the range a singer reached are not saved to the account, and Rhythm is clap-along with no judging, since it does not listen.
 - **Private notes and a raw query.** A friend a try was sent to could read the owner's note and rating with a hand-built database query; the app never shows them. Fix: move them to an owner-only table.
 - **Guitar thresholds** were first tuned on simulated strings and are being tuned on real recordings. Trouble spots does not yet use Wait for me's stricter rules.
 - **Tempo is remembered per device,** not on the account.
@@ -390,7 +434,7 @@ M4 asked what we cut and what we refused to cut. Each cut below was a decision, 
 
 | Planned | What we did | Why |
 |---|---|---|
-| Lessons for vocal (F2, F3) | Dropped | Vocal is a training tool for singers learning a part, not a lesson app. Its loop is practice sessions, the chart of tries and attempt history. |
+| Lessons for vocal (F2, F3) | Dropped at M4; on November 2 a short path was added instead: Learn (solfège, rhythm), Exercises (pitch and harmony tests) and Warm Up, with no map and nothing to unlock | Vocal is first a training tool for singers learning a part, so its loop stays practice sessions, the chart of tries and attempt history. The new sections teach the reading, rhythm and tuning skills that practice depends on, without a progression to maintain. |
 | A lesson map with stages for guitar (F2) | An exercise path: 20 chords that unlock in order, plus Strum on the beat | Testers lost track of which stage they were on. A path lets an experienced player clear it quickly and a beginner take their time. |
 | Concept → drill → play in every lesson (F3) | Exercises have their own tab | It was hard to say where a drill belonged in the path. Players now choose when to do it. |
 | Auto-skip after three misses (F13, F29) | Only the right note or Skip moves on; after three misses the app points at Hint and Skip | On real guitars it moved on after wrong notes, and testers found it confusing. |
