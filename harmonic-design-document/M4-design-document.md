@@ -12,7 +12,7 @@
 | Sharing a guitar run | The friend saw the marks and heard the song's MIDI | The friend hears the player's recording, and the tab cursor follows it (#45, #46) |
 | Recordings | Opt-in for every attempt | Vocal: opt-in. Guitar: always kept, uploads retried (#47, #48) |
 | Vocal notation | Notes and lyrics | **Solfège** labels on request: movable do (#43) |
-| Vocal listening | Pitch only | Pitch and **dynamics**: louder / softer while singing, swells and fades after an attempt (#43) |
+| Vocal learning | Song dependent | Exercises for solfedge, rhythm, and new warmups and pitch exercises to strengthen voice |
 | Database | Migrations 0001–0015 | Adds 0017 (run mode, Easy, full run) and 0018 (recording timing) |
 | Tests | 62 app test files, 551 tests | 66 app test files, 601 tests; 14 backend files |
 | Design docs | The lesson map, vocal "couldn't hear you" and early / late ratings still described | Removed from the design; explained as trade-offs (Section 7) |
