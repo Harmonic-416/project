@@ -15,6 +15,7 @@ import ExportButtons from './components/ExportButtons.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
+import WarmUp from './warmup/WarmUp.jsx'
 import { usePracticeSession } from './practice/usePracticeSession.js'
 import MetronomeControl from '../../audio/metronome/MetronomeControl.jsx'
 import { useMetronomeSettings } from '../../audio/metronome/useMetronomeSettings.js'
@@ -28,7 +29,7 @@ import { melodyLine, scheduleFor } from './practice/practiceLogic.js'
 import { fromRemote, runsKey } from './practice/sessionRuns.js'
 import { listPracticeRuns, savePracticeRun } from '@backend/practiceRuns'
 import { extractPart, listParts, partOnTop } from './notation/partFilter.js'
-import { addSolfege, loadSolfegeSetting, saveSolfegeSetting, scoreKey } from './notation/solfege.js'
+import { loadSolfegeOn, saveSolfegeOn, withSolfege } from './notation/solfege.js'
 import { songLibrary } from './songs/songLibrary.js'
 import { fetchCatalogSong, fetchCloudNotation } from './songs/cloudLibrary.js'
 import { fingerprintBytes } from './share/sharedAttempt.js'
@@ -56,7 +57,7 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 // "Working on") opens the Practice sessions view for that song;
 // `onSessionsOpened` tells App it has.
 function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
-  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | arrange | shared | detail | sessions
+  const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // library | search | arrange | shared | detail | sessions | warmup
   // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
   const [sessionsFor, setSessionsFor] = useState(null)
   // Where the sessions view goes back to: the library, or the open song.
@@ -382,6 +383,20 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     saveSolfegeSetting(on)
   }, [])
 
+  // Solfège: the same score with do re mi in place of its lyrics. MIDI files
+  // spell every black key as a sharp, so their chromatic notes go by pitch.
+  const [solfegeOn, setSolfegeOn] = useState(loadSolfegeOn)
+  const solfege = useMemo(() => {
+    if (!solfegeOn || !partContent) return null
+    try {
+      return withSolfege(partContent, { trustSpelling: notation.format !== 'midi' })
+    } catch (err) {
+      console.error(err)
+      return null
+    }
+  }, [solfegeOn, partContent, notation])
+  const viewerContent = solfege?.content ?? partContent
+
   const otherPartNotes = useMemo(
     () => (withOthers && scoreModel ? scoreModel.notes.filter((n) => n.partIndex !== 0) : null),
     [withOthers, scoreModel],
@@ -504,6 +519,17 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     [accompaniment, multiPart, playback],
   )
 
+  // The notes don't change, so the panels keep the score model until the viewer hands over the new one.
+  const handleSolfegeChange = useCallback(
+    (on) => {
+      if (on === solfegeOn) return
+      playback.stop()
+      setSolfegeOn(on)
+      saveSolfegeOn(on)
+    },
+    [solfegeOn, playback],
+  )
+
   const handleModeChange = useCallback(
     (mode) => {
       playback.stop()
@@ -555,6 +581,14 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           </span>
         </button>
 
+        <button type="button" className="vocal-tab__search-songs" onClick={() => setView('warmup')}>
+          <span className="vocal-tab__search-icon" aria-hidden="true">🎹</span>
+          <span>
+            <strong>Warm up</strong>
+            <small>Sing along through your range, or test your pitch and harmony</small>
+          </span>
+        </button>
+
         <h2 className="vocal-tab__section-title">Built-in songs</h2>
         <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
         <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
@@ -580,6 +614,20 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           <span className="vocal-tab__song-title">Arrange a song</span>
         </div>
         <ArrangePanel onArranged={handleArranged} auth={auth} supabase={supabase} />
+      </div>
+    )
+  }
+
+  if (view === 'warmup') {
+    return (
+      <div className="vocal-tab">
+        <div className="vocal-tab__toolbar">
+          <button type="button" className="vocal-tab__back" onClick={() => setView('library')}>
+            ← Songs
+          </button>
+          <span className="vocal-tab__song-title">Warm up</span>
+        </div>
+        <WarmUp />
       </div>
     )
   }
@@ -797,6 +845,12 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               disabled={!scoreModel}
             />
           )}
+          <SolfegeToggle
+            on={solfegeOn}
+            doName={solfege?.doName}
+            onChange={handleSolfegeChange}
+            disabled={!scoreModel}
+          />
           {/* Wait for me has no transport to click along with or slow down. */}
           {scoreModel && practiceMode !== 'wait' && (
             <>

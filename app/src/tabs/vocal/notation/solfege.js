@@ -1,173 +1,197 @@
 /**
- * Solfège labels (do re mi fa sol la ti) under the notes, for singers who
- * read that way. addSolfege hands the viewer a copy of a partwise MusicXML
- * score with one more lyric line on every pitched note, under any words the
- * score already has; the score itself (exports, sharing) is never touched.
+ * Solfège lyrics: rewrite a partwise MusicXML score so every sung note's
+ * lyric is its movable-do syllable (do re mi fa so la ti, with di ri fi si li
+ * going up and ra me se le te coming down), for the Vocal tab's Solfège toggle.
  *
- * Movable do: do is the tonic of the major key the key signature names, so a
- * minor key reads la-based (A minor starts on la), the way most choirs learn
- * it. Notes outside the key take the chromatic syllables, raised (di ri fi si
- * li) or lowered (ra me se le te) as spelled. A key change mid-score moves do.
+ * Do is the major tonic of the key signature, so a minor key sings from la
+ * (la-based minor). The written key is used, key changes included, unless
+ * the notes clearly don't fit it (a MIDI file with no key signature arrives
+ * as C major): then do comes from the notes themselves.
  *
- * MIDI files often carry no key signature (it converts as C major), which
- * would turn a song in D into a string of di ri fi. So when the notes fit the
- * signature badly and another key well, scoreKey works do out from the notes.
+ * Chromatic notes take their syllable from how they're spelled (G♯ in C is
+ * si, A♭ is le) when the spelling can be trusted. MIDI files are converted
+ * with every black key spelled as a sharp, so for those (`trustSpelling:
+ * false`) a chromatic note gets the usual choice instead: di me fi le te,
+ * and si rather than le in a minor song.
  *
  * Plain string handling, like partFilter.js, so it runs in Node tests too.
  */
 
 const PART_RE = /(<part\s[^>]*>)([\s\S]*?)(<\/part>)/g
-// A <key> (inside <attributes>) or a note, in document order.
-const KEY_OR_NOTE_RE = /<key(?=[\s>])[^>]*>[\s\S]*?<\/key>|<note\b[^>]*>[\s\S]*?<\/note>/g
+const TOKEN_RE = /<attributes\b[^>]*>[\s\S]*?<\/attributes>|<note\b[^>]*>[\s\S]*?<\/note>/g
+const LYRIC_RE = /\s*<lyric\b[^>]*\/>|\s*<lyric\b[^>]*>[\s\S]*?<\/lyric>/g
 
-const STEPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-const STEP_SEMITONES = [0, 2, 4, 5, 7, 9, 11]
-const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
-export const SYLLABLES = ['do', 're', 'mi', 'fa', 'sol', 'la', 'ti']
-// Scale degree raised / lowered a semitone. Mi and ti raised are fa and do;
-// do and fa lowered are ti and mi.
-const RAISED = ['di', 'ri', 'fa', 'fi', 'si', 'li', 'do']
-const LOWERED = ['ti', 'ra', 'me', 'mi', 'se', 'le', 'te']
-// The chromatic notes by semitones above do, named the way they usually turn up.
-const USUAL_CHROMATIC = { 1: 'di', 3: 'me', 6: 'fi', 8: 'si', 10: 'te' }
+const LETTERS = 'CDEFGAB'
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11]
+const MAJOR = [0, 2, 4, 5, 7, 9, 11]
+const DIATONIC = ['do', 're', 'mi', 'fa', 'so', 'la', 'ti']
+// By scale degree: the note a half step above it (raised) and below it (lowered).
+const RAISED = ['di', 'ri', null, 'fi', 'si', 'li', null]
+const LOWERED = [null, 'ra', 'me', null, 'se', 'le', 'te']
+// By half steps above do, when the spelling can't say.
+const CHROMATIC = { 1: 'di', 3: 'me', 6: 'fi', 8: 'le', 10: 'te' }
 
-/** The pitch class (0 = C) of the major key with `fifths` sharps (negative: flats). */
-function tonicPc(fifths) {
-  return (((Math.round(fifths) * 7) % 12) + 12) % 12
+// How close (as a share of the notes) the written key must fit compared with the best key.
+const WRITTEN_KEY_SLACK = 0.03
+
+const mod12 = (n) => ((n % 12) + 12) % 12
+
+/** The major tonic of a key signature: { pc, letter, name } (name like 'E♭'). */
+export function tonicOfFifths(fifths) {
+  const letter = 'CGDAEBF'[((fifths % 7) + 7) % 7]
+  const pc = mod12(fifths * 7)
+  const alter = mod12(pc - LETTER_PC[LETTERS.indexOf(letter)] + 6) - 6
+  return { pc, letter, name: letter + (alter > 0 ? '♯'.repeat(alter) : '♭'.repeat(-alter)) }
 }
 
-/** The key signature of the major key on pitch class `pc` (F#, not Gb; Db, not C#). */
-function fifthsOf(pc) {
-  const f = (pc * 7) % 12
+/** The key signature (−5…6 fifths) whose major tonic is pitch class `pc`. */
+function fifthsOfPc(pc) {
+  const f = mod12(pc * 7)
   return f > 6 ? f - 12 : f
 }
 
-function pitchClass(step, alter) {
-  const s = STEPS.indexOf(step.toUpperCase())
-  return s < 0 ? null : (((STEP_SEMITONES[s] + (Number(alter) || 0)) % 12) + 12) % 12
-}
-
-const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
-
-/** The note do falls on in the major key with `fifths` sharps: 'D', 'Eb'. */
-export function doName(fifths) {
-  return (fifths < 0 ? FLAT_NAMES : SHARP_NAMES)[tonicPc(fifths)]
-}
-
-/**
- * The solfège syllable for a note spelled `step` (C…B) + `alter`, in the major
- * key with `fifths` sharps (negative: flats). A note outside the key is raised
- * when spelled sharp, lowered when spelled flat; a natural one is lowered in a
- * sharp key (F in G major is te) and raised in a flat key (B in F major is fi).
- * When the spelling means nothing (`spelled` false: a MIDI file read in a key
- * worked out from its notes) it takes the usual name: di me fi si te.
- */
-export function solfegeSyllable(step, alter, fifths, spelled = true) {
-  const pc = pitchClass(step, alter)
-  if (pc === null) return null
-  const fromDo = (pc - tonicPc(fifths) + 12) % 12
-  const degree = MAJOR_SCALE.indexOf(fromDo)
-  if (degree >= 0) return SYLLABLES[degree]
-  if (!spelled) return USUAL_CHROMATIC[fromDo]
-  const a = Number(alter) || 0
-  const raised = a > 0 || (a === 0 && fifths < 0)
-  return raised ? RAISED[MAJOR_SCALE.indexOf(fromDo - 1)] : LOWERED[MAJOR_SCALE.indexOf(fromDo + 1)]
-}
-
-/**
- * The key solfège should read the whole score in: { fifths, inferred }, the
- * signature's own key when the notes fit it (inferred false), or the major key
- * the notes fit best when they don't (inferred true). Null for a score that
- * changes key: its signatures are followed as written.
- */
-export function scoreKey(xml) {
-  const signatures = new Set()
-  for (const [key] of xml.matchAll(/<key(?=[\s>])[^>]*>[\s\S]*?<\/key>/g)) {
-    const f = Number(tagText(key, 'fifths'))
-    if (Number.isFinite(f)) signatures.add(f)
+function readNote(xml) {
+  const pitch = xml.match(/<pitch\b[^>]*>([\s\S]*?)<\/pitch>/)?.[1]
+  if (!pitch) return null // a rest, or unpitched
+  const step = pitch.match(/<step>\s*([A-G])\s*<\/step>/)?.[1]
+  if (!step) return null
+  const alter = Math.round(Number(pitch.match(/<alter>\s*([-\d.]+)\s*<\/alter>/)?.[1] ?? 0)) || 0
+  const ties = [...xml.matchAll(/<tie\b[^>]*\btype=["'](start|stop)["']/g)].map((m) => m[1])
+  return {
+    letter: LETTERS.indexOf(step),
+    pc: mod12(LETTER_PC[LETTERS.indexOf(step)] + alter),
+    weight: Number(xml.match(/<duration>\s*([\d.]+)\s*<\/duration>/)?.[1] ?? 0) || 0,
+    // Only the first note of a chord, and not the held half of a tie or a grace note, gets a syllable.
+    sung: !/<chord\s*\/>/.test(xml) && !/<grace\b/.test(xml) && !(ties.includes('stop') && !ties.includes('start')),
   }
-  if (signatures.size > 1) return null
-  const signed = signatures.size ? [...signatures][0] : 0
-  // How long each pitch class sounds, over every part.
-  const weight = new Array(12).fill(0)
-  for (const [note] of xml.matchAll(/<note\b[^>]*>[\s\S]*?<\/note>/g)) {
-    if (!/<pitch\b/.test(note) || /<grace\b/.test(note)) continue
-    const pitch = tagText(note, 'pitch') ?? ''
-    const pc = pitchClass(tagText(pitch, 'step') ?? '', tagText(pitch, 'alter') ?? 0)
-    if (pc !== null) weight[pc] += Number(tagText(note, 'duration')) || 1
-  }
-  const total = weight.reduce((sum, w) => sum + w, 0)
-  if (!total) return { fifths: signed, inferred: false }
-  const fit = (tonic) => MAJOR_SCALE.reduce((sum, d) => sum + weight[(tonic + d) % 12], 0) / total
-  // A short tune can fit two keys equally (Eb F Gb Ab is in Db and in Gb): then
-  // the key whose home chord, major (do mi sol) or minor (la do mi), sounds most wins.
-  const home = (tonic) =>
-    Math.max(...[[0, 4, 7], [9, 0, 4]].map((triad) => triad.reduce((sum, d) => sum + weight[(tonic + d) % 12], 0)))
-  const signedFit = fit(tonicPc(signed))
-  let best = tonicPc(signed)
-  for (let pc = 0; pc < 12; pc += 1) {
-    const gain = fit(pc) - fit(best)
-    if (gain > 1e-9 || (Math.abs(gain) <= 1e-9 && home(pc) > home(best))) best = pc
-  }
-  // A few accidentals (a raised leading note, a borrowed chord) don't overrule the signature.
-  if (signedFit >= 0.9 || fit(best) - signedFit < 0.1) return { fifths: signed, inferred: false }
-  return { fifths: fifthsOf(best), inferred: true }
 }
 
-function tagText(xml, tag) {
-  return xml.match(new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`))?.[1]?.trim()
-}
-
-/** The lyric line number the solfège goes on: one past the highest the score uses. */
-function solfegeLine(xml) {
-  let max = 0
-  for (const [, n] of xml.matchAll(/<lyric\b[^>]*\bnumber=["'](\d+)["']/g)) max = Math.max(max, Number(n))
-  if (!max && /<lyric\b/.test(xml)) max = 1 // lyrics without numbers are line 1
-  return max + 1
-}
-
-function labelNote(note, fifths, line, spelled) {
-  if (!/<pitch\b/.test(note) || /<rest\b/.test(note)) return note
-  if (/<chord\s*\/>/.test(note)) return note // a chord gets one label, on its first note
-  if (/<grace\b/.test(note)) return note
-  // A tied-over note keeps sounding the label it started with.
-  if (/<tie\b[^>]*type=["']stop["']/.test(note) && !/<tie\b[^>]*type=["']start["']/.test(note)) return note
-  const pitch = tagText(note, 'pitch') ?? ''
-  const syllable = solfegeSyllable(tagText(pitch, 'step') ?? '', tagText(pitch, 'alter') ?? 0, fifths, spelled)
-  if (!syllable) return note
-  const lyric = `<lyric number="${line}" name="solfege"><syllabic>single</syllabic><text>${syllable}</text></lyric>`
-  // A lyric goes after any other lyrics and before <play>/<listen>, the last elements a note may hold.
-  const tail = note.search(/<(play|listen)\b|<\/note>/)
-  return note.slice(0, tail) + lyric + note.slice(tail)
-}
-
-/**
- * `xml` with a solfège syllable under every pitched note of every part, read
- * in `key` (scoreKey's answer, for the whole score when `xml` is one part of
- * it) or, when that's null, in each key signature as it comes.
- */
-export function addSolfege(xml, key = xml ? scoreKey(xml) : null) {
-  if (!xml) return xml
-  const line = solfegeLine(xml)
-  return xml.replace(PART_RE, (whole, open, body, close) => {
-    let fifths = key?.fifths ?? 0
-    const labelled = body.replace(KEY_OR_NOTE_RE, (element) => {
-      if (element.startsWith('<key')) {
-        const f = Number(tagText(element, 'fifths'))
-        if (!key && Number.isFinite(f)) fifths = f
-        return element
+/** Each part's tokens in order, with the key signature (and mode) in force at every note. */
+function readParts(xml) {
+  const parts = []
+  for (const [, , body] of xml.matchAll(PART_RE)) {
+    const notes = []
+    let fifths = 0
+    let minor = false
+    for (const [token] of body.matchAll(TOKEN_RE)) {
+      if (token.startsWith('<attributes')) {
+        const key = token.match(/<key\b[^>]*>([\s\S]*?)<\/key>/)?.[1]
+        const written = key?.match(/<fifths>\s*(-?\d+)\s*<\/fifths>/)?.[1]
+        if (written !== undefined) {
+          fifths = Number(written)
+          minor = /<mode>\s*minor\s*<\/mode>/.test(key)
+        }
+        continue
       }
-      return labelNote(element, fifths, line, !key?.inferred)
-    })
-    return open + labelled + close
-  })
+      const note = readNote(token)
+      if (note) notes.push({ ...note, fifths, minor })
+    }
+    parts.push(notes)
+  }
+  return parts
 }
 
-const STORAGE_KEY = 'harmonic.vocal.solfege'
+/** Share of the sung notes' length on each half step above `doOf(note)`: 12 numbers. */
+function profile(notes, doOf) {
+  const shares = new Array(12).fill(0)
+  let total = 0
+  for (const n of notes) {
+    const w = n.weight || 1
+    total += w
+    shares[mod12(n.pc - doOf(n))] += w
+  }
+  return total ? shares.map((w) => w / total) : shares
+}
 
-/** Whether this device shows solfège (off unless turned on; storage may be blocked). */
-export function loadSolfegeSetting() {
+/** How much of a profile is in the major scale. */
+const fit = (shares) => MAJOR.reduce((sum, offset) => sum + shares[offset], 0)
+/** Whether a profile leans on la-do-mi (minor) more than do-mi-so (major). */
+const leansMinor = (shares) => shares[9] + shares[0] + shares[4] > shares[0] + shares[4] + shares[7]
+
+/**
+ * Where do is: { fifths, written, minor } for the whole score, or null for a
+ * score without notes. `written` true means each note's own written key is
+ * used (key changes and all); otherwise do is fixed at `fifths`' tonic.
+ */
+export function findDo(xml) {
+  const notes = readParts(xml).flat().filter((n) => n.sung)
+  if (!notes.length) return null
+  const written = profile(notes, (n) => tonicOfFifths(n.fifths).pc)
+  let best = null
+  for (let pc = 0; pc < 12; pc += 1) {
+    // Near-ties (a tune that never uses one of the notes fits two keys) go to
+    // the key whose home chord, do-mi-so or la-do-mi, it leans on most, then
+    // to the one with fewer sharps or flats.
+    const shares = profile(notes, () => pc)
+    const fifths = fifthsOfPc(pc)
+    const home = Math.max(shares[0] + shares[4] + shares[7], shares[9] + shares[0] + shares[4])
+    const score = fit(shares) + home * 0.004 - Math.abs(fifths) * 1e-5
+    if (!best || score > best.score) best = { score, fifths, shares }
+  }
+  if (fit(written) >= fit(best.shares) - WRITTEN_KEY_SLACK) {
+    // Named by the key it starts in.
+    return { fifths: notes[0].fifths, written: true, minor: notes.at(-1).minor || leansMinor(written) }
+  }
+  return { fifths: best.fifths, written: false, minor: leansMinor(best.shares) }
+}
+
+/** The syllable for a note `n` with do on `tonic` ({ pc, letter }). */
+export function syllable(n, tonic, { trustSpelling = true, minor = false } = {}) {
+  const offset = mod12(n.pc - tonic.pc)
+  const degree = MAJOR.indexOf(offset)
+  if (degree >= 0) return DIATONIC[degree]
+  if (trustSpelling) {
+    const d = (n.letter - LETTERS.indexOf(tonic.letter) + 7) % 7
+    const diff = mod12(offset - MAJOR[d] + 6) - 6
+    const spelled = diff === 1 ? RAISED[d] : diff === -1 ? LOWERED[d] : null
+    if (spelled) return spelled
+  }
+  return offset === 8 && minor ? 'si' : CHROMATIC[offset]
+}
+
+function lyricXml(text) {
+  return `<lyric number="1"><syllabic>single</syllabic><text>${text}</text></lyric>`
+}
+
+/** Put `lyric` (or nothing) in place of a <note>'s lyrics, where MusicXML wants it: after <notations>, before <play>/<listen>. */
+function setLyric(noteXml, lyric) {
+  const bare = noteXml.replace(LYRIC_RE, '')
+  if (!lyric) return bare
+  const at = bare.search(/<(play|listen)\b|<\/note>/)
+  return `${bare.slice(0, at)}${lyric}${bare.slice(at)}`
+}
+
+/**
+ * `xml` with every sung note's lyric replaced by its solfège syllable (and
+ * other notes' lyrics removed), and where do is: { content, doName } —
+ * doName like 'E♭', or null (and `xml` unchanged) when there's nothing to sing.
+ */
+export function withSolfege(xml, { trustSpelling = true } = {}) {
+  const key = findDo(xml)
+  if (!key) return { content: xml, doName: null }
+  const fixedTonic = tonicOfFifths(key.fifths)
+  const content = xml.replace(PART_RE, (whole, open, body, close) => {
+    let fifths = 0
+    const rewritten = body.replace(TOKEN_RE, (token) => {
+      if (token.startsWith('<attributes')) {
+        const written = token.match(/<key\b[^>]*>[\s\S]*?<fifths>\s*(-?\d+)\s*<\/fifths>/)?.[1]
+        if (written !== undefined) fifths = Number(written)
+        return token
+      }
+      const note = readNote(token)
+      if (!note) return token
+      const tonic = key.written ? tonicOfFifths(fifths) : fixedTonic
+      return setLyric(token, note.sung && lyricXml(syllable(note, tonic, { trustSpelling, minor: key.minor })))
+    })
+    return `${open}${rewritten}${close}`
+  })
+  return { content, doName: fixedTonic.name }
+}
+
+const STORAGE_KEY = 'harmonic.solfege'
+
+/** Whether the Solfège toggle was left on, in this browser. */
+export function loadSolfegeOn() {
   try {
     return globalThis.localStorage.getItem(STORAGE_KEY) === 'on'
   } catch {
@@ -175,10 +199,11 @@ export function loadSolfegeSetting() {
   }
 }
 
-export function saveSolfegeSetting(on) {
+export function saveSolfegeOn(on) {
   try {
-    globalThis.localStorage.setItem(STORAGE_KEY, on ? 'on' : 'off')
+    if (on) globalThis.localStorage.setItem(STORAGE_KEY, 'on')
+    else globalThis.localStorage.removeItem(STORAGE_KEY)
   } catch {
-    // Private window or blocked storage: the setting lasts until reload.
+    // Private window or blocked storage: the toggle lasts until reload.
   }
 }

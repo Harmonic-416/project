@@ -1,0 +1,211 @@
+/* Warm up: voice part, the two exercises, and the note it's on while playing. */
+.warm-up {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.warm-up__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.warm-up__how {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 0.9rem;
+  color: #3b3940;
+}
+
+.warm-up__how li + li {
+  margin-top: 4px;
+}
+
+.warm-up__error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #cf4b36;
+}
+
+.warm-up__voices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.warm-up__voice {
+  padding: 8px 14px;
+  border: 1px solid #e2dfd8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #24242c;
+  font: inherit;
+  cursor: pointer;
+}
+
+.warm-up__voice:hover {
+  background: #f0f7f7;
+}
+
+.warm-up__voice--on,
+.warm-up__voice--on:hover {
+  border-color: #128789;
+  background: #128789;
+  color: #ffffff;
+}
+
+.warm-up .vocal-tab__search-songs:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #ffffff;
+}
+
+.warm-up__now {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px 14px;
+  border: 1px solid #e2dfd8;
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.warm-up__now-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6c6a72;
+}
+
+.warm-up__cue {
+  min-width: 7em;
+  padding: 6px 18px;
+  border: 2px solid #128789;
+  border-radius: 999px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.warm-up__cue--sing {
+  background: #128789;
+  color: #ffffff;
+}
+
+.warm-up__cue--listen {
+  border-color: #c9c6bf;
+  background: #f4f2ee;
+  color: #6c6a72;
+}
+
+.warm-up__now-note {
+  font-size: 2.4rem;
+  color: #128789;
+}
+
+.warm-up__now-detail {
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.warm-up__controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.warm-up__primary,
+.warm-up__secondary {
+  padding: 10px 24px;
+  border: 1px solid #128789;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.warm-up__primary {
+  background: #128789;
+  color: #ffffff;
+}
+
+.warm-up__secondary {
+  background: #ffffff;
+  color: #128789;
+}
+
+/* Harmony and pitch tests */
+.pitch-test__move {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 2.6rem;
+  padding: 4px 16px;
+  border-radius: 999px;
+  font-size: 1rem;
+  color: #6c6a72;
+}
+
+.pitch-test__move--on {
+  background: #fff3d6;
+  color: #8a5a00;
+  font-weight: 700;
+}
+
+.pitch-test__move-arrow {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.pitch-test__heard {
+  font-size: 0.9rem;
+  color: #6c6a72;
+}
+
+.pitch-test__heard--right {
+  color: #128789;
+  font-weight: 600;
+}
+
+.pitch-test__heard--off {
+  color: #cf4b36;
+}
+
+.pitch-test__chords {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pitch-test__chord {
+  padding: 4px 10px;
+  border: 1px solid #e2dfd8;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: #6c6a72;
+}
+
+.pitch-test__chord--sung {
+  border-color: #128789;
+  color: #128789;
+}
+
+.pitch-test__chord--right {
+  border-color: #128789;
+  background: #128789;
+  color: #ffffff;
+}
+
+.pitch-test__chord--wrong {
+  border-color: #cf4b36;
+  background: #fdecea;
+  color: #cf4b36;
+}
