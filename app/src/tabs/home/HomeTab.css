@@ -659,3 +659,30 @@
   color: var(--hm-text-muted);
   font-size: 0.8rem;
 }
+/* A file listed from the account but kept on another device: tapping it asks for this device's copy. */
+.home-files__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+}
+
+.home-files__item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding-right: 0;
+}
+
+
+.home-files__item--remote .home-files__kind {
+  background: color-mix(in srgb, var(--hm-text-muted) 14%, transparent);
+  color: var(--hm-text-muted);
+}
+
+.home-files__notice {
+  margin: 0;
+  padding: 0 14px 10px;
+  color: var(--hm-text-muted);
+  font-size: 0.8rem;
+}

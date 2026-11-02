@@ -123,8 +123,10 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         }
         setNotation({ ...loaded, fingerprint, catalogSongId, builtin })
         setStatus('ready')
+        return true
       } catch (err) {
         fail(err, 'Could not read that file.')
+        return false
       }
     },
     [beginLoad, fail],
@@ -163,11 +165,11 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     (file) => {
       setReturnTo('library')
       file.arrayBuffer().then(async (buf) => {
-        // Listed on Home under "My files" (this device only).
+        // Listed on Home under "My files" once it opens (a file that can't be read isn't kept).
+        if (!(await loadFromArrayBuffer(buf, file.name))) return
         fingerprintBytes(buf)
           .then((id) => rememberMyFile({ id, name: file.name, instrument: 'voice', bytes: buf }))
           .catch((err) => console.error(err))
-        await loadFromArrayBuffer(buf, file.name)
       })
     },
     [loadFromArrayBuffer],
