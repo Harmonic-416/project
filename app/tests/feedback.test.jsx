@@ -4,6 +4,11 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import FeedbackDialog from '../src/feedback/FeedbackDialog.jsx'
 import { areaForTab, canSendFeedback, emptyFeedback, feedbackError } from '../src/feedback/feedbackForm.js'
 
+// The app's CI job installs only app/ dependencies, so the real client
+// (src/lib/supabase.ts → @supabase/supabase-js) can't load there; the tests
+// hand the dialog its own `send` anyway.
+vi.mock('../src/lib/supabaseClient.js', () => ({ supabase: null }))
+
 afterEach(cleanup)
 
 describe('feedback form (pure)', () => {
