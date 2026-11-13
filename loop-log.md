@@ -218,3 +218,26 @@ before any loop iteration runs. Commit, then re-run.
 (`presentation`). Same shape as S2: drafted outside the repo, applied by a human. S6 is the one that
 makes G1 to G12 verifiable — until it exists, the ratchet is the only thing standing in for a
 definition of "polished".
+
+## 2026-11-13 · G1 · REPORT ONLY
+
+Files touched this iteration: `loop-log.md` only. Read `CLAUDE.md`, then `PROMPT.md`; assessed G1 against `openspec/specs/presentation/spec.md` only. User's report-only constraint overrides implementation, test additions, backlog edits, branch/commit/PR and proposal creation. G1 remains TODO; no other item was worked.
+
+**Findings:**
+
+- NOT MET: `app/src/styles/tokens.css` (and its directory) does not exist. There is no central light/dark token set satisfying G1.
+- NOT MET: `app/src/tabs/guitar/GuitarTab.css` contains 6 hex occurrences: border `#e2dfd8` once, muted `#6c6a72` twice, surface `#ffffff` once, accent `#128789` twice. It has neither token references nor dark-mode handling. Tokenising those declarations alone would reduce hexLiterals from 148 to 142 and untokenisedSheets from 5 to 4, assuming no concurrent changes.
+- Existing reusable palette: `app/src/auth/authTheme.css` already defines light/dark `--hm-*` accent, surface, border, text, muted text and danger tokens. Its danger light value is `#b53a27`, whereas G1 explicitly seeds `#cf4b36`; avoid silently changing existing auth consumers. Existing practice verdict green is `#6a9f4e` (strong `#4f7d38`), red `#c8553d`. A future implementation should seed semantic verdict tokens from existing usage, supply dark counterparts for every introduced colour token, load the token sheet from GuitarTab.css, and replace only that sheet's colours. Preserve current layout and breakpoints for this item. No palette or contrast validation was performed.
+- GATE OBSTACLE (static inspection, not an observed gate failure): step 5 of `scripts/gate.sh` excludes only app tests and Guitar paths from its out-of-scope diff. It does not permit `app/src/styles/tokens.css`, although CLAUDE.md expressly permits that path and G1 requires it. Once tracked/staged, the required new file would be rejected. PROMPT.md says to report a wrong gate and stop; a human must reconcile this before implementation can pass the full gate. No gate or allowlist changes made.
+- The checkout already contained unrelated tracked/untracked work when this iteration started. None was altered. The presentation spec exists as untracked human work; it was read without modification.
+
+**Validation:** `node scripts/assert-baseline.mjs --all` exited 0: hexLiterals 148; untokenisedSheets 5; breakpointVariants 4; appTestFiles 72; largestInScopeComponent 850. These are current measurements, not the stale 116/4 values in fix_plan.md's introductory baseline. Full `bash scripts/gate.sh` NOT RUN: this report-only iteration avoids its build outputs and generated files. No test/build pass or full gate green is claimed; no consecutive gate failures occurred. HEAD inspected: `e69a1f1`.
+
+**Tokens and wall-clock:** exact token usage is not exposed; approximately 3 minutes wall-clock. Stopped after this G1 report, with no implementation, status change, commit or PR.
+## 2026-11-13 · G1 · stopped under PROMPT.md's gate-obstacle rule
+
+Selected G1, the highest-priority TODO, after re-reading CLAUDE.md, PROMPT.md, fix_plan.md and the presentation spec. The prior report-only constraint applied to the previous iteration; this stop is independently required by PROMPT.md: "If the gate is wrong, say so in loop-log.md and stop; a human will decide."
+
+Reconfirmed the gate defect: G1 and CLAUDE.md explicitly require/permit app/src/styles/tokens.css, but scripts/gate.sh step 5's git diff against HEAD only excludes app/tests and the listed Guitar paths. A staged tokens.css would be reported out of scope. scripts/gate-allowlist.txt does not list it. No gate weakening, allowlist edit, spec edit or workaround applied. A human must reconcile the gate with the authorized token path before this item can complete.
+
+Read-only ratchet run: node scripts/assert-baseline.mjs --all, exit 0; hexLiterals 148, untokenisedSheets 5, breakpointVariants 4, appTestFiles 72, largestInScopeComponent 850. Full bash scripts/gate.sh not run because the explicit gate-obstacle stop rule was reached before implementation. No full gate result claimed, no implementation/test changes, no commit or PR, no spec-change request (the obstacle is the gate, not the spec). G1 remains TODO; the three-failure BLOCKED rule was not triggered. Only loop-log.md edited; all pre-existing work preserved. Exact token usage unavailable; wall-clock approximately 1 minute. No other item taken.

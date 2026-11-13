@@ -25,20 +25,22 @@ noise gating). Scoping to guitar removes those, which means:
 > below. There is no backlog of unmet guitar scenarios to grind through, because guitar already
 > meets what the specs ask — and where it differs, the *spec* is the thing that is wrong.
 
-So Phase 0 is not optional here. It is most of the value.
+Phase 0 (below) is human-only and is DONE where it mattered: S1 and S2 removed the requirements that
+mandated deleted features, which is what would have made a loop rebuild them. S3-S6 are BLOCKED as
+human work and do NOT gate the loop: the ratchet already makes G1-G7 and G10-G12 checkable. Start at G1.
 
 ---
 
-## Phase 0 — before any loop iteration (human, interactive)
+## Phase 0 — human only, never loop work (writes `openspec/specs/**`, which agents are denied)
 
 | ID | Status | Tag | Item |
 |---|---|---|---|
 | S1 | DONE | SPEC | Rewrite `openspec/config.yaml`'s `context:` block. It is injected into every artifact an agent generates and is wrong in twelve places (see [spec-reconciliation.md](docs/spec-reconciliation.md) §3) |
 | S2 | DONE | SPEC | Apply the Case 1 edits that touch guitar: `scoring-engine` (the inverted soft gate, auto-skip F29, cleanliness F17, strum pattern F18, hit/late/missed F11, early-on-late F33), `ui` (F3 lesson flow), `notation-rendering` (F20/F36 random generation), `progress-tracking` (F2 unlocking map), `song-storage` (F4 "3 songs"). **The soft-gate one is urgent: the spec currently requires auto-advance, the exact thing CLAUDE.md invariant 4 forbids** |
-| S3 | TODO | SPEC | Write `openspec/specs/ear-training/spec.md`. The README promises this capability and the directory does not exist. It governs Exercises, which is in scope |
-| S4 | TODO | SPEC | Write `openspec/specs/guitar-learn/spec.md` for Learn as shipped: 20 chords in teaching order, unlock-on-clear, the four modes, the soft gate's real behaviour, the five strum steps |
-| S5 | TODO | SPEC | Write `openspec/specs/guitar-songs/spec.md` for Songs as shipped: the three modes, Full/Easy, last-and-best from full runs of the current mode, run history, generated tab |
-| S6 | TODO | SPEC | Write `openspec/specs/presentation/spec.md` — the polish contract, in checkable sentences (tokens, dark mode, breakpoints, one shell). Scoped to guitar for now. **Nothing else in this file can be verified until this exists** |
+| S3 | BLOCKED | SPEC | Write `openspec/specs/ear-training/spec.md`. The README promises this capability and the directory does not exist. It governs Exercises, which is in scope |
+| S4 | BLOCKED | SPEC | Write `openspec/specs/guitar-learn/spec.md` for Learn as shipped: 20 chords in teaching order, unlock-on-clear, the four modes, the soft gate's real behaviour, the five strum steps |
+| S5 | BLOCKED | SPEC | Write `openspec/specs/guitar-songs/spec.md` for Songs as shipped: the three modes, Full/Easy, last-and-best from full runs of the current mode, run history, generated tab |
+| S6 | BLOCKED | SPEC | Write `openspec/specs/presentation/spec.md` — the polish contract, in checkable sentences (tokens, dark mode, breakpoints, one shell). Scoped to guitar for now. Makes G1-G6 and G10-G12 conformance rather than taste; it does NOT gate them, because the ratchet already checks them. Drafted in `openspec/changes/add-presentation-spec-2026-11-13/` |
 
 ## The loop's work — polish, driven by the ratchet
 
@@ -47,7 +49,7 @@ Baselines as of 2026-11-13: `hexLiterals` 116 · `untokenisedSheets` 4 · `break
 
 | ID | Status | Tag | Item | Metric it moves |
 |---|---|---|---|---|
-| G1 | TODO | GATE | Create `app/src/styles/tokens.css` with a dark value for every token, seeded from the palette already in use (teal `#128789`, border `#e2dfd8`, ink `#24242c`, muted `#6c6a72`, danger `#cf4b36`, verdict green/amber/red). Then tokenise `GuitarTab.css` only | `hexLiterals` ↓ |
+| G1 | TODO | GATE | Create `app/src/styles/tokens.css` with a dark value for every token, seeded from the palette already in use (teal `#128789`, border `#e2dfd8`, ink `#24242c`, muted `#6c6a72`, danger `#cf4b36`, verdict green/amber/red). Then tokenise `GuitarTab.css` only. Pull the tokens in with `@import '../../styles/tokens.css';` at the top of `GuitarTab.css` — `App.css` and `index.css` are out of scope, so that is the only legal place to import it | `hexLiterals` ↓ |
 | G2 | TODO | GATE | Tokenise `song/GuitarSong.css`, `song/GuitarScore.css`, `song/TranscribePanel.css` — one file per iteration | `hexLiterals` ↓ |
 | G3 | TODO | GATE | Tokenise `learn/Learn.css` and the seven `practice/*.css` sheets — one file per iteration | `hexLiterals` ↓ |
 | G4 | TODO | GATE | Tokenise `exercises/Exercises.css` (445 lines, the largest in scope) and `exercises/StrumDrill.css` | `hexLiterals` → 0 |
