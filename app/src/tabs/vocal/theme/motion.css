@@ -1,0 +1,76 @@
+/* The Vocal tab's animations: feedback pops and shakes, entrances, the mic's pulse. */
+
+@keyframes v-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+@keyframes v-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes v-rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes v-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes v-float-up {
+  0% { opacity: 0; transform: translateY(0) scale(0.8); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-36px) scale(1.1); }
+}
+
+@keyframes v-pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--v-bad) 55%, transparent); }
+  100% { box-shadow: 0 0 0 16px transparent; }
+}
+
+@keyframes v-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes v-confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 240px)) rotate(var(--rot, 540deg)); }
+}
+
+@keyframes v-shine {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+
+.v-anim-pop { animation: v-pop var(--v-slow) var(--v-ease-bounce); }
+.v-anim-shake { animation: v-shake var(--v-slow) ease-in-out; }
+.v-anim-rise { animation: v-rise-in var(--v-med) var(--v-ease-out) both; }
+
+/* Lists come in one card after another; set --i on each child. */
+.v-stagger > * {
+  animation: v-rise-in var(--v-med) var(--v-ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 12) * 40ms);
+}
+
+/* A section's content eases in when it's opened (keyed on the section). */
+.vocal-frame__body > * {
+  animation: v-rise-in var(--v-med) var(--v-ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vocal-frame *,
+  .vocal-frame *::before,
+  .vocal-frame *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

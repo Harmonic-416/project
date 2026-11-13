@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { useMicPitch } from '../audio/useMicPitch.js'
+import Celebration from '../ui/Celebration.jsx'
 import { noteName } from './warmupLogic.js'
 import { harmonyShift, isRightNote, judgeMeasure } from './pitchTestLogic.js'
 
@@ -193,6 +194,7 @@ export default function HarmonyTest({ harmony, part, onExit }) {
           </ol>
         )}
       </div>
+      {run?.done && <Celebration id="harmony-test" right={run.results.filter((r) => r.pass).length} total={measures.length} />}
       {mic.error && <p className="warm-up__error">Microphone: {mic.error}</p>}
       <div className="warm-up__controls">
         {run && !run.done ? (
@@ -210,15 +212,18 @@ export default function HarmonyTest({ harmony, part, onExit }) {
           </>
         )}
       </div>
-      <ul className="warm-up__how">
-        <li>Wear headphones so the microphone hears you, not the piano.</li>
-        <li>
-          The piano gives you your starting note, counts you in, then plays the top and bottom of each chord. Sing the
-          middle note.
-        </li>
-        <li>On beat 4 of each bar an arrow shows whether the next chord moves a half step up or down.</li>
-        <li>You pass if you’re in tune for at least half of every chord. The same note an octave away counts.</li>
-      </ul>
+      <details className="v-howto">
+        <summary>How it works</summary>
+        <ul className="warm-up__how">
+          <li>Wear headphones so the microphone hears you, not the piano.</li>
+          <li>
+            The piano gives you your starting note, counts you in, then plays the top and bottom of each chord. Sing the
+            middle note.
+          </li>
+          <li>On beat 4 of each bar an arrow shows whether the next chord moves a half step up or down.</li>
+          <li>You pass if you’re in tune for at least half of every chord. The same note an octave away counts.</li>
+        </ul>
+      </details>
     </div>
   )
 }

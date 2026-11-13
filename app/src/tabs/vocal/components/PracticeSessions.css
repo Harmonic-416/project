@@ -9,13 +9,13 @@
 .practice-sessions__hint {
   margin: 0;
   font-size: 0.9rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-sessions__error {
   margin: 0;
   font-size: 0.9rem;
-  color: #cf4b36;
+  color: var(--v-bad, #cf4b36);
 }
 
 .practice-sessions__list {
@@ -29,9 +29,9 @@
 
 /* A song */
 .practice-song {
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--v-border, #e2dfd8);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--v-card, #ffffff);
   overflow: hidden;
 }
 
@@ -44,14 +44,14 @@
   padding: 14px 16px;
   border: none;
   background: none;
-  color: #24242c;
+  color: var(--v-text, #24242c);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
 .practice-song__head:hover {
-  background: #f0f7f7;
+  background: var(--v-primary-soft, #f0f7f7);
 }
 
 .practice-song__title {
@@ -60,19 +60,19 @@
   min-width: 140px;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #128789;
+  color: var(--v-primary, #128789);
 }
 
 .practice-song__title small {
   font-size: 0.8rem;
   font-weight: 400;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-song__summary {
   flex: 1 1 220px;
   font-size: 0.85rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-song__sessions {
@@ -81,7 +81,7 @@
   gap: 6px;
   margin: 0;
   padding: 0 12px 12px;
-  border-top: 1px solid #e2dfd8;
+  border-top: 1px solid var(--v-border, #e2dfd8);
   list-style: none;
 }
 
@@ -91,9 +91,9 @@
 
 /* A sitting under its song */
 .practice-session {
-  border: 1px solid #ece9e2;
+  border: 1px solid var(--v-border, #ece9e2);
   border-radius: 10px;
-  background: #faf9f6;
+  background: var(--v-subtle, #faf9f6);
   overflow: hidden;
 }
 
@@ -106,7 +106,7 @@
   padding: 9px 12px;
   border: none;
   background: none;
-  color: #24242c;
+  color: var(--v-text, #24242c);
   font: inherit;
   font-size: 0.9rem;
   text-align: left;
@@ -114,7 +114,7 @@
 }
 
 .practice-session__head:hover {
-  background: #f0f7f7;
+  background: var(--v-primary-soft, #f0f7f7);
 }
 
 .practice-session__when {
@@ -127,23 +127,23 @@
 .practice-session__when small {
   font-weight: 400;
   font-size: 0.8rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-session__summary {
   flex: 1 1 160px;
   font-size: 0.85rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-session__chevron {
   margin-left: auto;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-session__body {
   padding: 0 10px 10px;
-  border-top: 1px solid #ece9e2;
+  border-top: 1px solid var(--v-border, #ece9e2);
 }
 
 .practice-session__body > * {
@@ -154,7 +154,7 @@
 .vocal-tab__sessions-link {
   border: none;
   background: none;
-  color: #128789;
+  color: var(--v-primary, #128789);
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
@@ -164,33 +164,33 @@
 
 @media (prefers-color-scheme: dark) {
   .practice-song {
-    border-color: #3a3a42;
-    background: #1f1f26;
+    border-color: var(--v-border, #3a3a42);
+    background: var(--v-card, #1f1f26);
   }
 
   .practice-song__head,
   .practice-session__head {
-    color: #f0efe9;
+    color: var(--v-text, #f0efe9);
   }
 
   .practice-song__head:hover,
   .practice-session__head:hover {
-    background: #26262e;
+    background: var(--v-card-raised, #26262e);
   }
 
   .practice-song__title,
   .vocal-tab__sessions-link {
-    color: #3fb6b8;
+    color: var(--v-primary, #3fb6b8);
   }
 
   .practice-song__sessions,
   .practice-session__body {
-    border-top-color: #3a3a42;
+    border-top-color: var(--v-border, #3a3a42);
   }
 
   .practice-session {
-    border-color: #33333b;
-    background: #1a1a20;
+    border-color: var(--v-border, #33333b);
+    background: var(--v-card, #1a1a20);
   }
 }
 
@@ -203,9 +203,9 @@
 }
 
 .practice-song__button {
-  border: 1px solid #128789;
+  border: 1px solid var(--v-primary, #128789);
   background: transparent;
-  color: #128789;
+  color: var(--v-primary, #128789);
   border-radius: 999px;
   padding: 6px 14px;
   font: inherit;
@@ -214,8 +214,8 @@
 }
 
 .practice-song__button--new {
-  background: #128789;
-  color: #fff;
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #fff);
 }
 
 /* A session's scored Wait for me / Trouble spots runs. */

@@ -9,16 +9,16 @@
   border: none;
   border-radius: 8px;
   padding: 8px 18px;
-  background: #128789;
-  color: #ffffff;
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .playback-controls__button--secondary {
-  background: #e2dfd8;
-  color: #24242c;
+  background: var(--v-border, #e2dfd8);
+  color: var(--v-text, #24242c);
 }
 
 .playback-controls__button:disabled {
@@ -29,13 +29,13 @@
 .playback-controls__seek {
   flex: 1;
   min-width: 0; /* range inputs default to ~130px, which overflows phone widths */
-  accent-color: #128789;
+  accent-color: var(--v-primary, #128789);
 }
 
 .playback-controls__time {
   font-variant-numeric: tabular-nums;
   font-size: 0.8rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
   white-space: nowrap;
   text-align: right;
 }

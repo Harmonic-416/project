@@ -5,8 +5,8 @@
   align-self: flex-start;
   padding: 10px 16px;
   border-radius: 8px;
-  background: #128789;
-  color: #ffffff;
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;

@@ -7,15 +7,15 @@
 
 .practice-modes__options {
   display: inline-flex;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--v-border, #e2dfd8);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .practice-modes__option {
   border: none;
-  background: #ffffff;
-  color: #24242c;
+  background: var(--v-card, #ffffff);
+  color: var(--v-text, #24242c);
   font: inherit;
   font-size: 0.85rem;
   padding: 6px 12px;
@@ -23,12 +23,12 @@
 }
 
 .practice-modes__option + .practice-modes__option {
-  border-left: 1px solid #e2dfd8;
+  border-left: 1px solid var(--v-border, #e2dfd8);
 }
 
 .practice-modes__option[aria-pressed='true'] {
-  background: #128789;
-  color: #ffffff;
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
   font-weight: 600;
 }
 
@@ -39,7 +39,7 @@
 
 .practice-modes__hint {
   font-size: 0.8rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-status {
@@ -49,31 +49,31 @@
   gap: 6px 12px;
   padding: 0 4px;
   font-size: 0.9rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
   min-height: 1.6em;
 }
 
 .practice-status__live {
   font-variant-numeric: tabular-nums;
-  color: #24242c;
+  color: var(--v-text, #24242c);
   padding: 2px 10px;
   border-radius: 999px;
-  background: #e2dfd8;
+  background: var(--v-border, #e2dfd8);
 }
 
-.practice-status__live--in-tune { background: #d5f0df; color: #1d6b3d; }
-.practice-status__live--close { background: #fbeccc; color: #7a5300; }
-.practice-status__live--wrong { background: #f8d9d3; color: #8f2c1c; }
+.practice-status__live--in-tune { background: var(--v-good-soft, #d5f0df); color: var(--v-good-dark, #1d6b3d); }
+.practice-status__live--close { background: var(--v-gold-soft, #fbeccc); color: var(--v-gold-dark, #7a5300); }
+.practice-status__live--wrong { background: var(--v-bad-soft, #f8d9d3); color: var(--v-bad-dark, #8f2c1c); }
 
 .practice-status__count {
   font-weight: 600;
-  color: #cf4b36;
+  color: var(--v-bad, #cf4b36);
 }
 
 .practice-status__link {
   border: none;
   background: none;
-  color: #128789;
+  color: var(--v-primary, #128789);
   font: inherit;
   font-size: 0.85rem;
   text-decoration: underline;
@@ -82,18 +82,18 @@
 }
 
 .practice-status__error {
-  color: #cf4b36;
+  color: var(--v-bad, #cf4b36);
   font-size: 0.85rem;
 }
 
 /* Notes marked on the score (SheetMusicViewer.markNote). CSS fill/stroke
    beat VexFlow's presentation attributes, so the whole note takes the colour. */
 .practice-note--target path,
-.practice-note--target rect { fill: #128789; stroke: #128789; }
+.practice-note--target rect { fill: var(--v-primary, #128789); stroke: var(--v-primary, #128789); }
 .practice-note--sung path,
-.practice-note--sung rect { fill: #2e9e5b; stroke: #2e9e5b; }
+.practice-note--sung rect { fill: var(--v-good, #2e9e5b); stroke: var(--v-good, #2e9e5b); }
 .practice-note--missed path,
-.practice-note--missed rect { fill: #cf4b36; stroke: #cf4b36; }
+.practice-note--missed rect { fill: var(--v-bad, #cf4b36); stroke: var(--v-bad, #cf4b36); }
 
 /* Part tabs (PartTabs.jsx): scroll sideways when a choir score has many parts. */
 .part-tabs {
@@ -111,10 +111,10 @@
 
 .part-tabs__tab {
   flex: none;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--v-border, #e2dfd8);
   border-radius: 999px;
-  background: #ffffff;
-  color: #24242c;
+  background: var(--v-card, #ffffff);
+  color: var(--v-text, #24242c);
   font: inherit;
   font-size: 0.85rem;
   padding: 6px 14px;
@@ -123,9 +123,9 @@
 }
 
 .part-tabs__tab[aria-selected='true'] {
-  border-color: #128789;
-  background: #128789;
-  color: #ffffff;
+  border-color: var(--v-primary, #128789);
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
   font-weight: 600;
 }
 

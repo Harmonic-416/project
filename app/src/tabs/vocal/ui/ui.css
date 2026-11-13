@@ -1,0 +1,169 @@
+/* The Vocal tab's shared feedback pieces: celebration, combo badge, progress bar. */
+
+.v-celebrate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--v-s2);
+  padding: var(--v-s5) var(--v-s4);
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--v-gold) 45%, var(--v-border));
+  border-radius: var(--v-radius-lg);
+  background: linear-gradient(180deg, var(--v-gold-soft), var(--v-card) 70%);
+  text-align: center;
+  animation: v-rise-in var(--v-slow) var(--v-ease-bounce) both;
+}
+
+.v-celebrate--0,
+.v-celebrate--1 {
+  border-color: var(--v-border);
+  background: linear-gradient(180deg, var(--v-primary-soft), var(--v-card) 70%);
+}
+
+.v-celebrate__confetti {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 0;
+  pointer-events: none;
+}
+
+.v-celebrate__confetti span {
+  position: absolute;
+  top: -10px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: v-confetti 1.4s var(--v-ease-out) both;
+}
+
+.v-celebrate__stars {
+  display: flex;
+  gap: 6px;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.v-star {
+  color: var(--v-border-strong);
+}
+
+.v-star--on {
+  color: var(--v-gold);
+  text-shadow: 0 3px 0 var(--v-gold-dark);
+  animation: v-pop var(--v-slow) var(--v-ease-bounce) both;
+}
+
+.v-celebrate__headline {
+  margin: 0;
+  font-family: var(--v-font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--v-text);
+}
+
+.v-celebrate__score {
+  margin: 0;
+  color: var(--v-muted);
+}
+
+.v-celebrate__score strong {
+  color: var(--v-text);
+}
+
+.v-celebrate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--v-s2);
+  margin-top: var(--v-s2);
+}
+
+/* "3 in a row!" */
+.v-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-gold-soft);
+  color: var(--v-gold-dark);
+  font-family: var(--v-font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  animation: v-pop var(--v-slow) var(--v-ease-bounce);
+}
+
+/* A thick rounded progress bar with a shine. */
+.v-progress {
+  position: relative;
+  height: 14px;
+  overflow: hidden;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-subtle);
+}
+
+.v-progress__fill {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--v-accent);
+  transition: width var(--v-slow) var(--v-ease-bounce);
+}
+
+.v-progress__fill::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  border-radius: var(--v-radius-pill);
+  background: rgb(255 255 255 / 0.35);
+}
+
+.v-celebrate__trophy {
+  font-size: 3rem;
+  line-height: 1;
+  animation: v-pop var(--v-slow) var(--v-ease-bounce) 150ms both;
+}
+
+/* Best stars on an activity card. */
+.v-best {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: var(--v-s2);
+  color: var(--v-gold);
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  vertical-align: 1px;
+}
+
+.v-best__off {
+  color: var(--v-border-strong);
+}
+
+/* "How it works" disclosure */
+.v-howto {
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+}
+
+.v-howto > summary {
+  padding: var(--v-s3) var(--v-s4);
+  color: var(--v-accent);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.v-howto[open] > summary {
+  border-bottom: 2px solid var(--v-border);
+}
+
+.v-howto > :not(summary) {
+  margin: var(--v-s3) var(--v-s4);
+}

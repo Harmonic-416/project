@@ -16,15 +16,15 @@
   border: none;
   border-radius: 8px;
   padding: 8px 18px;
-  background: #cf4b36;
-  color: #ffffff;
+  background: var(--v-bad, #cf4b36);
+  color: var(--v-on-accent, #ffffff);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .record-panel__button--stop {
-  background: #24242c;
+  background: var(--v-text, #24242c);
 }
 
 .record-panel__button:disabled {
@@ -37,17 +37,17 @@
   font-size: 0.9rem;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #e2dfd8;
-  color: #24242c;
+  background: var(--v-border, #e2dfd8);
+  color: var(--v-text, #24242c);
 }
 
-.record-panel__live--in-tune { background: #d5f0df; color: #1d6b3d; }
-.record-panel__live--close { background: #fbeccc; color: #7a5300; }
-.record-panel__live--octave { background: #dde5fb; color: #2d4aa8; }
-.record-panel__live--wrong { background: #f8d9d3; color: #8f2c1c; }
+.record-panel__live--in-tune { background: var(--v-good-soft, #d5f0df); color: var(--v-good-dark, #1d6b3d); }
+.record-panel__live--close { background: var(--v-gold-soft, #fbeccc); color: var(--v-gold-dark, #7a5300); }
+.record-panel__live--octave { background: var(--v-sky-soft, #dde5fb); color: var(--v-sky, #2d4aa8); }
+.record-panel__live--wrong { background: var(--v-bad-soft, #f8d9d3); color: var(--v-bad-dark, #8f2c1c); }
 
 .record-panel__error {
-  color: #cf4b36;
+  color: var(--v-bad, #cf4b36);
   font-size: 0.85rem;
 }
 
@@ -57,13 +57,13 @@
   align-items: baseline;
   gap: 12px;
   font-size: 0.9rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .record-panel__link {
   border: none;
   background: none;
-  color: #128789;
+  color: var(--v-primary, #128789);
   font: inherit;
   font-size: 0.85rem;
   text-decoration: underline;
@@ -81,8 +81,51 @@
 }
 
 .pitch-overlay__dot { opacity: 0.85; }
-.pitch-overlay__dot--in-tune { fill: #2e9e5b; }
-.pitch-overlay__dot--close { fill: #e0a100; }
-.pitch-overlay__dot--octave { fill: #5b7cf2; }
-.pitch-overlay__dot--wrong { fill: #cf4b36; }
-.pitch-overlay__dot--rest { fill: #9a9a9a; }
+.pitch-overlay__dot--in-tune { fill: var(--v-good, #2e9e5b); }
+.pitch-overlay__dot--close { fill: var(--v-gold, #e0a100); }
+.pitch-overlay__dot--octave { fill: var(--v-sky, #5b7cf2); }
+.pitch-overlay__dot--wrong { fill: var(--v-bad, #cf4b36); }
+.pitch-overlay__dot--rest { fill: var(--v-muted, #9a9a9a); }
+
+/* ── Polish (theme/vocalTheme.css): a chunky record button that pulses while it listens ── */
+.record-panel {
+  gap: var(--v-s3);
+  padding: var(--v-s4);
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-lg);
+  background: var(--v-card);
+}
+
+.record-panel__button {
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: var(--v-radius);
+  box-shadow: 0 var(--v-lip) 0 var(--v-bad-dark);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  transition: transform var(--v-fast) var(--v-ease-out), box-shadow var(--v-fast) var(--v-ease-out);
+}
+
+.record-panel__button:active:not(:disabled) {
+  transform: translateY(var(--v-lip));
+  box-shadow: none;
+}
+
+.record-panel__button--stop {
+  background: var(--v-bad);
+  animation: v-pulse-ring 1.4s ease-out infinite;
+}
+
+.record-panel__result {
+  padding: var(--v-s3) var(--v-s4);
+  border-radius: var(--v-radius);
+  background: var(--v-good-soft);
+  animation: v-rise-in var(--v-slow) var(--v-ease-bounce) both;
+}
+
+.record-panel__result strong {
+  font-family: var(--v-font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--v-good-dark);
+}

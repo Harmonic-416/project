@@ -1,5 +1,8 @@
 import './SongLibrary.css'
 
+/** A stable hue per title, for the song card's colour (Vocal shows it as a gradient cover). */
+const hueFor = (title) => [...title].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+
 function SongLibrary({ songs, onSelectSong }) {
   if (songs.length === 0) {
     return (
@@ -13,7 +16,12 @@ function SongLibrary({ songs, onSelectSong }) {
     <ul className="song-library">
       {songs.map((song) => (
         <li key={song.id}>
-          <button type="button" className="song-library__item" onClick={() => onSelectSong(song)}>
+          <button
+            type="button"
+            className="song-library__item"
+            style={{ '--hue': hueFor(song.title) }}
+            onClick={() => onSelectSong(song)}
+          >
             <span className="song-library__icon" aria-hidden="true">🎵</span>
             <span>{song.title}</span>
           </button>

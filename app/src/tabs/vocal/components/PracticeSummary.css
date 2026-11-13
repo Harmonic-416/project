@@ -4,10 +4,10 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--v-border, #e2dfd8);
   border-radius: 8px;
-  background: #ffffff;
-  color: #24242c;
+  background: var(--v-card, #ffffff);
+  color: var(--v-text, #24242c);
 }
 
 .practice-summary__head {
@@ -31,7 +31,7 @@
 
 .practice-summary__out-of {
   font-size: 0.85rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-summary__headline {
@@ -44,7 +44,7 @@
 
 .practice-summary__trend {
   font-size: 0.8rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-summary__details {
@@ -52,7 +52,7 @@
   flex-direction: column;
   gap: 4px;
   font-size: 0.85rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .practice-summary__details p,
@@ -73,7 +73,7 @@
   padding: 0;
   list-style: none;
   font-variant-numeric: tabular-nums;
-  color: #24242c;
+  color: var(--v-text, #24242c);
 }
 
 .practice-tally li {
@@ -89,9 +89,9 @@
   border-radius: 50%;
 }
 
-.practice-tally__right::before { background: #2e9e5b; }
-.practice-tally__close::before { background: #e0a100; }
-.practice-tally__missed::before { background: #cf4b36; }
+.practice-tally__right::before { background: var(--v-good, #2e9e5b); }
+.practice-tally__close::before { background: var(--v-gold, #e0a100); }
+.practice-tally__missed::before { background: var(--v-bad, #cf4b36); }
 
 .run-progress {
   margin: 0;
@@ -110,32 +110,32 @@
 
 .run-progress__grid,
 .run-progress__baseline {
-  stroke: #ecebe7;
+  stroke: var(--v-border, #ecebe7);
   stroke-width: 1;
 }
 
-.run-progress__baseline { stroke: #d6d3cc; }
+.run-progress__baseline { stroke: var(--v-border-strong, #d6d3cc); }
 
 .run-progress__tick,
 .run-progress__try {
   font-size: 9px;
-  fill: #6c6a72;
+  fill: var(--v-muted, #6c6a72);
   font-variant-numeric: tabular-nums;
 }
 
 .run-progress__try--latest {
   font-weight: 700;
-  fill: #24242c;
+  fill: var(--v-text, #24242c);
 }
 
 .run-progress__value {
   font-size: 10px;
   font-weight: 600;
-  fill: #24242c;
+  fill: var(--v-text, #24242c);
   font-variant-numeric: tabular-nums;
 }
 
-.run-progress__bar { fill: #128789; }
+.run-progress__bar { fill: var(--v-primary, #128789); }
 
 .run-progress__hit {
   fill: transparent;
@@ -146,17 +146,17 @@
   outline: none;
 }
 
-.run-progress__run--active .run-progress__hit { fill: #f0f7f7; }
+.run-progress__run--active .run-progress__hit { fill: var(--v-primary-soft, #f0f7f7); }
 
 .run-progress__run:focus-visible .run-progress__hit {
-  stroke: #24242c;
+  stroke: var(--v-text, #24242c);
   stroke-width: 1.5;
 }
 
 .run-progress__caption {
   margin-top: 2px;
   font-size: 0.75rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 /* For screen readers only. */
@@ -171,6 +171,6 @@
 
 /* Notes marked on the score by the practice scores (see PracticeModes.css for the others). */
 .practice-note--close path,
-.practice-note--close rect { fill: #e0a100; stroke: #e0a100; }
+.practice-note--close rect { fill: var(--v-gold, #e0a100); stroke: var(--v-gold, #e0a100); }
 .practice-note--slow path,
-.practice-note--slow rect { fill: #e0a100; stroke: #e0a100; }
+.practice-note--slow rect { fill: var(--v-gold, #e0a100); stroke: var(--v-gold, #e0a100); }

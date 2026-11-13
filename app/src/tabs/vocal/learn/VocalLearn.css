@@ -1,12 +1,13 @@
 /* Vocal → Learn (VocalLearn.jsx): solfège and rhythm lessons. Colours follow the Vocal tab's. */
 .vocal-learn {
-  --learn-accent: #128789;
-  --learn-accent-soft: #e3f3f3;
-  --learn-border: #e2dfd8;
-  --learn-text: #24242c;
-  --learn-muted: #6c6a72;
-  --learn-good: #4f8f3a;
-  --learn-bad: #cf4b36;
+  --learn-accent: var(--v-accent, #128789);
+  --learn-accent-dark: var(--v-accent-dark, #0b7577);
+  --learn-accent-soft: color-mix(in srgb, var(--learn-accent) 14%, var(--v-card, #ffffff));
+  --learn-border: var(--v-border, #e2dfd8);
+  --learn-text: var(--v-text, #24242c);
+  --learn-muted: var(--v-muted, #6c6a72);
+  --learn-good: var(--v-good, #4f8f3a);
+  --learn-bad: var(--v-bad, #cf4b36);
 
   display: flex;
   flex-direction: column;
@@ -42,7 +43,7 @@
   padding: 14px;
   border: 1px solid var(--learn-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--v-card, #ffffff);
   color: var(--learn-text);
 }
 
@@ -70,7 +71,7 @@
   padding: 8px 14px;
   border: 1px solid var(--learn-border);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--v-card, #ffffff);
   color: var(--learn-text);
   font: inherit;
   font-weight: 600;
@@ -78,7 +79,7 @@
 }
 
 .learn-button:hover:not(:disabled) {
-  background: #f0f7f7;
+  background: var(--v-primary-soft, #f0f7f7);
 }
 
 .learn-button:disabled {
@@ -90,7 +91,7 @@
 .learn-button--primary:hover:not(:disabled) {
   border-color: var(--learn-accent);
   background: var(--learn-accent);
-  color: #ffffff;
+  color: var(--v-on-accent, #ffffff);
 }
 
 .learn-segmented {
@@ -98,7 +99,7 @@
   padding: 3px;
   border: 1px solid var(--learn-border);
   border-radius: 999px;
-  background: #f6f5f2;
+  background: var(--v-subtle, #f6f5f2);
 }
 
 .learn-segmented--wide {
@@ -121,7 +122,7 @@
 }
 
 .learn-segmented__option--on {
-  background: #ffffff;
+  background: var(--v-card, #ffffff);
   color: var(--learn-accent);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }
@@ -197,7 +198,7 @@
   padding: 10px 0 8px;
   border: 1px solid var(--learn-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--v-card, #ffffff);
   color: var(--learn-text);
   font: inherit;
   cursor: pointer;
@@ -229,17 +230,17 @@
 .learn-box--active {
   border-color: var(--learn-accent);
   background: var(--learn-accent);
-  color: #ffffff;
+  color: var(--v-on-accent, #ffffff);
   transform: translateY(-3px);
 }
 
 .learn-box--active .learn-box__letter {
-  color: #e3f3f3;
+  color: var(--v-primary-soft, #e3f3f3);
 }
 
 .learn-box--wrong {
   border-color: var(--learn-bad);
-  background: #fbeae6;
+  background: var(--v-bad-soft, #fbeae6);
   animation: learn-shake 0.3s;
 }
 
@@ -331,7 +332,7 @@
   gap: 2px;
   padding: 12px;
   border-radius: 10px;
-  background: #f6f5f2;
+  background: var(--v-subtle, #f6f5f2);
   text-align: center;
 }
 
@@ -363,7 +364,7 @@
 }
 
 .learn-count--bar {
-  box-shadow: inset 2px 0 0 #b9b5ab;
+  box-shadow: inset 2px 0 0 var(--v-border-strong, #b9b5ab);
 }
 
 .learn-count--beat {
@@ -374,7 +375,7 @@
 
 .learn-count--on {
   background: var(--learn-accent);
-  color: #ffffff;
+  color: var(--v-on-accent, #ffffff);
 }
 
 .learn-lanes {
@@ -412,7 +413,7 @@
   height: 40px;
   border: 1px solid var(--learn-border);
   border-radius: 8px;
-  background: #fbfaf8;
+  background: var(--v-subtle, #fbfaf8);
   overflow: hidden;
 }
 
@@ -424,15 +425,15 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  border-left: 1px dotted #e8e6e0;
+  border-left: 1px dotted var(--v-border, #e8e6e0);
 }
 
 .learn-lane__grid--beat {
-  border-left: 1px solid #dcd9d1;
+  border-left: 1px solid var(--v-border-strong, #dcd9d1);
 }
 
 .learn-lane__grid--bar {
-  border-left: 2px solid #b9b5ab;
+  border-left: 2px solid var(--v-border-strong, #b9b5ab);
 }
 
 .learn-lane__grid:first-child {
@@ -447,7 +448,7 @@
   display: flex;
   align-items: center;
   padding-left: 1px;
-  border: 1px solid #b7dcdc;
+  border: 1px solid var(--v-primary-soft, #b7dcdc);
   border-radius: 6px;
   background: var(--learn-accent-soft);
   color: var(--learn-text);
@@ -457,7 +458,7 @@
 .learn-lane__note--on {
   border-color: var(--learn-accent);
   background: var(--learn-accent);
-  color: #ffffff;
+  color: var(--v-on-accent, #ffffff);
 }
 
 .learn-lane__head {
@@ -495,5 +496,336 @@
 
   .learn-count {
     font-size: 0.6rem;
+  }
+}
+
+/* ── Polish: chunky, colourful, pressable (theme/vocalTheme.css) ── */
+.vocal-learn {
+  gap: var(--v-s4);
+}
+
+.learn-intro {
+  padding: var(--v-s3) var(--v-s4);
+  border-radius: var(--v-radius);
+  background: var(--learn-accent-soft);
+}
+
+.learn-card {
+  gap: var(--v-s4);
+  padding: var(--v-s4) var(--v-s4) var(--v-s5);
+  border: 2px solid var(--learn-border);
+  border-radius: var(--v-radius-lg);
+}
+
+.learn-card__title {
+  font-family: var(--v-font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.learn-button {
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 2px solid var(--learn-border);
+  border-radius: var(--v-radius);
+  box-shadow: 0 3px 0 var(--learn-border);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  transition:
+    transform var(--v-fast) var(--v-ease-out),
+    box-shadow var(--v-fast) var(--v-ease-out);
+}
+
+.learn-button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--learn-border);
+}
+
+.learn-button--primary,
+.learn-button--primary:hover:not(:disabled) {
+  border-color: transparent;
+  box-shadow: 0 3px 0 var(--learn-accent-dark);
+  color: var(--v-on-accent, #ffffff);
+}
+
+.learn-button--primary:active:not(:disabled) {
+  box-shadow: 0 0 0 var(--learn-accent-dark);
+}
+
+.learn-segmented {
+  padding: 4px;
+  border: 2px solid var(--learn-border);
+  border-radius: var(--v-radius-lg);
+}
+
+.learn-segmented__option {
+  padding: 8px 16px;
+  border-radius: var(--v-radius);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.learn-segmented__option--on {
+  background: var(--learn-accent);
+  color: var(--v-on-accent, #ffffff);
+  box-shadow: 0 3px 0 var(--learn-accent-dark);
+}
+
+/* The do-re-mi keys */
+.learn-box {
+  padding: 12px 0 10px;
+  border: 2px solid var(--learn-border);
+  border-radius: var(--v-radius);
+  box-shadow: 0 4px 0 var(--learn-border);
+}
+
+.learn-box:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--learn-border);
+}
+
+.learn-box__syllable {
+  font-family: var(--v-font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.learn-box--active {
+  box-shadow: 0 4px 0 var(--learn-accent-dark);
+}
+
+.learn-box--good {
+  border-color: var(--v-good, #4f8f3a);
+  background: var(--v-good, #4f8f3a);
+  color: var(--v-on-accent, #ffffff);
+  box-shadow: 0 4px 0 var(--v-good-dark, #1d6b3d);
+  animation: v-pop var(--v-slow) var(--v-ease-bounce);
+}
+
+.learn-box--good .learn-box__letter {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.learn-box--wrong {
+  box-shadow: 0 4px 0 var(--v-bad, #cf4b36);
+  color: var(--v-bad, #cf4b36);
+  animation: v-shake var(--v-slow) ease-in-out;
+}
+
+.learn-quiz-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--v-s3);
+}
+
+.learn-quiz-bar .v-progress {
+  flex: 1;
+}
+
+.learn-slot {
+  min-height: 64px;
+  border-radius: var(--v-radius);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.learn-slot--good {
+  background: var(--v-good-soft, #d5f0df);
+  animation: v-pop var(--v-slow) var(--v-ease-bounce);
+}
+
+.learn-slot--bad {
+  background: var(--v-bad-soft, #fbeae6);
+  animation: v-shake var(--v-slow) ease-in-out;
+}
+
+@media (max-width: 480px) {
+  .learn-boxes {
+    gap: 4px;
+  }
+
+  .learn-box__syllable {
+    font-size: 1rem;
+  }
+}
+
+/* ── The lesson path ── */
+.learn-unit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v-s4);
+}
+
+.learn-unit__banner {
+  padding: var(--v-s4);
+  border-radius: var(--v-radius-lg);
+  background: var(--learn-accent);
+  box-shadow: 0 var(--v-lip) 0 var(--learn-accent-dark);
+  color: var(--v-on-accent, #ffffff);
+}
+
+.learn-unit--1 .learn-unit__banner {
+  background: var(--v-compose);
+  box-shadow: 0 var(--v-lip) 0 color-mix(in srgb, var(--v-compose) 70%, black);
+}
+
+.learn-unit__number {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.learn-unit__title {
+  margin: 2px 0 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.learn-unit__blurb {
+  margin: 2px 0 0;
+  opacity: 0.9;
+}
+
+.learn-path {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 44px; /* room for the "Start" bubble over a node */
+  margin: 0;
+  padding: var(--v-s5) 0 var(--v-s4);
+  list-style: none;
+}
+
+.learn-path__step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--v-s4);
+  width: min(100%, 360px);
+  transform: translateX(calc(var(--sway, 0) * 48px));
+}
+
+.learn-node {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 66px;
+  border: none;
+  border-radius: 50%;
+  background: var(--learn-accent);
+  box-shadow: 0 6px 0 var(--learn-accent-dark);
+  font-size: 1.8rem;
+  cursor: pointer;
+  transition:
+    transform var(--v-fast) var(--v-ease-out),
+    box-shadow var(--v-fast) var(--v-ease-out);
+}
+
+.learn-node:active:not(:disabled) {
+  transform: translateY(6px);
+  box-shadow: 0 0 0 var(--learn-accent-dark);
+}
+
+.learn-node--done {
+  background: var(--v-gold);
+  box-shadow: 0 6px 0 var(--v-gold-dark);
+}
+
+.learn-node--done:active:not(:disabled) {
+  box-shadow: 0 0 0 var(--v-gold-dark);
+}
+
+.learn-node--current {
+  outline: 4px solid color-mix(in srgb, var(--learn-accent) 30%, transparent);
+  outline-offset: 5px;
+  animation: v-breathe 2s ease-in-out infinite;
+}
+
+.learn-node--locked {
+  background: var(--v-subtle);
+  box-shadow: 0 6px 0 var(--v-border);
+  font-size: 1.3rem;
+  cursor: not-allowed;
+}
+
+/* The "Start" speech bubble over the current lesson. */
+.learn-node__start {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 36px;
+  padding: 4px 12px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+  color: var(--learn-accent);
+  font-family: var(--v-font-display);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  animation: v-float-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes v-float-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -4px; }
+}
+
+.learn-node__label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.learn-node__label strong {
+  font-family: var(--v-font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.learn-node__label small {
+  color: var(--learn-muted);
+  font-size: 0.85rem;
+}
+
+.learn-path__step:has(.learn-node--locked) .learn-node__label {
+  opacity: 0.55;
+}
+
+.learn-node__stars {
+  color: var(--v-border-strong);
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+.learn-node__stars .on {
+  color: var(--v-gold);
+}
+
+/* An open lesson's header */
+.learn-lesson-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v-s2) var(--v-s3);
+}
+
+.learn-lesson-bar__title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--v-font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+@media (max-width: 480px) {
+  .learn-path__step {
+    transform: translateX(calc(var(--sway, 0) * 24px));
   }
 }

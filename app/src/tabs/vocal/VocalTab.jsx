@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import './theme/vocalTheme.css'
+import './theme/motion.css'
 import './VocalTab.css'
 import SongLibrary from './components/SongLibrary.jsx'
 import OnlineSongs from './components/OnlineSongs.jsx'
 import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
 import PlaybackControls from './components/PlaybackControls.jsx'
-import PracticeModeToggle from './components/PracticeModeToggle.jsx'
 import PartTabs from './components/PartTabs.jsx'
 import AccompanimentToggle from './components/AccompanimentToggle.jsx'
 import SolfegeToggle from './components/SolfegeToggle.jsx'
@@ -16,6 +17,12 @@ import RecordPanel from './components/RecordPanel.jsx'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
 import WarmUp from './warmup/WarmUp.jsx'
+import { useSfxMuted } from './feedback/useSfx.js'
+import { useVocalProgress } from './feedback/useProgress.js'
+import { currentStreak, practisedToday } from './feedback/progress.js'
+import ModeCards from './ui/ModeCards.jsx'
+import Sheet from './ui/Sheet.jsx'
+import Menu from './ui/Menu.jsx'
 import VocalLearn from './learn/VocalLearn.jsx'
 import AccountChip from '../../auth/AccountChip.jsx'
 import { usePracticeSession } from './practice/usePracticeSession.js'
@@ -46,12 +53,13 @@ const NO_TIMESTAMPS = []
 const NO_BEATS = []
 const OTHER_PART_CLASS = 'practice-note--other-part'
 
+// Each section has its own icon and accent colour (theme/vocalTheme.css).
 const SECTIONS = [
-  { id: 'songs', label: 'Songs' }, // search, practice sessions, the song list and uploads
-  { id: 'learn', label: 'Learn' }, // solfège and rhythm lessons
-  { id: 'exercises', label: 'Exercises' }, // pitch and harmony tests
-  { id: 'compose', label: 'Compose' }, // arrange a song for voices
-  { id: 'warmup', label: 'Warm Up' }, // upper and lower range
+  { id: 'songs', label: 'Songs', icon: '🎵' }, // search, practice sessions, the song list and uploads
+  { id: 'learn', label: 'Learn', icon: '📖' }, // solfège and rhythm lessons
+  { id: 'exercises', label: 'Practice', icon: '🎯' }, // pitch and harmony tests
+  { id: 'compose', label: 'Compose', icon: '✍️' }, // arrange a song for voices
+  { id: 'warmup', label: 'Warm Up', icon: '🔥' }, // upper and lower range
 ]
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
@@ -88,6 +96,12 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
   const [arrangement, setArrangement] = useState(null) // what the arranger did, for the song it just wrote (arrange/pipeline.js)
   const sheetMusicRef = useRef(null)
+  const [sfxMuted, setSfxMuted] = useSfxMuted()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const progress = useVocalProgress()
+  const streak = currentStreak(progress)
+  const streakLit = practisedToday(progress)
+  const closeSettings = useCallback(() => setSettingsOpen(false), [])
 
   const beginLoad = useCallback(() => {
     setSection('songs')
@@ -562,37 +576,59 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     if (view === 'library') {
       return (
         <div className="vocal-tab">
-          <header className="vocal-tab__header">
-            <p>Choose a song, or upload your own MIDI or MusicXML file.</p>
+          <header className="vocal-hero">
+            <span className="vocal-hero__badge" aria-hidden="true">
+              🎤
+            </span>
+            <div>
+              <h1 className="vocal-hero__title">What do you want to sing today?</h1>
+              <p className="vocal-hero__subtitle">Pick a song, or bring your own MIDI or MusicXML file.</p>
+            </div>
           </header>
 
-          <button type="button" className="vocal-tab__search-songs" onClick={() => setView('search')}>
-            <span className="vocal-tab__search-icon" aria-hidden="true">🔍</span>
-            <span>
-              <strong>Search songs</strong>
-              <small>Browse the online song catalog</small>
-            </span>
-          </button>
+          <div className="vocal-quick">
+            <button
+              type="button"
+              className="vocal-quick__item vocal-quick__item--search v-card v-card--pressable"
+              onClick={() => setView('search')}
+            >
+              <span className="vocal-quick__icon" aria-hidden="true">
+                🔍
+              </span>
+              <span>
+                <strong>Search songs</strong>
+                <small>Browse the online song catalog</small>
+              </span>
+            </button>
 
-          <button
-            type="button"
-            className="vocal-tab__search-songs"
-            onClick={() => {
-              setSessionsFor(null)
-              setSessionsReturnTo('library')
-              setView('sessions')
-            }}
-          >
-            <span className="vocal-tab__search-icon" aria-hidden="true">🗓</span>
-            <span>
-              <strong>Practice sessions</strong>
-              <small>Your previous sittings, attempts and notes</small>
-            </span>
-          </button>
+            <button
+              type="button"
+              className="vocal-quick__item vocal-quick__item--sessions v-card v-card--pressable"
+              onClick={() => {
+                setSessionsFor(null)
+                setSessionsReturnTo('library')
+                setView('sessions')
+              }}
+            >
+              <span className="vocal-quick__icon" aria-hidden="true">
+                🗓
+              </span>
+              <span>
+                <strong>Practice sessions</strong>
+                <small>Your previous sittings, attempts and notes</small>
+              </span>
+            </button>
+          </div>
 
           <h2 className="vocal-tab__section-title">Built-in songs</h2>
           <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
-          <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
+          <div className="vocal-upload">
+            <span className="vocal-upload__plus" aria-hidden="true">
+              ＋
+            </span>
+            <p>Have your own sheet music? Open it here. It stays on your device.</p>
+            <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
+          </div>
         </div>
       )
     }
@@ -728,6 +764,17 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       withOthers,
     }
 
+    // What the settings sheet is set to, in one line under the mode cards.
+    const settingsSummary = [
+      multiPart && selectedPart?.name,
+      multiPart && !viewingShared && (withOthers ? 'With all parts' : 'By myself'),
+      solfegeOn ? 'Solfège' : 'Lyrics',
+      scoreModel && practiceMode !== 'wait' && `${tempo}% tempo`,
+      scoreModel && practiceMode !== 'wait' && metronome.on && 'Click on',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
     return (
       <div className="vocal-tab">
         <div className="vocal-tab__toolbar">
@@ -738,53 +785,70 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
           {notation && (
             <div className="vocal-tab__actions">
-              {!viewingShared && auth.user && supabase && (
-                <button
-                  type="button"
-                  className="vocal-tab__sessions-link"
-                  onClick={() => {
-                    playback.stop()
-                    setSessionsFor(sessionSong)
-                    setSessionsReturnTo('detail')
-                    setView('sessions')
-                  }}
-                >
-                  Sessions
-                </button>
-              )}
-              <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
+              <Menu label="More song actions">
+                {!viewingShared && auth.user && supabase && (
+                  <button
+                    type="button"
+                    className="vocal-tab__sessions-link"
+                    onClick={() => {
+                      playback.stop()
+                      setSessionsFor(sessionSong)
+                      setSessionsReturnTo('detail')
+                      setView('sessions')
+                    }}
+                  >
+                    🗓 Practice sessions
+                  </button>
+                )}
+                <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
+              </Menu>
             </div>
           )}
         </div>
 
-        {status === 'loading' && <p className="vocal-tab__status">Loading…</p>}
+        {status === 'loading' && <p className="vocal-tab__status vocal-tab__status--loading">Getting your song ready…</p>}
         {status === 'error' && <p className="vocal-tab__status vocal-tab__status--error">{error}</p>}
 
         {notation && arrangement && (
-          <p className="vocal-tab__arranged">
-            Arranged for {arrangement.voicing} in {arrangement.key}
-            {arrangement.shift % 12 !== 0 &&
-              ` (moved ${arrangement.shift > 0 ? 'up' : 'down'} ${Math.abs(arrangement.shift % 12)} semitone${Math.abs(arrangement.shift % 12) === 1 ? '' : 's'} from the recording)`}
-            , with the melody in {arrangement.melodyPart}.{' '}
-            {arrangement.video && (
-              <>
-                From{' '}
-                <a href={arrangement.video.url} target="_blank" rel="noreferrer">
-                  {arrangement.video.title ?? 'this YouTube video'}
-                </a>
-                .{' '}
-              </>
-            )}
-            {arrangement.lyrics === 'official' && 'The lyrics are the published ones, placed by ear. '}
-            {arrangement.lyrics === 'heard' && 'The lyrics are as heard by ear, so check them. '}
-            The harmony is written new from the song’s chords, and the notes are heard by ear: give it a listen and fix
-            what’s off.
-          </p>
+          <details className="vocal-tab__arranged">
+            <summary>
+              ✨ Arranged for {arrangement.voicing} in {arrangement.key}
+            </summary>
+            <p>
+              {arrangement.shift % 12 !== 0 &&
+                `Moved ${arrangement.shift > 0 ? 'up' : 'down'} ${Math.abs(arrangement.shift % 12)} semitone${Math.abs(arrangement.shift % 12) === 1 ? '' : 's'} from the recording, `}
+              with the melody in {arrangement.melodyPart}.{' '}
+              {arrangement.video && (
+                <>
+                  From{' '}
+                  <a href={arrangement.video.url} target="_blank" rel="noreferrer">
+                    {arrangement.video.title ?? 'this YouTube video'}
+                  </a>
+                  .{' '}
+                </>
+              )}
+              {arrangement.lyrics === 'official' && 'The lyrics are the published ones, placed by ear. '}
+              {arrangement.lyrics === 'heard' && 'The lyrics are as heard by ear, so check them. '}
+              The harmony is written new from the song’s chords, and the notes are heard by ear: give it a listen and
+              fix what’s off.
+            </p>
+          </details>
         )}
 
         {notation && (
           <>
-            <PartTabs parts={parts} selected={selectedPart?.id} onSelect={handlePartChange} />
+            {!viewingShared && <ModeCards mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />}
+            <div className="v-settings-bar">
+              <button
+                type="button"
+                className="v-btn v-btn--secondary v-btn--sm"
+                onClick={() => setSettingsOpen(true)}
+                aria-haspopup="dialog"
+              >
+                ⚙️ Settings
+              </button>
+              <span className="v-settings-bar__summary">{settingsSummary}</span>
+            </div>
             <SheetMusicViewer
               ref={sheetMusicRef}
               content={viewerContent}
@@ -792,35 +856,42 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               onError={handleSheetError}
               tempoFactor={tempo / 100}
             />
-            {!viewingShared && (
-              <PracticeModeToggle mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
-            )}
-            {multiPart && !viewingShared && (
-              <AccompanimentToggle
-                value={accompaniment}
-                mode={practiceMode}
-                onChange={handleAccompanimentChange}
-                disabled={!scoreModel}
-              />
-            )}
-            <SolfegeToggle
-              on={solfegeOn}
-              doName={solfege?.doName}
-              onChange={handleSolfegeChange}
-              disabled={!scoreModel}
-            />
-            {/* Wait for me has no transport to click along with or slow down. */}
-            {scoreModel && practiceMode !== 'wait' && (
-              <>
-                <MetronomeControl settings={metronome} onChange={setMetronome} beat={playback.beat} />
-                <TempoControl
-                  pct={tempo}
-                  onChange={setTempo}
-                  bpm={scoreModel.startBpm}
-                  disabled={playback.state === 'counting'}
-                />
-              </>
-            )}
+            <Sheet open={settingsOpen} title="Song settings" onClose={closeSettings}>
+              {multiPart && (
+                <div className="v-setting">
+                  <h3 className="v-setting__label">Your part</h3>
+                  <PartTabs parts={parts} selected={selectedPart?.id} onSelect={handlePartChange} />
+                </div>
+              )}
+              {multiPart && !viewingShared && (
+                <div className="v-setting">
+                  <h3 className="v-setting__label">Practise with</h3>
+                  <AccompanimentToggle
+                    value={accompaniment}
+                    mode={practiceMode}
+                    onChange={handleAccompanimentChange}
+                    disabled={!scoreModel}
+                  />
+                </div>
+              )}
+              <div className="v-setting">
+                <h3 className="v-setting__label">Under the notes</h3>
+                <SolfegeToggle on={solfegeOn} doName={solfege?.doName} onChange={handleSolfegeChange} disabled={!scoreModel} />
+              </div>
+              {/* Wait for me has no transport to click along with or slow down. */}
+              {scoreModel && practiceMode !== 'wait' && (
+                <div className="v-setting">
+                  <h3 className="v-setting__label">Metronome &amp; tempo</h3>
+                  <MetronomeControl settings={metronome} onChange={setMetronome} beat={playback.beat} />
+                  <TempoControl
+                    pct={tempo}
+                    onChange={setTempo}
+                    bpm={scoreModel.startBpm}
+                    disabled={playback.state === 'counting'}
+                  />
+                </div>
+              )}
+            </Sheet>
             {scoreModel && practiceMode === 'wait' ? (
               // Keyed by part so switching parts starts the mode fresh on the new line.
               <WaitModePlayer
@@ -842,17 +913,19 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 runsRemote={runsRemotes.trouble}
               />
             ) : (
-              <PlaybackControls
-                state={playback.state}
-                position={playback.position}
-                duration={playback.duration}
-                rate={playback.rate}
-                onPlay={playback.play}
-                onPause={playback.pause}
-                onStop={playback.stop}
-                onSeek={playback.seek}
-                disabled={!scoreModel}
-              />
+              <div className="v-dock">
+                <PlaybackControls
+                  state={playback.state}
+                  position={playback.position}
+                  duration={playback.duration}
+                  rate={playback.rate}
+                  onPlay={playback.play}
+                  onPause={playback.pause}
+                  onStop={playback.stop}
+                  onSeek={playback.seek}
+                  disabled={!scoreModel}
+                />
+              </div>
             )}
             {scoreModel && viewingShared && (
               <SharedAttemptPanel
@@ -884,24 +957,51 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   }
 
   return (
-    <div className="vocal-frame">
+    <div className={`vocal-frame vocal-frame--${section}`}>
       <div className="vocal-frame__top">
         <nav className="vocal-frame__sections" aria-label="Vocal">
           {SECTIONS.map((item) => (
             <button
               key={item.id}
               type="button"
-              className={`vocal-frame__section ${section === item.id ? 'vocal-frame__section--active' : ''}`}
+              className={`vocal-frame__section vocal-frame__section--${item.id} ${section === item.id ? 'vocal-frame__section--active' : ''}`}
               aria-pressed={section === item.id}
               onClick={() => openSection(item.id)}
             >
-              {item.label}
+              <span className="vocal-frame__section-icon" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span className="vocal-frame__section-label">{item.label}</span>
             </button>
           ))}
         </nav>
-        <AccountChip auth={auth} onNavigate={onNavigate} />
+        <div className="vocal-frame__end">
+          <span
+            className={`vocal-frame__streak${streakLit ? ' vocal-frame__streak--lit' : ''}`}
+            title={
+              streak === 0
+                ? 'Finish a lesson, test, warm-up or run to start a streak'
+                : `${streak}-day streak${streakLit ? '' : ': practise today to keep it'}`
+            }
+            aria-label={`${streak}-day practice streak`}
+          >
+            <span aria-hidden="true">🔥</span>
+            {streak}
+          </span>
+          <button
+            type="button"
+            className="vocal-frame__sound"
+            aria-pressed={!sfxMuted}
+            aria-label={sfxMuted ? 'Turn sound effects on' : 'Turn sound effects off'}
+            title={sfxMuted ? 'Sound effects off' : 'Sound effects on'}
+            onClick={() => setSfxMuted(!sfxMuted)}
+          >
+            {sfxMuted ? '🔇' : '🔊'}
+          </button>
+          <AccountChip auth={auth} onNavigate={onNavigate} />
+        </div>
       </div>
-      <div className="vocal-frame__body">
+      <div className="vocal-frame__body" key={section}>
         {section === 'exercises' ? (
           <div className="vocal-tab">
             <WarmUp show="tests" />

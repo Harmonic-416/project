@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import '../../guitar/song/TranscribePanel.css'
 import './ArrangePanel.css'
+import ProgressBar from '../ui/ProgressBar.jsx'
 import { VOICINGS } from '../arrange/arrange.js'
 import { fetchVideoInfo, parseYouTube } from '../arrange/youtube.js'
 import { canArrangeFromLinks, deleteArrangementJob, downloadArrangement, listMyArrangementJobs, requestArrangement } from '@backend/arrangements'
@@ -183,11 +184,12 @@ function ArrangePanel({ onArranged, auth, supabase }) {
   if (job) {
     const percent = Math.round(job.value * 100)
     return (
-      <section className="transcribe" aria-live="polite">
+      <section className="transcribe arrange arrange--working" aria-live="polite">
+        <span className="arrange__working-icon" aria-hidden="true">
+          🎼
+        </span>
         <p className="transcribe__file">{video?.title ?? job.name}</p>
-        <div className="transcribe__bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-          <span style={{ width: `${percent}%` }} />
-        </div>
+        <ProgressBar value={percent} max={100} label="Arranging" />
         <p className="transcribe__stage">
           {job.label}… {percent}%
         </p>
@@ -201,146 +203,172 @@ function ArrangePanel({ onArranged, auth, supabase }) {
 
   return (
     <section className="transcribe arrange">
-      <p>
-        Harmonic listens to a song’s <strong>lead vocal and chords</strong> and writes a new arrangement of it for
-        voices: the tune in one part, the others singing the song’s harmony in block chords, moved to a key that suits
-        the singers. Open it like any other song to hear, practise and export each part as MIDI or MusicXML.
-      </p>
-
-      <label className="arrange__field">
-        <span>YouTube link (optional)</span>
-        <input
-          type="url"
-          inputMode="url"
-          placeholder="https://www.youtube.com/watch?v=…"
-          value={link}
-          onChange={(event) => setLink(event.target.value)}
-          aria-invalid={badLink}
-        />
-      </label>
-      {badLink && <p className="arrange__warning">That doesn’t look like a YouTube video link.</p>}
-      {video && (
-        <div className="arrange__video">
-          {video.thumbnail && <img src={video.thumbnail} alt="" width="96" height="72" />}
-          <div>
-            <strong>{video.title ?? 'YouTube video'}</strong>
-            {video.author && <small>{video.author}</small>}
-            <a href={video.url} target="_blank" rel="noreferrer">
-              Open on YouTube
-            </a>
-          </div>
+      <header className="vocal-hero">
+        <span className="vocal-hero__badge" aria-hidden="true">
+          ✍️
+        </span>
+        <div>
+          <h1 className="vocal-hero__title">Arrange a song for voices</h1>
+          <p className="vocal-hero__subtitle">Turn a song into parts your group can sing, in three steps.</p>
         </div>
-      )}
-
-      <div className="arrange__options">
-        <label className="arrange__field">
-          <span>Voices</span>
-          <select
-            value={voicing}
-            onChange={(event) => {
-              setVoicing(event.target.value)
-              setMelodyPart(VOICINGS[event.target.value].melody[0])
-            }}
-          >
-            {Object.entries(VOICINGS).map(([id, v]) => (
-              <option key={id} value={id}>
-                {v.label} — {v.voices.map((p) => p.name).join(', ')}
-              </option>
-            ))}
-          </select>
-        </label>
-        {melodyChoices.length > 1 && (
-          <label className="arrange__field">
-            <span>Melody in</span>
-            <select value={melodyPart} onChange={(event) => setMelodyPart(Number(event.target.value))}>
-              {melodyChoices.map((v) => (
-                <option key={v} value={v}>
-                  {MELODY_LABEL[`${voicing}:${v}`] ?? VOICINGS[voicing].voices[v].name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label className="arrange__check">
-          <input type="checkbox" checked={keepKey} onChange={(event) => setKeepKey(event.target.checked)} />
-          <span>Keep the song’s key (otherwise it moves to suit the singers)</span>
-        </label>
-      </div>
-
-      {parsed && linkAccess && (
-        <div className="arrange__server">
-          <button type="button" className="arrange__primary" onClick={queue} disabled={Boolean(waitingFor)}>
-            Arrange from this link
-          </button>
-          <small>
-            Runs on Harmonic’s server, which fetches the audio itself and adds the lyrics. You can leave this page and
-            come back.
-          </small>
-        </div>
-      )}
-      {parsed && !linkAccess && (
-        <p className="transcribe__note">
-          {userId
-            ? 'Arranging straight from a link is only open to the Harmonic team for now, so choose the song’s audio below.'
-            : 'Choose the song’s audio below. (Signed-in members of the Harmonic team can arrange straight from the link.)'}
+      </header>
+      <details className="v-howto">
+        <summary>How it works</summary>
+        <p>
+          Harmonic listens to a song’s <strong>lead vocal and chords</strong> and writes a new arrangement of it for
+          voices: the tune in one part, the others singing the song’s harmony in block chords, moved to a key that suits
+          the singers. Open it like any other song to hear, practise and export each part as MIDI or MusicXML.
         </p>
-      )}
+      </details>
 
-      {jobs.length > 0 && (
-        <div className="arrange__jobs">
-          <h3>From links</h3>
-          <ul>
-            {jobs.map((job) => {
-              const busy = job.status === 'queued' || job.status === 'running'
-              return (
-                <li key={job.id}>
-                  <div className="arrange__job-text">
-                    <strong>{job.title ?? `youtu.be/${job.youtube_id}`}</strong>
-                    <small>
-                      {VOICINGS[job.voicing]?.label} · {busy && job.stage ? job.stage : STATUS_LABEL[job.status]}
-                      {busy && job.status === 'running' ? ` ${Math.round(job.progress * 100)}%` : ''}
-                      {job.status === 'failed' && job.error ? `: ${job.error}` : ''}
-                    </small>
-                    {busy && (
-                      <div className="transcribe__bar" role="progressbar" aria-valuenow={Math.round(job.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-                        <span style={{ width: `${Math.round(job.progress * 100)}%` }} />
+      <ol className="arrange__steps">
+        <li className="arrange__step">
+          <h2 className="arrange__step-title">
+            <span className="arrange__step-number" aria-hidden="true">1</span> Which song?
+          </h2>
+          <label className="arrange__field">
+            <span>YouTube link (optional)</span>
+            <input
+              type="url"
+              inputMode="url"
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={link}
+              onChange={(event) => setLink(event.target.value)}
+              aria-invalid={badLink}
+            />
+          </label>
+          {badLink && <p className="arrange__warning">That doesn’t look like a YouTube video link.</p>}
+          {video && (
+            <div className="arrange__video">
+              {video.thumbnail && <img src={video.thumbnail} alt="" width="96" height="72" />}
+              <div>
+                <strong>{video.title ?? 'YouTube video'}</strong>
+                {video.author && <small>{video.author}</small>}
+                <a href={video.url} target="_blank" rel="noreferrer">
+                  Open on YouTube
+                </a>
+              </div>
+            </div>
+          )}
+
+        </li>
+
+        <li className="arrange__step">
+          <h2 className="arrange__step-title">
+            <span className="arrange__step-number" aria-hidden="true">2</span> Who’s singing?
+          </h2>
+          <div className="arrange__options">
+            <label className="arrange__field">
+              <span>Voices</span>
+              <select
+                value={voicing}
+                onChange={(event) => {
+                  setVoicing(event.target.value)
+                  setMelodyPart(VOICINGS[event.target.value].melody[0])
+                }}
+              >
+                {Object.entries(VOICINGS).map(([id, v]) => (
+                  <option key={id} value={id}>
+                    {v.label} — {v.voices.map((p) => p.name).join(', ')}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {melodyChoices.length > 1 && (
+              <label className="arrange__field">
+                <span>Melody in</span>
+                <select value={melodyPart} onChange={(event) => setMelodyPart(Number(event.target.value))}>
+                  {melodyChoices.map((v) => (
+                    <option key={v} value={v}>
+                      {MELODY_LABEL[`${voicing}:${v}`] ?? VOICINGS[voicing].voices[v].name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="arrange__check">
+              <input type="checkbox" checked={keepKey} onChange={(event) => setKeepKey(event.target.checked)} />
+              <span>Keep the song’s key (otherwise it moves to suit the singers)</span>
+            </label>
+          </div>
+        </li>
+
+        <li className="arrange__step">
+          <h2 className="arrange__step-title">
+            <span className="arrange__step-number" aria-hidden="true">3</span> Arrange it
+          </h2>
+          {parsed && linkAccess && (
+            <div className="arrange__server">
+              <button type="button" className="arrange__primary" onClick={queue} disabled={Boolean(waitingFor)}>
+                Arrange from this link
+              </button>
+              <small>
+                Runs on Harmonic’s server, which fetches the audio itself and adds the lyrics. You can leave this page and
+                come back.
+              </small>
+            </div>
+          )}
+          {parsed && !linkAccess && (
+            <p className="transcribe__note">
+              {userId
+                ? 'Arranging straight from a link is only open to the Harmonic team for now, so choose the song’s audio below.'
+                : 'Choose the song’s audio below. (Signed-in members of the Harmonic team can arrange straight from the link.)'}
+            </p>
+          )}
+
+          {jobs.length > 0 && (
+            <div className="arrange__jobs">
+              <h3>From links</h3>
+              <ul>
+                {jobs.map((job) => {
+                  const busy = job.status === 'queued' || job.status === 'running'
+                  return (
+                    <li key={job.id}>
+                      <div className="arrange__job-text">
+                        <strong>{job.title ?? `youtu.be/${job.youtube_id}`}</strong>
+                        <small>
+                          {VOICINGS[job.voicing]?.label} · {busy && job.stage ? job.stage : STATUS_LABEL[job.status]}
+                          {busy && job.status === 'running' ? ` ${Math.round(job.progress * 100)}%` : ''}
+                          {job.status === 'failed' && job.error ? `: ${job.error}` : ''}
+                        </small>
+                        {busy && <ProgressBar value={Math.round(job.progress * 100)} max={100} label="Arranging" />}
                       </div>
-                    )}
-                  </div>
-                  {job.status === 'done' && (
-                    <button type="button" className="arrange__open" onClick={() => openJob(job)} disabled={opening === job.id}>
-                      {opening === job.id ? 'Opening…' : 'Open'}
-                    </button>
-                  )}
-                  {!busy && (
-                    <button type="button" className="arrange__forget" onClick={() => forget(job)} aria-label="Remove">
-                      ×
-                    </button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
+                      {job.status === 'done' && (
+                        <button type="button" className="arrange__open" onClick={() => openJob(job)} disabled={opening === job.id}>
+                          {opening === job.id ? 'Opening…' : 'Open'}
+                        </button>
+                      )}
+                      {!busy && (
+                        <button type="button" className="arrange__forget" onClick={() => forget(job)} aria-label="Remove">
+                          ×
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
 
-      <label className="notation-uploader">
-        <input
-          type="file"
-          accept={AUDIO_ACCEPT}
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            if (file) start(file)
-            event.target.value = ''
-          }}
-        />
-        <span>Choose the song’s audio: MP3, WAV, M4A or OGG (up to 10 minutes)</span>
-      </label>
-      <p className="transcribe__note">
-        On this device, Harmonic can’t take the audio from YouTube, so use a copy of the song you own or a recording of
-        your own. It stays on this device: nothing is uploaded. The first time downloads about 70 MB of listening
-        models.
-      </p>
+          <label className="notation-uploader">
+            <input
+              type="file"
+              accept={AUDIO_ACCEPT}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) start(file)
+                event.target.value = ''
+              }}
+            />
+            <span>Choose the song’s audio: MP3, WAV, M4A or OGG (up to 10 minutes)</span>
+          </label>
+          <p className="transcribe__note">
+            On this device, Harmonic can’t take the audio from YouTube, so use a copy of the song you own or a recording of
+            your own. It stays on this device: nothing is uploaded. The first time downloads about 70 MB of listening
+            models.
+          </p>
+        </li>
+      </ol>
       {error && <p className="vocal-tab__status vocal-tab__status--error">{error}</p>}
     </section>
   )

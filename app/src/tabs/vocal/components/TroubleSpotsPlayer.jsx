@@ -3,6 +3,8 @@ import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
 import PracticeSummary from './PracticeSummary.jsx'
+import { sfx } from '../feedback/sfx.js'
+import { recordActivity } from '../feedback/progress.js'
 import DynamicsMeter from './DynamicsMeter.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { findActiveNote, midiToNoteName } from '../audio/pitchDetector.js'
@@ -155,6 +157,9 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey
         const charted = result.total > 0 && r.from <= (melody[0]?.time ?? 0) + 1e-3
         if (charted) addRun(result.score, { total: result.total, right: result.right, half: result.close, missed: result.missed })
         setSummary(result.total > 0 ? { ...result, charted } : null)
+        if (result.score >= 90) sfx.perfect()
+        else sfx.complete()
+        recordActivity()
       }
     }
     mic.stop()
