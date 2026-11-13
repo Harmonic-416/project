@@ -1,0 +1,15 @@
+/* Guitar practice palette, shared by its library and player. */
+.guitar-tab {
+  --gs-bg: #16161c;
+  --gs-surface: #202027;
+  --gs-raised: #282830;
+  --gs-border: #363640;
+  --gs-text: #f4f3f1;
+  --gs-muted: #aaa7b3;
+  --gs-accent: #3bb5b8;
+  --gs-accent-soft: #20363b;
+  --gs-warning: #ecc464;
+  --gs-danger: #ff9298;
+  --gs-paper: #ffffff;
+}
+.guitar-tab { --gs-hit: #7dce90; --gs-close: #ecc464; --gs-miss: #ff9298; }

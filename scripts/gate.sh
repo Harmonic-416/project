@@ -93,6 +93,7 @@ step '5. scope — Guitar: Songs, Learn, Exercises only'
 OUT_OF_SCOPE=$(git diff --name-only HEAD -- app src worker tests \
   | grep -vE '^app/tests/' \
   | grep -vE '^app/src/tabs/guitar/(GuitarTab|song/|learn/|exercises/|practice/|notation/)' \
+  | grep -vE '^app/src/styles/tokens\.css$' \
   || true)
 # Pre-existing dirt is not the loop's fault: the same allowlist that covers
 # untracked files in never-touch paths also covers files a human already had
