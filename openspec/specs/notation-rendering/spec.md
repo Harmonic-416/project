@@ -1,7 +1,7 @@
 # Notation Rendering
 
 ## Purpose
-AlphaTab tab + standard-notation rendering (source of truth for expected notes) with alphaSynth/Tone.js reference playback on the single transport clock. It owns the countdown, click/drag-to-seek, per-song persisted tempo, the solfège toggle, and Tonal.js random melody / chord-progression generation.
+Notation rendering and reference playback, one renderer per instrument: alphaTab for guitar (tab and standard notation together, and the source of the guitar timeline's ticks), OpenSheetMusicDisplay for voice (its cursor gives the timing model), with alphaSynth and Tone.js playback on the single transport clock. It owns guitar notation conversion in and out, generated tab for files that carry no string or fret data, the countdown, click-and-drag seek, the per-song tempo control, the solfège toggle, and drawing the exercise material the player chose or has already learned.
 
 ## Requirements
 
@@ -65,18 +65,25 @@ The system SHALL let the user toggle solfège labels on the notation for voice s
 - **WHEN** the user disables it
 - **THEN** the labels are hidden
 
-### Requirement: Random melody generation (F20)
-The system SHALL generate random voice sight-reading melodies via Tonal.js as a renderable expected-note sequence.
+### Requirement: Exercise material comes from what the player chose or learned (F20, F36)
+The system SHALL draw the material for a generated exercise from what the player has chosen to train or has already learned, never from random generation. The chord-recognition exercises SHALL ask only the chords the player picked, or the chords of the song they last opened, and SHALL weight a chord they keep missing to come up more often. The lesson play-through SHALL use the chords the player has most recently cleared, falling back to a fixed beginner progression until four have been cleared. Generated material SHALL render as notation or as a chord diagram, with its expected notes available to scoring wherever the exercise is scored.
 
-#### Scenario: Generated melody is renderable and scorable
-- **WHEN** a user requests a random sight-reading melody
-- **THEN** a melody is generated and rendered as notation
-- **AND** its expected-note sequence is available to scoring
+Random chords a beginner has not learned yet are not practice (master design document §7.1, F20/F36).
 
-### Requirement: Random chord-progression generation (F36)
-The system SHALL generate random chord progressions drawn only from the user's unlocked chords, at a chosen tempo, as a renderable expected-note sequence.
+#### Scenario: A chord-recognition round asks only chosen chords
+- **WHEN** a player starts a chord-recognition round
+- **THEN** every chord asked comes from the set they picked, or from the song they last opened
+- **AND** no chord outside that set is asked
 
-#### Scenario: Progression uses only unlocked chords
-- **WHEN** a user requests a random chord progression at a chosen tempo
-- **THEN** the progression contains only unlocked chords
-- **AND** it renders as notation with expected timing at the chosen tempo
+#### Scenario: Missed chords come up more often
+- **WHEN** a player has answered one chord wrongly more often than another
+- **THEN** the chord they miss more is more likely to be asked
+
+#### Scenario: The play-through uses cleared chords
+- **WHEN** a player has cleared four or more chords and starts the lesson play-through
+- **THEN** its chords are ones they have cleared
+
+#### Scenario: Before four are cleared, a fixed beginner progression is used
+- **WHEN** a player has cleared fewer than four chords and starts the lesson play-through
+- **THEN** a fixed beginner progression is used instead
+- **AND** no unlearned chord is introduced at random

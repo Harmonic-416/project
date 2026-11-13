@@ -1,22 +1,34 @@
 # Song Storage
 
 ## Purpose
-Manages the song library (V1 seeds 3 songs), MusicXML import plus best-effort MuseScore/MIDI transformation into renderable notation, and private-by-default compressed per-attempt recordings via Supabase Storage with row-level security. Covers F9, F10, F23, N3, N5 (and seeds the F4 library).
+Manages the song library — built-in songs for both instruments, a read-only public-domain catalog readable without an account, and notation import (MusicXML, MXL, MIDI, Guitar Pro and alphaTex, best-effort) — plus private-by-default compressed per-run recordings via Supabase Storage with row-level security. A file the user opens from their own device is never uploaded. Covers F9, F10, F23, N3, N5 and the storage side of F4.
 
 ## Requirements
 
-### Requirement: Seeded Song Library (F4)
-The system SHALL provide a song library seeded with at least the 3 V1 songs, each exposing renderable notation to the notation-rendering capability. (F4 — the "3 hardcoded songs"; the playlist UI that lists them is owned by `ui`.)
+### Requirement: Built-in songs and the public catalog (F4)
+The system SHALL ship built-in songs for both instruments, each exposing renderable notation, and SHALL make them playable with no account and no network. It SHALL also offer a read-only catalog of public-domain songs curated by the team, readable without an account, each exposing renderable notation. Built-in and catalog songs SHALL be read-only to clients. A song file the user opens from their own device SHALL NOT be uploaded, for copyright reasons; it stays on that device. (F4 — the library UI that lists them is owned by `ui`.)
 
-#### Scenario: Seed songs available to authenticated users
-- **WHEN** an authenticated user requests the song library
-- **THEN** at least the 3 seeded songs are returned with their notation file references
-- **AND** each seeded song's notation can be loaded for rendering
+No fixed number of songs is specified: the count is a product decision, not a contract.
 
-#### Scenario: Seed songs are read-only to clients
-- **WHEN** a user attempts to modify or delete a seeded/public song through the client
+#### Scenario: Built-in songs work with no account and no network
+- **WHEN** a user with no account opens an instrument's song list
+- **THEN** that instrument's built-in songs are listed with their notation
+- **AND** each can be loaded and rendered
+
+#### Scenario: The catalog is readable without an account
+- **WHEN** anyone requests the public catalog
+- **THEN** its songs are returned with their notation file references
+- **AND** no sign-in is required to read them
+
+#### Scenario: Public and built-in songs are read-only to clients
+- **WHEN** a client attempts to modify or delete a catalog or built-in song
 - **THEN** the write is denied
-- **AND** the seeded library remains intact
+- **AND** the library remains intact
+
+#### Scenario: The user's own songs are never uploaded
+- **WHEN** a user opens a song file of their own
+- **THEN** it is kept on their device
+- **AND** no copy of the file is sent to the server
 
 ### Requirement: MusicXML Import (F9)
 The system SHALL let an authenticated user import a MusicXML score, store it as a song they own, and make it available for rendering. (F9)
