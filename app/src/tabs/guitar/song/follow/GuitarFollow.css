@@ -177,3 +177,28 @@
 .guitar-shared__swatch--close { color: #e0a100; background: rgba(224, 161, 0, 0.25); }
 .guitar-shared__swatch--miss { color: #cf4b36; background: rgba(207, 75, 54, 0.25); }
 .guitar-shared__swatch--skipped { color: #9a9a9a; border-style: dashed; }
+
+/* Practice feedback uses text as well as colour, including in reduced motion. */
+.guitar-follow .practice-status, .run-review, .hearing-help { color: var(--gs-text); background: var(--gs-surface); border: 2px solid var(--gs-border); border-radius: 22px; padding: 20px; }
+.guitar-follow .practice-status { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.guitar-follow .practice-status__link { min-height: 44px; padding: 10px 16px; background: var(--gs-raised); color: var(--gs-accent); border: 1px solid var(--gs-border); border-radius: 14px; font: inherit; font-weight: 700; text-decoration: none; }
+.guitar-follow .practice-status__link--nudge { background: var(--gs-accent-soft); color: var(--gs-accent); border-color: var(--gs-accent); }
+.guitar-follow .practice-status__error { color: var(--gs-danger); }
+.guitar-follow .practice-status__live { color: var(--gs-accent); }
+.guitar-follow .practice-status__live--close { color: var(--gs-close); }
+.guitar-follow .practice-status__live--wrong { color: var(--gs-miss); }
+.run-review h3 { margin: 0; }
+.run-review p, .hearing-help p, .hearing-help li { color: var(--gs-muted); line-height: 1.6; }
+.run-review__heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: center; }
+.run-review__heading p { margin: 8px 0; }
+.run-review select { background: var(--gs-raised); color: var(--gs-text); border: 1px solid var(--gs-border); border-radius: 12px; padding: 10px; font: inherit; }
+.run-review__list { padding: 0; margin: 18px 0; list-style: none; display: grid; gap: 10px; }
+.run-review__item { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 16px; padding: 14px; text-align: left; font: inherit; color: var(--gs-text); background: var(--gs-raised); border: 1px solid var(--gs-border); border-left: 4px solid var(--gs-muted); border-radius: 12px; cursor: pointer; }
+.run-review__item small { display: block; color: var(--gs-muted); font-size: .8rem; margin-top: 5px; }
+.run-review__item--hit { border-left-color: var(--gs-hit); }
+.run-review__item--close { border-left-color: var(--gs-close); }
+.run-review__item--miss { border-left-color: var(--gs-miss); }
+.run-review__verdict { text-align: right; font-weight: 750; }
+.hearing-help summary { min-height: 44px; cursor: pointer; color: var(--gs-accent); font-weight: 750; }
+.guitar-follow .song-extras { color: var(--gs-text); }
+.guitar-follow .song-extras__hint { color: var(--gs-muted); }

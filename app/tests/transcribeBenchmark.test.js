@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { loadGuitarNotation } from '../src/tabs/guitar/notation/loadGuitarNotation.js'
 import { TRANSCRIBE, evaluateAudio, frameTime, notesFrom } from '../src/tabs/guitar/song/follow/refineWithBasicPitch.js'
 import { trackBeats } from '../src/tabs/guitar/song/transcribe/beats.js'
-import { draftScore } from '../src/tabs/guitar/song/transcribe/pipeline.js'
+import { YAMNET_RATE } from '../src/tabs/guitar/song/transcribe/guitarPresence.js'
+import { draftScore, transcribeAudio } from '../src/tabs/guitar/song/transcribe/pipeline.js'
 import { basicPitchFromDisk, describeScore, render, scoreDraft, songs } from './transcribeSongs.js'
 
 /**
@@ -54,4 +55,57 @@ describe.skipIf(!process.env.TRANSCRIBE_BENCH)('transcription benchmark (synthet
       if (score.chords !== null) expect(score.chords).toBeGreaterThan(0.8)
     }, 600000)
   }
+})
+
+/** `samples` at `from` Hz → `to` Hz, by linear interpolation (Node has no Web Audio to do it). */
+function resampled(samples, from, to) {
+  const out = new Float32Array(Math.floor((samples.length * to) / from))
+  for (let i = 0; i < out.length; i += 1) {
+    const at = (i * from) / to
+    const j = Math.floor(at)
+    out[i] = samples[j] + (at - j) * ((samples[j + 1] ?? samples[j]) - samples[j])
+  }
+  return out
+}
+
+/**
+ * The arranger worker's guitar path (worker/arranger/worker.js `tab`), in
+ * Node: transcribeAudio with every model handed in as bytes, on one ONNX
+ * runtime, as worker/arranger/models.js does. YAMNet doesn't hear the
+ * synthetic guitar as a guitar, so the song goes through the separator and
+ * is tabbed `anyway`. Needs the separator's model on disk (the worker
+ * keeps it in ~/.cache/harmonic-arranger/; or download separate.js's
+ * MODEL_URL), and takes about a minute:
+ *   TRANSCRIBE_BENCH=1 TRANSCRIBE_BENCH_SEPARATOR=<htdemucs_6s….onnx> npx vitest run tests/transcribeBenchmark.test.js -t worker
+ */
+const separatorFile = process.env.TRANSCRIBE_BENCH_SEPARATOR
+describe.skipIf(!process.env.TRANSCRIBE_BENCH || !separatorFile)('the arranger worker’s path: transcribeAudio with the models handed in', () => {
+  it('separates and tabs a song, every model given as bytes and a runtime', async () => {
+    const [song] = songs()
+    const audio = render(song)
+    const read = (path) => new Uint8Array(readFileSync(path))
+    const models = {
+      runtime: ort,
+      separator: read(separatorFile),
+      beats: read(new URL('../public/beat-this/small0.onnx', import.meta.url)),
+      yamnet: read(new URL('../public/yamnet/yamnet.onnx', import.meta.url)),
+      basicPitch: basicPitchFromDisk(),
+    }
+    const wide = resampled(audio, 22050, 44100)
+    const stages = new Set()
+    const result = await transcribeAudio(
+      { song: audio, song16k: resampled(audio, 22050, YAMNET_RATE), stereo: async () => [wide, wide] },
+      {
+        models,
+        toMono: async ([left, right], rate) => resampled(left.map((v, i) => (v + right[i]) / 2), 44100, rate),
+        anyway: true,
+        title: song.name,
+        onProgress: ({ stage }) => stages.add(stage),
+      },
+    )
+    expect(result).toMatchObject({ status: 'ok', title: song.name, isolated: true })
+    expect([...stages]).toEqual(['listen', 'isolate', 'notes', 'beats', 'tab'])
+    const notation = await loadGuitarNotation(new TextEncoder().encode(result.musicXml).buffer, 'draft.musicxml')
+    expect(notation.hasTab).toBe(true)
+  }, 600000)
 })

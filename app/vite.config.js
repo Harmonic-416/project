@@ -76,17 +76,17 @@ export default defineConfig({
       workbox: {
         // OSMD + Tone + supabase-js exceed workbox's 2 MiB precache default.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        // Guitar songs (alphaTab: ~1 MB view chunk, ~2 MB worker and worklet,
-        // ~1 MB soundfont, music font) stay out of the install-time precache;
-        // they're cached the first time the Songs view opens. So does the
+        // Guitar's player, workers, fonts and built-in scores are precached.
+        // Optional transcription models remain deferred, including the
         // after-the-run check (TensorFlow.js + basic-pitch's model), cached the
         // first time someone runs it, and tabbing a song's guitar (the
         // pipeline, Beat This!, YAMNet, the separator and ONNX Runtime's
         // ~28 MB WebGPU .wasm; the separator's 55 MB model comes from
         // Hugging Face and is cached on first use).
+        // Built-in scores and the small synth assets must be available after
+        // installation, including when Guitar has not yet been opened.
+        globPatterns: ['**/*.{js,css,html,svg,woff,woff2}', 'guitar-songs/*.{musicxml,xml,mxl,mid,midi,gp,gp3,gp4,gp5,gpx,alphatex,atex}', 'soundfont/sonivox.sf3'],
         globIgnores: [
-          '**/alphaTab.*.js',
-          '**/GuitarSong-*.{js,css}',
           '**/refineWithBasicPitch-*.js',
           '**/basic-pitch/**',
           '**/{pipeline,beats,separate}-*.js',

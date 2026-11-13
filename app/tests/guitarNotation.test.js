@@ -17,6 +17,10 @@ const EXPECTED = houseOfTheRisingSunNotes()
 const STANDARD_TUNING = [40, 45, 50, 55, 59, 64]
 
 describe('detectGuitarFormat', () => {
+  it('rejects empty uploads with a recoverable message', async () => {
+    await expect(loadGuitarNotation(new ArrayBuffer(0), 'empty.musicxml')).rejects.toThrow('empty')
+  })
+
   it('uses the extension first, then the bytes', () => {
     expect(detectGuitarFormat('song.gp5', new ArrayBuffer(4))).toBe('guitar-pro')
     expect(detectGuitarFormat('song.alphatex', new ArrayBuffer(4))).toBe('alphatex')
