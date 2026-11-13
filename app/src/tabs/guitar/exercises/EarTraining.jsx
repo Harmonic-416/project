@@ -4,6 +4,7 @@ import { chordFor, chordsFor, loadSongChords } from '../practice/chordNames.js'
 import { CHORDS } from '../practice/chords.js'
 import { useChordPlayer } from '../practice/useChordPlayer.js'
 import {
+  DEFAULT_PICKS,
   LEVELS,
   MIN_POOL,
   QUALITY_POOL,
@@ -45,6 +46,10 @@ function EarTraining() {
   const [song] = useState(loadSongChords) // { title, chords } of the last song opened with chord names
   const [state, dispatch] = useReducer(exerciseReducer, undefined, initialExercise)
   const [soundError, setSoundError] = useState(null)
+  const [includeSevenths, setIncludeSevenths] = useState(false)
+  const [soundPending, setSoundPending] = useState(false)
+  const audioGeneration = useRef(0)
+  const actionLock = useRef(false)
   const player = useChordPlayer()
   const nextRef = useRef(null)
 
@@ -55,11 +60,14 @@ function EarTraining() {
   const lastQuestion = index + 1 >= questions.length
   const songPool = chordsFor(song?.chords)
   const pools = {
-    quality: QUALITY_POOL,
+    quality: includeSevenths ? QUALITY_POOL : CHORDS.filter((chord) => DEFAULT_PICKS.includes(chord.id)),
     chord: CHORDS.filter((chord) => picks.includes(chord.id)),
     song: songPool,
   }
   const ready = (id) => pools[id].length >= MIN_POOL
+
+  useEffect(() => { actionLock.current = false }, [status, index])
+  useEffect(() => () => { audioGeneration.current += 1 }, [])
 
   // Answering disables the choices, so keep keyboard focus on the way on.
   useEffect(() => {
@@ -68,22 +76,31 @@ function EarTraining() {
 
   // Always from a tap (Start, Next, a play button), so the browser lets audio start.
   const listen = (chord, how = 'strum') => {
+    const generation = ++audioGeneration.current
     setSoundError(null)
+    setSoundPending(true)
     player[how](chord).catch((err) => {
+      if (generation !== audioGeneration.current) return
       console.error('Exercise playback failed', err)
-      setSoundError('The sound couldn’t start. On a phone, open the app over HTTPS.')
+      setSoundError('The sound could not start. Check your audio output, then try Play again.')
+    }).finally(() => {
+      if (generation === audioGeneration.current) setSoundPending(false)
     })
   }
 
   const start = () => {
     const weights = levelId === 'quality' ? {} : missWeights(stats)
     const round = makeRound(levelId, { pool: pools[levelId], weights })
+    if (!round.length) return
+    actionLock.current = false
     dispatch({ type: 'start', level: levelId, questions: round })
     listen(round[0].answer)
   }
 
   // Naming a chord counts towards how you do on it; quality answers don't.
   const answer = (choice) => {
+    if (actionLock.current || status !== 'asking' || soundPending || soundError || !question.choices.includes(choice)) return
+    actionLock.current = true
     dispatch({ type: 'answer', choice })
     if (level.id === 'quality') return
     const updated = recordAnswer(stats, question.answer.id, choice === question.correct)
@@ -98,12 +115,17 @@ function EarTraining() {
   }
 
   const next = () => {
+    if (actionLock.current || status !== 'answered') return
+    actionLock.current = true
     if (lastQuestion) player.stop()
     else listen(questions[index + 1].answer)
     dispatch({ type: 'next' })
   }
 
   const quit = () => {
+    audioGeneration.current += 1
+    setSoundPending(false)
+    setSoundError(null)
     player.stop()
     dispatch({ type: 'reset' })
   }
@@ -137,10 +159,13 @@ function EarTraining() {
                   <strong>{l.title}</strong>
                   <small>Level {i + 1}</small>
                 </span>
-                <span className="exercises__level-text">{l.text}</span>
+                <span className="exercises__level-text">{l.id === 'quality' ? 'Major or minor: start with six common open chords' : l.text}</span>
               </button>
             ))}
           </div>
+          {levelId === 'quality' && (
+            <label className="exercises__hint"><input type="checkbox" checked={includeSevenths} onChange={(event) => setIncludeSevenths(event.target.checked)} /> Include seventh chords</label>
+          )}
           {levelId === 'chord' && (
             <div className="exercises__picks">
               <p className="exercises__hint">
@@ -203,7 +228,8 @@ function EarTraining() {
             </button>
           </div>
 
-          <p className="exercises__prompt">{level.title}</p>
+          <p className="exercises__prompt">{level.id === 'quality' && !includeSevenths ? 'Major or minor?' : level.title}</p>
+          {soundPending && <p role="status">Starting sound...</p>}
           <div className="exercises__choices" role="group" aria-label="Answers">
             {question.choices.map((choice) => {
               const mark = !result
@@ -218,7 +244,7 @@ function EarTraining() {
                   key={choice}
                   type="button"
                   className={`exercises__choice ${mark}`}
-                  disabled={status !== 'asking'}
+                  disabled={status !== 'asking' || soundPending || Boolean(soundError)}
                   onClick={() => answer(choice)}
                 >
                   {choiceLabel(choice)}
@@ -268,7 +294,7 @@ function EarTraining() {
 
       {status === 'done' && <RoundSummary results={results} onListen={listen} onAgain={start} onChangeLevel={quit} />}
 
-      {soundError && <p className="exercises__error">{soundError}</p>}
+      {soundError && <p role="alert" className="exercises__error">{soundError}</p>}
     </section>
   )
 }

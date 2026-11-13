@@ -67,17 +67,14 @@ function GuitarTab({
     open('tuner')
   }
 
-  const notNow = () => {
-    if (drift !== null) {
-      watch.reset()
-      setDrift(null)
-      return
-    }
+  const alreadyTuned = () => {
     dismissTunePrompt()
     setDismissed(true)
+    watch.reset()
+    setDrift(null)
   }
 
-  const showPrompt = view === 'song' && (drift !== null || (!tuned && !dismissed))
+  const showPrompt = view === 'song' && !dismissed && (drift !== null || !tuned)
   const returnLabel = VIEWS.find((v) => v.id === returnTo)?.label
 
   return (
@@ -98,7 +95,7 @@ function GuitarTab({
         </nav>
         <AccountChip auth={auth} onNavigate={onNavigate} />
       </div>
-      {showPrompt && <TuneUpPrompt drift={drift} onTune={tuneNow} onDismiss={notNow} />}
+      {showPrompt && <TuneUpPrompt drift={drift} onTune={tuneNow} onDismiss={alreadyTuned} />}
       <div className="guitar-tab__body">
         <TuningReportContext.Provider value={report}>
           {view === 'tuner' ? (

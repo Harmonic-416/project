@@ -231,3 +231,19 @@ describe('how the player does on each chord', () => {
     expect(loadPicks()).toEqual(DEFAULT_PICKS)
   })
 })
+
+
+describe('round input validation', () => {
+  it('rejects unknown levels and undersized or duplicate pools', () => {
+    expect(makeRound('missing')).toEqual([])
+    expect(makeRound('chord', {pool: []})).toEqual([])
+    expect(makeRound('chord', {pool: [CHORDS[0], CHORDS[0]]})).toEqual([])
+    expect(makeRound('chord', {count: -1})).toEqual([])
+  })
+  it('ignores forged answers and empty starts', () => {
+    const idle = initialExercise()
+    expect(exerciseReducer(idle, {type: 'start', level: 'chord', questions: []})).toBe(idle)
+    const started = exerciseReducer(idle, {type: 'start', level: 'chord', questions: makeRound('chord')})
+    expect(exerciseReducer(started, {type: 'answer', choice: 'unknown'})).toBe(started)
+  })
+})
