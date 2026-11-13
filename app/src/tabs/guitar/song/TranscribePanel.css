@@ -136,3 +136,16 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* In Recent songs, the override picks the file again (the server no longer has it). */
+.transcribe__anyway--picker {
+  flex: none;
+}
+
+.transcribe__anyway--picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}

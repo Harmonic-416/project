@@ -32,27 +32,29 @@ describe('play mode', () => {
     expect(s.results.every((r) => r === null)).toBe(true)
   })
 
-  it('a clean strum moves on at once', () => {
+  it('a clean strum records success without advancing the transport', () => {
     const s = run([{ type: 'start' }, ...ticks, { type: 'result', verdict: 'verified' }])
-    expect(s).toMatchObject({ status: 'running', index: 1, results: ['verified', null, null, null] })
+    expect(s).toMatchObject({ status: 'running', index: 0, results: ['verified', null, null, null] })
   })
 
   it('a wrong or quiet strum waits for the chord’s time to run out', () => {
     let s = run([{ type: 'start' }, ...ticks, { type: 'result', verdict: 'wrong' }, { type: 'result', verdict: 'silent' }])
-    expect(s).toMatchObject({ index: 0, results: ['silent', null, null, null] })
+    expect(s).toMatchObject({ index: 0, results: ['wrong', null, null, null] })
     s = run([{ type: 'result', verdict: 'verified' }], s) // a clean strum before the time is up still counts
-    expect(s).toMatchObject({ index: 1, results: ['verified', null, null, null] })
+    expect(s).toMatchObject({ index: 0, results: ['verified', null, null, null] })
   })
 
   it('keeps going after a wrong chord and scores at the end (F14, F32, F33)', () => {
     const s = run([
       { type: 'start' },
       ...ticks,
-      { type: 'result', verdict: 'verified' }, // moves on by itself
+      { type: 'result', verdict: 'verified' },
+      { type: 'advance' },
       { type: 'result', verdict: 'wrong' },
       { type: 'advance' },
       { type: 'advance' }, // nothing heard on chord 3
-      { type: 'result', verdict: 'verified' }, // the last chord: done
+      { type: 'result', verdict: 'verified' },
+      { type: 'advance' }, // only the transport advances, even for the last chord
     ])
     expect(s.status).toBe('done')
     expect(s.results).toEqual(['verified', 'wrong', null, 'verified'])

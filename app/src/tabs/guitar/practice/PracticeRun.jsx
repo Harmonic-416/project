@@ -1,3 +1,4 @@
+import { useLessonCountIn } from './useLessonCountIn.js'
 import { useEffect } from 'react'
 import ChordDiagram from './ChordDiagram.jsx'
 import { PRACTICE_SECONDS, STRUMS_TO_PASS, canUnlockAnyway } from './practiceRunState.js'
@@ -18,8 +19,9 @@ const STATUS_TEXT = {
  * come from practiceRunReducer (owned by PracticeScreen so the demo buttons
  * and the unlock bookkeeping can reach it).
  */
-function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext, onBackToLearn, onUnlockAnyway }) {
+function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext, onBackToLearn, onUnlockAnyway, onHint, onSkip }) {
   const { status, count, streak, turn, verdict } = state
+  const countInError = useLessonCountIn(status, count)
 
   // Countdown: one tick per second.
   useEffect(() => {
@@ -35,9 +37,18 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
     return () => clearTimeout(id)
   }, [status, turn, dispatch])
 
+  const help = <div className="practice-run__actions" aria-label="Lesson help">
+    <button type="button" className="play-run__stop" onClick={onHint}>Hint</button>
+    <button type="button" className="play-run__stop" onClick={onSkip}>Skip</button>
+    <button type="button" className="play-run__stop" onClick={() => dispatch({ type: 'start' })}>Retry</button>
+    {status !== 'passed' && canUnlockAnyway(state) && nextChord && <button type="button" className="play-run__stop" onClick={onUnlockAnyway}>Unlock anyway</button>}
+  </div>
+
   if (status === 'passed') {
     return (
       <div className="play-run play-run--done">
+        {countInError && <p role="status">{countInError}</p>}
+        {help}
         <p className="play-run__score">
           <strong>✓ {chord.name}</strong> passed
         </p>
@@ -66,6 +77,8 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
     const softGate = canUnlockAnyway(state)
     return (
       <div className="play-run play-run--done">
+        {countInError && <p role="status">{countInError}</p>}
+        {help}
         <p className="play-run__score">
           Not quite ·{' '}
           <strong>
@@ -85,11 +98,6 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
           <button type="button" className="play-run__stop" onClick={onBackToLearn}>
             Back to Learn
           </button>
-          {softGate && nextChord && (
-            <button type="button" className="play-run__stop" onClick={onUnlockAnyway}>
-              Unlock anyway
-            </button>
-          )}
         </div>
       </div>
     )
@@ -98,6 +106,8 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
   if (status === 'idle') {
     return (
       <div className="play-run play-run--idle">
+        {countInError && <p role="status">{countInError}</p>}
+        {help}
         <p className="play-run__progression">{chord.name}</p>
         <p className="play-run__hint">
           Play {chord.name} cleanly {STRUMS_TO_PASS} times in a row, each within {PRACTICE_SECONDS} seconds,
@@ -112,6 +122,8 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
 
   return (
     <div className="play-run">
+        {countInError && <p role="status">{countInError}</p>}
+        {help}
       <div className="play-run__top">
         <span className="play-run__step">Clean strums in a row</span>
         <span className="play-run__next">{nextChord ? `Unlocks ${nextChord.name}` : 'Last chord'}</span>

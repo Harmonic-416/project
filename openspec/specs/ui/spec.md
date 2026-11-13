@@ -6,26 +6,36 @@ The React app shell and all user-facing Harmonic screens. A thin reactive layer 
 ## Requirements
 
 ### Requirement: Lesson flow display (F3)
-The system SHALL present each lesson in three ordered stages — concept explanation, instrument-free drill, then played (mic) exercise — and SHALL support knowledge-only nodes (e.g. guitar anatomy) completable without microphone input.
+The system SHALL present each instrument's learning activities as a list the player chooses from, each naming what it teaches and how far the player has got, and SHALL open any available activity directly. It SHALL NOT impose a concept → drill → played-exercise sequence, and SHALL NOT require microphone permission for an activity that does not listen.
 
-#### Scenario: Concept precedes technique
-- **WHEN** a user first opens a played-exercise lesson
-- **THEN** the concept explanation shows first
-- **AND** the instrument-free drill precedes the played exercise
-- **AND** the played exercise is not reachable until the earlier stages are presented
+The three-stage sequence was cut: it was hard to say where a drill belonged in the path, so players now choose when to do one, and Exercises are their own section rather than a stage inside a lesson (master design document §7.1, F3).
 
-#### Scenario: Knowledge-only node needs no mic
-- **WHEN** a user opens a knowledge-only node such as "Meet the guitar"
-- **THEN** it completes with tap/selection interactions only
-- **AND** no microphone permission or audio input is required
+#### Scenario: Activities are listed with their progress
+- **WHEN** a user opens an instrument's Learn section
+- **THEN** each activity is listed with a description and the player's progress in it
+- **AND** selecting one opens it directly
 
-### Requirement: Practice playlist (F4)
-The system SHALL display a playlist of practice pieces including at least the three hardcoded V1 songs, each openable on the practice screen.
+#### Scenario: An activity that does not listen needs no microphone
+- **WHEN** a user opens an activity that does not listen, such as ear training
+- **THEN** it completes with taps and selections alone
+- **AND** no microphone permission is requested
 
-#### Scenario: V1 ships three songs
-- **WHEN** a user opens the practice playlist
-- **THEN** at least three pieces are listed
-- **AND** selecting one opens its practice screen
+### Requirement: Song library display (F4)
+The system SHALL display the songs available to practise — the built-in songs, the files the user has opened on this device, and transcriptions drafted on it — each openable on the practice screen, and SHALL offer an upload at all times plus the online catalog and the user's practice sessions when the cloud is configured. It SHALL NOT be limited to a fixed playlist, and the built-in songs, uploads and playback SHALL work with no account and no network.
+
+#### Scenario: Built-in songs are listed and open for practice
+- **WHEN** a user opens the Songs section
+- **THEN** the built-in songs are listed
+- **AND** selecting one opens it on the practice screen
+
+#### Scenario: The user's own material sits alongside the built-ins
+- **WHEN** the user has files or transcription drafts kept on this device
+- **THEN** they are listed alongside the built-in songs and open the same way
+
+#### Scenario: Signed out and offline still practises
+- **WHEN** the cloud is not configured, or the user is signed out
+- **THEN** the built-in songs, the upload control and playback are still available
+- **AND** the cloud-only entries (catalog search, practice sessions) are not shown
 
 ### Requirement: Live pitch / relative-pitch feedback display (F12)
 During a played exercise the system SHALL display in real time the detected sung note or its relative pitch against the expected note, from the scoring engine's normalized events.
@@ -36,7 +46,7 @@ During a played exercise the system SHALL display in real time the detected sung
 - **AND** the display updates as the detected pitch changes
 
 ### Requirement: Live chord and per-string state display (F34)
-During a guitar run the system SHALL display live chord state — expected, heard-something-else, or heard-nothing — and SHALL render per-string indicators when cleanliness data (F17) is available.
+During a guitar run the system SHALL display live chord state — expected, heard-something-else, or heard-nothing — and SHALL render an indicator for each of the six strings from the per-string verdicts (F17).
 
 #### Scenario: Chord state reflects detection
 - **WHEN** the scoring engine reports the expected chord verified
@@ -44,9 +54,10 @@ During a guitar run the system SHALL display live chord state — expected, hear
 - **WHEN** the scoring engine reports nothing was heard
 - **THEN** the diagram shows a heard-nothing state, not wrong or verified
 
-#### Scenario: Per-string indicators when available
-- **WHEN** per-string cleanliness data is provided for the current strum
-- **THEN** each of the six string indicators reflects that string's state
+#### Scenario: Per-string indicators reflect each string's verdict
+- **WHEN** per-string verdicts are provided for the current strum
+- **THEN** each of the six string indicators shows that string as rang-clean, buzzed-or-wrong, or not heard yet
+- **AND** a string the chord does not use is shown as not played
 
 ### Requirement: Always-visible skip / override control (F30)
 The system SHALL display a skip/override control at all times during a lesson exercise; activating it SHALL dispatch a skip intent to the scoring engine (which records the manual skip).

@@ -1,119 +1,182 @@
 schema: spec-driven
 
 # Project context shown to AI when creating any artifact (proposal, specs, design, tasks).
+# Rewritten 2026-11-13 from the master design document (1.1, 4.1, 5, 7.1, 7.2): the M1-era
+# text was wrong in thirteen places and is injected into every artifact an agent generates.
 context: |
   # Harmonic - project context (READ FIRST)
 
-  Music-learning Progressive Web App (CSE 416 course project).
+  Music-practice Progressive Web App (CSE 416 course project), built tablet-first.
   Tagline: "Learn the instrument and the language at the same time."
-  Design spine: teach the theory first, THEN the technique that proves it landed.
-  V1 instruments: Guitar + Voice (Piano is future / out-of-scope). Single-player only.
-  V1 experience: short guided lessons on an unlocking (Duolingo-style) map + a 3-song
-  practice playlist with live microphone scoring.
+  Two instruments, one app: Guitar and Voice (piano is out of scope).
+  A user opens a song - a built-in, the public-domain online catalog, or a file of their own
+  (MIDI, MusicXML, MXL, Guitar Pro, alphaTex) - and Harmonic renders it as tab or sheet music,
+  plays it with a moving cursor, and judges the microphone against the score, on the device.
+  Built-ins today: 3 guitar + 7 vocal. There is no lesson map and no fixed 3-song playlist.
+
+  As shipped, the app is four things:
+  1. Live practice for both instruments: three modes (Listen, Wait for me, Trouble spots), a
+     verdict on every note, and a history of every run.
+  2. A learning path per instrument, chosen by the player rather than gated by a map. Guitar:
+     tuner, 20 chord lessons that unlock one at a time, strum-on-the-beat, ear training,
+     fretboard. Vocal: solfege and rhythm lessons, pitch and harmony tests, a range warm-up.
+  3. Asynchronous social: a finished run is sent to friends (or shared by link), who hear it,
+     see the verdict on every note and comment. No live or group sync.
+  4. Tools that write music: vocal arrangements from a recording or a link, and guitar tab from
+     any notation file or, as a draft, from a recording.
+
+  ## Inviolable principles (never trade these away in any change)
+  - Live audio never leaves the device. Only finished runs, their recordings and progress upload.
+  - The soft gate always offers a way out. Hint, Skip and Unlock anyway are always present, and
+    the microphone never advances a lesson on its own. There is NO auto-skip: it was removed on
+    purpose after it advanced past wrong notes on real guitars.
+  - Right over fast. Never emit a verdict on noise, a click or a ringing string, even if that
+    makes the verdict slower. A strum settles for 0.2 s; a note must ring 0.3 s before judgement.
+  - A run never goes out silent. Sending a run waits for its recording to upload.
+  - Scoring never branches on instrument. Analyzers emit one normalized event shape; the scoring
+    engine must not know which produced it.
+  - One transport clock. Playback, cursor, judging and the metronome read one score, so changing
+    tempo never moves a note.
+  - One app, not two. Any control, summary, history view or share surface that exists for one
+    instrument must have the same shape for the other.
 
   ## Locked tech stack (do NOT re-decide inside any change; treat as fixed constraint)
-  - App shell: React + Vite, shipped as an installable PWA.
-  - PWA infra: vite-plugin-pwa + Workbox (service worker, manifest, offline caching).
+  - App shell: React 19 + Vite, shipped as an installable PWA (vite-plugin-pwa + Workbox:
+    service worker, manifest, offline caching). Heavy parts (alphaTab, the models) load on
+    first use.
   - Backend: Supabase ONLY (Postgres + Auth + Storage) via its JS SDK / auto REST API.
-    Deliberately thin - CRUD only for auth, per-user progress, scores, song files, attempt
-    recordings. NO custom Node/Express server in V1, and none unless a future need cannot
-    be expressed in Supabase.
-  - Notation + reference playback, one renderer per instrument (decided at M2):
-    guitar = alphaTab (tab + standard notation from Guitar Pro / alphaTex / MusicXML,
-    built-in alphaSynth for reference audio, MIDI + Guitar Pro export); voice =
-    OpenSheetMusicDisplay (standard notation from MusicXML; its cursor iterator gives the
-    voice timing model) with Tone.js playback. Both read MusicXML.
-  - Single-note / voice pitch: Pitchy (McLeod pitch method / autocorrelation).
-  - Guitar chord verification: native Web Audio AnalyserNode FFT - peak-picking matched
-    against the ONE expected chord's frequency fingerprint (verification, not arbitrary
-    recognition) - plus RMS metering for dynamics and a cleanliness/"fuzziness" proxy. Raw
-    FFT is reserved for chords; single notes use Pitchy (plain FFT peak-picking is
-    unreliable on real instrument signals).
-  - Timing/transport: Tone.js (BPM-aware clock) and/or alphaSynth's tempo-aware playback.
-  - Theory helpers: Tonal.js (scales, intervals, chord names) for generators and labels.
-  - Out-of-scope libs (do NOT build in V1): MediaPipe hand tracking (camera finger
-    placement), any group/social sync infrastructure.
+    Authorization lives in Postgres: row-level security scoped to the signed-in user, friends
+    reaching an attempt through security-definer functions, the catalog the only public data.
+    There is no custom API server - src/lib/ is TypeScript running in the browser, not a
+    service. ONE process runs outside the browser: worker/arranger/ (Node on a VM), which works
+    a Supabase job queue for YouTube arrangements and server-side guitar tab. It exists because
+    minutes of model inference per song cannot run in Supabase, on Vercel, or dependably on a
+    phone; it holds no state of its own. Do not add a second server.
+  - Notation, one renderer per instrument (decided at M2): guitar = alphaTab (the only web
+    renderer that draws tab; the song timeline is built from its own MIDI ticks, and it plays
+    and exports what it renders); voice = OpenSheetMusicDisplay, whose cursor iterator gives
+    the timing model, with Tone.js playback. Both read MusicXML. ONE INTERNAL SCORE PER
+    INSTRUMENT, not one format overall: MusicXML for voice, a tick-based alphaTab score for
+    guitar.
+  - Playback: Tone.js for voice and for the Learn / Exercises / Warm Up pianos and rhythm click;
+    alphaSynth for guitar songs; Tone.js PluckSynth for chord hints and ear training.
+  - Listening:
+    - Voice: pitchy (McLeod pitch method) about 50 times a second, which also gives the level
+      for dynamics. Still on the AnalyserNode path; it may move to the worklet later.
+    - Guitar: a shared AudioWorklet capture that sees every sample, feeding the tuner, the
+      lessons and the song judge. The song judge is SCORE-INFORMED, not arbitrary recognition:
+      it looks for the notes the score expects - each one fundamental plus its overtones - among
+      the spectral peaks just after a pick or strum, using an FFT written in JavaScript. The
+      lessons compare each strum energy per note name against chroma templates of the chords
+      the app teaches. Per string the result is binary (rang clean, or buzzed or wrong): there
+      is NO cleanliness / fuzziness score, because leftover buzz and a wrong note are
+      indistinguishable from a microphone.
+  - Models, loaded only when used: Basic Pitch (TensorFlow.js); Demucs, YAMNet and Beat This
+    (ONNX Runtime Web, on the graphics card through WebGPU when there is one).
+  - Browser storage: IndexedDB for My Files and transcription drafts; localStorage for settings
+    (tempo, Easy, metronome, latency, label and solfege switches, voice part, ear-training
+    statistics) and the browser copy of Learn progress.
+  - No theory library. Chord naming and intervals are written by hand. Tonal.js was planned at
+    M1 and never added; do not introduce it, or any other new dependency, inside a change.
+  - Out-of-scope libs (do NOT build in V1): MediaPipe hand tracking (camera finger placement),
+    any live group-sync infrastructure.
 
   ## Non-negotiable architecture rule (the whole design depends on it)
-  ALL real-time audio analysis runs CLIENT-SIDE. Never stream mic audio to the server - it
-  cannot meet note-by-note latency (target <=100 ms mic-to-score). Only results
-  (scores/progress) and optional COMPRESSED attempt recordings leave the device.
+  ALL real-time audio analysis runs CLIENT-SIDE. Never stream mic audio to the server: it costs
+  privacy and offline use, and no network loop can judge note by note. Only results
+  (scores / progress) and optional COMPRESSED run recordings leave the device.
   Data flow: mic (getUserMedia) -> AudioWorklet (raw PCM on its own thread) -> pluggable
   analyzers (pitch / chord-FFT / RMS-volume) -> instrument-agnostic scoring engine.
-  Analyzers emit ONE normalized event shape: {note, timestamp, confidence}; the scoring
-  engine never knows whether an event came from voice, a single string, or a chord.
-  The renderer's parsed score is the single source of truth for "expected notes", and
-  detected-vs-expected comparison runs on ONE transport clock (no drift). Adding an
-  instrument = one new analyzer emitting the standard event shape; mic capture, worklet,
-  and scoring engine stay untouched.
+  Analyzers emit ONE normalized event shape; the scoring engine never learns whether an event
+  came from voice, a single string or a chord. The renderer parsed score is the single source of
+  truth for "expected notes", and detected-vs-expected comparison runs on ONE transport clock
+  (no drift). Adding an instrument = one new analyzer emitting the standard event shape.
+  M1 set a target of under 100 ms mic-to-score. That target was DELIBERATELY TRADED for
+  correctness (see "Right over fast"): latency is kept as low as the browser allows and
+  calibrated where timing matters, but a guitar verdict takes a few hundred milliseconds.
 
   ## Areas and capabilities (owning-capability taxonomy)
-  Three areas, each with a foundation change: add-frontend-experience,
-  add-backend-services, add-devops-infrastructure. Every capability is owned by exactly
-  one area (no capability spans two); capabilities live at
-  openspec/specs/<capability>/spec.md. Every in-scope V1 requirement (F#/N#) has a single
-  PRIMARY owning capability whose spec.md carries it in a "### Requirement: ... (F#)"
-  header. When in doubt, put a requirement's testable behavior with the capability that
-  PRODUCES it, and reference (don't re-own) any collaborator.
+  Three areas, each with a foundation change: add-frontend-experience, add-backend-services,
+  add-devops-infrastructure. Every capability is owned by exactly one area; capabilities live at
+  openspec/specs/<capability>/spec.md. Every in-scope requirement (F#/N#) has a single PRIMARY
+  owning capability whose spec.md carries it in a "### Requirement: ... (F#)" header. When in
+  doubt, put a requirement testable behavior with the capability that PRODUCES it, and
+  reference (do not re-own) any collaborator.
 
-  A few requirements are DELIBERATELY split across a control/effect boundary; each side
-  specs only its own behavior and BOTH headers carry the id:
+  Specs that exist today: ui, audio-pipeline, notation-rendering, scoring-engine, auth,
+  progress-tracking, song-storage, pwa-infra, deployment. Do not assume any other spec file
+  exists: check the directory.
+
+  FRONTEND (change: add-frontend-experience)
+  - ui: run-through summaries (incl. patchy-area highlighting), live-feedback display,
+    always-visible in-lesson skip control, hint presentation (fretboard finger-position
+    animation), chord diagram with live per-string state, diagram label toggles, and the song
+    library / search / upload surfaces that replaced the fixed playlist.
+    Owns: F4 (as the library, not a 3-song playlist), F12, F24, F30, F31, F34, F35.
+  - audio-pipeline: getUserMedia + AudioWorklet capture; pitch / chord-FFT / RMS-volume
+    analyzers emitting normalized events; noise and volume gating; mobile viability; dynamics.
+    Owns: F19, N1, N2, N6.
+  - notation-rendering: alphaTab (guitar) / OSMD (voice) rendering, guitar notation conversion
+    (Guitar Pro / alphaTex / MusicXML / MIDI in, MIDI + Guitar Pro out), generated tab for files
+    with no string/fret data, reference playback and transport, countdown, click/drag-to-seek,
+    tempo control, solfege label toggle. Owns: F5, F6, F7, F8, F15, F37.
+    NOT random generation: the player picks the chords to train, and Play mode uses the chords
+    they have already learned (F20 and F36 were cut as random).
+  - scoring-engine: the instrument-agnostic brain - consumes events against expected notes;
+    hit / close / missed counted per run, NOT early-late per note; the guided, practice, play
+    and changes state machines; miss counting and the SOFT GATE THAT NEVER ADVANCES ON ITS OWN;
+    guitar chord verification against the one expected chord; strum TIMING (early / on time /
+    late) in Strum on the beat only, direction and patterns having been cut because a
+    down-strum and an up-strum sound alike; post-run played-vs-score analysis; the guitar
+    "couldn't hear you" state (on vocal, quiet moments are simply left unscored).
+    Owns: F11, F13, F14, F16, F17, F18, F21, F28, F32, F33.
+  - Shipped but NOT yet specified: the tuner (F39), ear training (F41), guitar Learn, guitar
+    Songs, practice history and sessions, social sharing, the arranger, audio-to-tab, vocal
+    Learn / Exercises / Warm Up, the fretboard, and the presentation contract (tokens, dark
+    mode, breakpoints, one shell). Specs for ear-training, guitar-learn, guitar-songs and
+    presentation are being written.
+
+  BACKEND (change: add-backend-services) - Supabase only
+  - auth: Supabase sign-in (Google / GitHub), session and logout; the account anchors all
+    per-user data. Owns: F1.
+  - progress-tracking: per-user progress, run history with the last and best score per song, and
+    the per-song tempo. Chords unlock one at a time in teaching order; there is no lesson MAP
+    and no prerequisite graph. Owns: F2, F22.
+  - song-storage: the song library (built-ins, a public-domain catalog, and the user own files,
+    which are never uploaded for copyright reasons), notation import, run-recording storage,
+    compression, private-by-default access (Supabase Storage + RLS). Owns: F9, F10, F23, N3, N5.
+
+  DEVOPS (change: add-devops-infrastructure)
+  - pwa-infra: service worker, manifest, installability, offline caching of practice content via
+    vite-plugin-pwa / Workbox. Owns: N4.
+  - deployment: Vite production build, Supabase project + environment/secret config, hosting
+    (Vercel; the host is interchangeable on purpose). Owns no numbered F#/N# of its own.
+
+  A few requirements are DELIBERATELY split across a control/effect boundary; each side specs
+  only its own behavior and BOTH headers carry the id:
   - F30 (skip): `ui` owns the always-visible skip CONTROL; `scoring-engine` RECORDS the skip.
   - F37 (tempo): `notation-rendering` owns the tempo CONTROL (50-100%); `progress-tracking`
     PERSISTS the chosen tempo per song.
-  - F4 (playlist + 3 songs): `ui` owns the playlist DISPLAY; `song-storage` owns the seeded
-    3-song library it lists.
+  - F4 (library): `ui` owns the library DISPLAY; `song-storage` owns the songs it lists.
   - N5 (privacy): `song-storage` owns private-by-default recording STORAGE; `auth` owns the
     account-scoping/RLS that makes per-user isolation possible.
 
-  FRONTEND (change: add-frontend-experience)
-  - ui: lesson-map + lesson-flow display, practice playlist, run-through summaries (incl.
-    patchy-area highlighting), live-feedback display, always-visible in-lesson skip control,
-    hint presentation (fretboard finger-position animation), chord diagram with live
-    per-string state, diagram label toggles. Owns: F3, F4, F12, F24, F30, F31, F34, F35.
-  - tuner (added by change add-guitar-foundation): guitar tuner in the onboarding sound
-    check - standard-tuning string targets, nearest-string detection with manual lock,
-    cents readout + in-tune hysteresis, too-quiet state; first consumer of the shared
-    AudioWorklet capture. Owns: F39.
-  - audio-pipeline: getUserMedia + AudioWorklet capture; pitch / chord-FFT / RMS-volume
-    analyzers emitting normalized {note,timestamp,confidence} events; noise/volume gating;
-    low-latency + mobile-Safari viability; dynamics. Owns: F19, N1, N2, N6.
-  - notation-rendering: alphaTab (guitar) / OSMD (voice) rendering, guitar notation
-    conversion (Guitar Pro / alphaTex / MusicXML / MIDI in, MIDI + Guitar Pro out),
-    reference playback/transport,
-    countdown, click/drag-to-seek, tempo control, notation (solfege) label toggle, and
-    random exercise/chord-progression generation producing renderable "expected notes".
-    Owns: F5, F6, F7, F8, F15, F20, F36, F37.
-  - scoring-engine: the instrument-agnostic brain - consumes events vs expected notes;
-    hit/late/missed; guided vs play mode state machines; miss counting + soft auto-skip;
-    guitar chord verification + cleanliness; strumming/timing score; post-run played-vs-
-    score analysis; "couldn't hear you" state. Owns: F11, F13, F14, F16, F17, F18, F21,
-    F28, F29, F32, F33.
-
-  BACKEND (change: add-backend-services) - Supabase only
-  - auth: Supabase register / login / session; the account anchors all per-user data.
-    Owns: F1.
-  - progress-tracking: per-user progress, the unlocking lesson map + prerequisite-clear
-    rules, run-through history with last score. Owns: F2, F22.
-  - song-storage: song library + MusicXML import (+ best-effort MuseScore/MIDI transform),
-    attempt-recording storage, recording compression, private-by-default access (Supabase
-    Storage + row-level security). Owns: F9, F10, F23, N3, N5.
-
-  DEVOPS (change: add-devops-infrastructure)
-  - pwa-infra: service worker, manifest, installability, offline caching of practice content
-    via vite-plugin-pwa / Workbox. Owns: N4.
-  - deployment: Vite production build, Supabase project + environment/secret config, hosting.
-    Enabling substrate for every other capability; owns no numbered F#/N# of its own.
-
-  ## V1 scope guardrails
-  Explicitly OUT of V1 (list in each proposal's Non-goals; never build without a new
-  change): CV finger placement (F25), group/social/collaboration/multi-instrument songs
-  (F26), YouTube play-along scoring (F27), guitar "Changes" mode (F38), full-song
-  playthroughs, a sheet-music-reading curriculum, advanced guitar technique
-  (slides/bends/hammer-ons/pull-offs), piano, and an App Store release. Biggest project
-  risk: real-time pitch detection on a phone in mobile Safari (N2) - validate on real
-  hardware before building on top; desktop-first is the fallback. Authoritative requirement
-  text lives (read-only) in specifications/2-scope/requirements.md.
+  ## Scope guardrails
+  NO NEW FEATURES. Every change is parity, consistency, continuity or correctness against
+  behaviour that is already specified or already shipped. New behaviour needs a human decision
+  first, as a change proposal; it never originates inside an iteration.
+  Explicitly OUT (never build without a new change): CV finger placement (F25), live group /
+  collaboration / multi-instrument sessions (F26, shipped instead as asynchronous sharing),
+  YouTube play-along scoring (F27), a sheet-music-reading curriculum, judged advanced guitar
+  technique (bends, dead notes and harmonics are drawn but deliberately not scored), piano, and
+  an App Store release.
+  Once listed as out of V1 and since BUILT, so do not re-propose them: guitar Changes mode
+  (F38, without its tempo) and social (F26) as asynchronous sharing.
+  openspec/specs/** is READ-ONLY to agents. When a spec is the obstacle, write a change request
+  under openspec/changes/ and stop; a human decides. Never edit a spec to match the code.
+  Remaining project risk: real-time pitch detection on a phone in mobile Safari (N2) is verified
+  in desktop Chrome and still unverified on an iPhone; desktop and tablet are the fallback.
+  Authoritative requirement text lives (read-only) in specifications/2-scope/requirements.md.
 
 # Per-artifact rules, shown to AI when creating each artifact type.
 rules:

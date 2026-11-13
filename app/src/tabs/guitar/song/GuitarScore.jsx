@@ -1,9 +1,11 @@
+import { createPortal } from 'react-dom'
+import { createBarScrollHandler } from './follow/barScroll.js'
 import * as alphaTab from '@coderline/alphatab'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import MetronomeControl from '../../../audio/metronome/MetronomeControl.jsx'
 import { useMetronomeSettings } from '../../../audio/metronome/useMetronomeSettings.js'
 import TempoControl from '../../../audio/tempo/TempoControl.jsx'
-import { useSongTempo } from '../../../audio/tempo/useSongTempo.js'
+import { useGuitarTempo } from './useGuitarTempo.js'
 import './GuitarScore.css'
 
 // Copied into public/ by the alphaTab Vite plugin (see vite.config.js).
@@ -32,7 +34,8 @@ const SOUND_FONT = `${import.meta.env.BASE_URL}soundfont/sonivox.sf3`
  * tempo marks show the tempo being played. `controlsDisabled` locks both
  * (a Trouble spots run keeps the speed it started with).
  */
-const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndexes = [0], onApi, onSpeedChange, controlsDisabled }, ref) {
+const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndexes = [0], onApi, onSpeedChange, controlsDisabled, userId, catalogSongId, client, settingsHost, hideControls = false }, ref) {
+  const followEnabledRef = useRef(false)
   const scrollRef = useRef(null)
   const surfaceRef = useRef(null)
   const apiRef = useRef(null)
@@ -42,7 +45,8 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
   const [metronome, setMetronome] = useMetronomeSettings()
   const [beat, setBeat] = useState(null)
   const metronomeRef = useRef(metronome)
-  const [tempo, setTempo] = useSongTempo(songKey)
+  const { tempo, change: setTempo, message: tempoMessage, retry: retryTempo } = useGuitarTempo({ fingerprint: songKey, catalogSongId, userId, client })
+  const [retry, setRetry] = useState(0)
   const tempoRef = useRef(tempo)
   const shownFactorRef = useRef(1) // the factor the printed tempo marks were last drawn at
   const drawnRef = useRef(false) // alphaTab has finished drawing the current score at least once
@@ -79,17 +83,45 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     const api = new alphaTab.AlphaTabApi(surfaceRef.current, {
       core: { fontDirectory: FONT_DIRECTORY, includeNoteBounds: true },
       // Staff flags decide what shows (loadGuitarNotation turns on tab + notation).
-      display: { scale: 0.9 },
+      display: { scale: scrollRef.current.clientWidth < 480 ? 0.65 : 0.9, barsPerRow: scrollRef.current.clientWidth < 480 ? 1 : -1, layoutMode: alphaTab.LayoutMode.Page },
       player: {
         playerMode: alphaTab.PlayerMode.EnabledSynthesizer,
         soundFont: SOUND_FONT,
-        scrollElement: scrollRef.current,
+        scrollElement: scrollRef.current.closest('.guitar-tab__body') ?? scrollRef.current,
         enableCursor: true,
         enableUserInteraction: true,
         enableElementHighlighting: true,
       },
     })
     apiRef.current = api
+    api.customScrollHandler = createBarScrollHandler((bar) => {
+      if (!followEnabledRef.current) return
+      const host = surfaceRef.current
+      const outer = host?.closest('.guitar-tab__body')
+      const surface = host?.querySelector('.at-surface')
+      if (!outer || !surface) return
+      const region = outer.getBoundingClientRect()
+      const origin = surface.getBoundingClientRect()
+      const bounds = bar.realBounds
+      const top = origin.top + bounds.y
+      const bottom = top + bounds.h
+      // Bars on the same visible staff system stay still; the next row comes
+      // into view when a new bar would otherwise be below the visible page.
+      if (top >= region.top + 16 && bottom <= region.bottom - 16) return
+      outer.scrollTo({ top: Math.max(0, outer.scrollTop + top - region.top - 24), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    })
+    let previousWidth = scrollRef.current.clientWidth
+    const resize = new ResizeObserver(() => {
+      const width = scrollRef.current?.clientWidth ?? 0
+      if (!width || width === previousWidth) return
+      previousWidth = width
+      const narrow = width < 480
+      api.settings.display.scale = narrow ? 0.65 : 0.9
+      api.settings.display.barsPerRow = narrow ? 1 : -1
+      api.updateSettings()
+      if (api.score) api.render()
+    })
+    resize.observe(scrollRef.current)
     // Metronome ticks drive the beat light; metronomeNumerator 0 is the downbeat.
     // alphaTab emits them whether or not they click, so the light follows `on`.
     api.midiEventsPlayedFilter = [alphaTab.midi.MidiEventType.AlphaTabMetronome]
@@ -114,19 +146,21 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     return () => {
       offs.forEach((off) => off())
       onApiRef.current?.(null)
+      resize.disconnect()
       api.destroy()
       apiRef.current = null
     }
-  }, [drawTempoMarks]) // stable: the API is still created once
+  }, [drawTempoMarks, retry]) // stable: the API is still created once
 
   const trackKey = trackIndexes.join(',')
   useEffect(() => {
     if (!score || !apiRef.current) return
     setError(null)
     drawnRef.current = false
+    followEnabledRef.current = false
     shownFactorRef.current = 1 // a fresh drawing shows the written tempo
     apiRef.current.renderScore(score, trackKey.split(',').map(Number))
-  }, [score, trackKey])
+  }, [score, trackKey, retry])
 
   // alphaTab keeps these until its player is ready, so they can be set any time.
   useEffect(() => {
@@ -135,7 +169,7 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     if (!api) return
     api.metronomeVolume = metronome.on ? metronome.volume : 0
     api.countInVolume = metronome.countIn ? metronome.volume : 0
-  }, [metronome])
+  }, [metronome, retry])
 
   useEffect(() => {
     tempoRef.current = tempo
@@ -143,18 +177,27 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     const speed = tempo / 100
     if (apiRef.current) apiRef.current.playbackSpeed = speed
     onSpeedChangeRef.current?.(speed)
-  }, [tempo, drawTempoMarks])
+  }, [tempo, drawTempoMarks, retry])
 
-  useImperativeHandle(ref, () => ({ getApi: () => apiRef.current, getHost: () => surfaceRef.current }), [])
+  useImperativeHandle(ref, () => ({ getApi: () => apiRef.current, getHost: () => surfaceRef.current, enableFollow: () => { followEnabledRef.current = true; apiRef.current?.scrollToCursor() } }), [])
 
+  const settings = <>
+      <details className="guitar-score__settings"><summary>Tempo {tempo}% · Metronome {metronome.on ? 'on' : 'off'} · Count-in {metronome.countIn ? 'on' : 'off'}</summary><div className="guitar-score__settings-body">
+      <MetronomeControl settings={metronome} onChange={setMetronome} beat={beat} disabled={controlsDisabled} />
+      <p className="guitar-score__status">{metronome.countIn ? 'One bar of clicks plays before playback starts.' : 'Playback starts without a count-in.'} {metronome.on && beat && (beat.downbeat ? 'Downbeat - beat 1' : 'Beat')}</p>
+      <TempoControl pct={tempo} onChange={setTempo} bpm={score?.tempo} disabled={controlsDisabled} />
+      </div></details>
+      {tempoMessage && <p className="guitar-score__status" role="status">{tempoMessage} {tempoMessage.includes('Retry sync') && <button type="button" disabled={controlsDisabled} onClick={retryTempo}>Retry sync</button>}</p>}
+  </>
   return (
     <div className="guitar-score">
-      <div className="guitar-score__scroll" ref={scrollRef}>
+      {!hideControls && (settingsHost ? createPortal(settings, settingsHost) : settings)}
+      <div className="guitar-score__scroll" ref={scrollRef} role="region" aria-label="Guitar tablature and standard notation" tabIndex={0}>
         <div className="guitar-score__surface" ref={surfaceRef} />
       </div>
-      {error && <p className="guitar-score__error">{error}</p>}
-      <MetronomeControl settings={metronome} onChange={setMetronome} beat={beat} disabled={controlsDisabled} />
-      <TempoControl pct={tempo} onChange={setTempo} bpm={score?.tempo} disabled={controlsDisabled} />
+      {error && <div role="alert" className="guitar-score__error">The guitar player could not load. Check your connection and try again. <button type="button" onClick={() => { setError(null); drawnRef.current = false; setRetry((n) => n + 1) }}>Retry player</button></div>}
+      <p className="guitar-score__status">Click a note to seek. Drag across the score to select a passage.</p>
+
     </div>
   )
 })

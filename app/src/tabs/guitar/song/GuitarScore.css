@@ -49,3 +49,18 @@
 .guitar-score__error {
   color: #cf4b36;
 }
+
+.guitar-score__scroll { border: 2px solid var(--gs-border); border-radius: 22px; background: var(--gs-paper); min-height: 280px; }
+.guitar-score__status { color: var(--gs-muted); }
+.guitar-score__error { color: var(--gs-danger); }
+.guitar-score { gap: 16px; }
+
+.guitar-song--open .guitar-score { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; min-height: auto; min-width: 0; gap: 18px; }
+.guitar-song--open .guitar-score__scroll { flex: none; height: clamp(300px, 55svh, 620px); min-height: 300px; min-width: 0; overflow: auto; scrollbar-gutter: stable; }
+
+/* The page owns scrolling; the music itself has no nested scroll panes. */
+.guitar-song--open .guitar-score__scroll { height: auto; min-height: 300px; overflow: clip; scrollbar-gutter: auto; }
+.guitar-song--open .guitar-score__surface { width: 100%; min-width: 0; }
+.guitar-song__tempo-slot, .guitar-song__transport-slot { min-width: 0; }
+.guitar-song__tempo-slot:empty, .guitar-song__transport-slot:empty { display: none; }
+.guitar-song__tempo-slot { display: grid; gap: 12px; }

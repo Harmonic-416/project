@@ -61,6 +61,7 @@ function StrumDrill() {
   const runRef = useRef(null) // { kind: 'run' | 'calibrate', step, wall0, strums: [ms], clicks: [ms] }
   const clickRef = useRef(null)
   const timerRef = useRef(null)
+  const generationRef = useRef(0)
   const latencyRef = useRef(latencyMs)
   const step = STRUM_STEPS.find((s) => s.id === stepId)
 
@@ -84,6 +85,7 @@ function StrumDrill() {
 
   useEffect(
     () => () => {
+      generationRef.current += 1
       clearTimeout(timerRef.current)
       clickRef.current?.dispose()
     },
@@ -92,6 +94,7 @@ function StrumDrill() {
 
   const finishRun = () => {
     const run = runRef.current
+    if (!run) return
     runRef.current = null
     stopListening()
     clickRef.current?.silence()
@@ -120,24 +123,40 @@ function StrumDrill() {
   }
 
   const begin = async (kind) => {
-    if (!(await listener.start())) return
-    const beats = kind === 'calibrate' ? CALIBRATION_CLICKS : COUNT_IN_BEATS + SCORED_BARS * BEATS_PER_BAR
-    const bpm = kind === 'calibrate' ? CALIBRATION_BPM : step.bpm
-    await Tone.start()
-    clickRef.current ??= createClick()
-    clickRef.current.setVolume(0.8)
-    const wall0 = scheduleClicks(clickRef.current, beats, bpm)
-    runRef.current = { kind, step, wall0, strums: [] }
-    setHeard(0)
-    setScore(null)
+    const generation = ++generationRef.current
+    setStatus('starting')
     setMessage(null)
-    setSwing({ key: wall0, delayMs: msUntil(wall0) })
-    setStatus(kind === 'calibrate' ? 'calibrating' : 'running')
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(finishRun, msUntil(wall0) + beats * (60000 / bpm) + SETTLE_MS)
+    try {
+      if (!(await listener.start())) { if (generation === generationRef.current) setStatus('idle'); return }
+      if (generation !== generationRef.current) return
+      const beats = kind === 'calibrate' ? CALIBRATION_CLICKS : COUNT_IN_BEATS + SCORED_BARS * BEATS_PER_BAR
+      const bpm = kind === 'calibrate' ? CALIBRATION_BPM : step.bpm
+      await Tone.start()
+      if (generation !== generationRef.current) return
+      clickRef.current ??= createClick()
+      clickRef.current.setVolume(0.8)
+      const wall0 = scheduleClicks(clickRef.current, beats, bpm)
+      runRef.current = { kind, step, wall0, strums: [] }
+      setHeard(0)
+      setScore(null)
+      setMessage(null)
+      setSwing({ key: wall0, delayMs: msUntil(wall0) })
+      setStatus(kind === 'calibrate' ? 'calibrating' : 'running')
+      clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(finishRun, msUntil(wall0) + beats * (60000 / bpm) + SETTLE_MS)
+    } catch {
+      if (generation !== generationRef.current) return
+      runRef.current = null
+      stopListening()
+      clickRef.current?.silence()
+      setSwing(null)
+      setStatus('idle')
+      setMessage('The click could not start. Check your audio output and try again.')
+    }
   }
 
   const stop = () => {
+    generationRef.current += 1
     clearTimeout(timerRef.current)
     runRef.current = null
     stopListening()
@@ -152,7 +171,7 @@ function StrumDrill() {
     setStatus('idle')
   }
 
-  const busy = status === 'running' || status === 'calibrating'
+  const busy = status === 'starting' || status === 'running' || status === 'calibrating'
   const nextStep = STRUM_STEPS[STRUM_STEPS.indexOf(step) + 1]
 
   return (
@@ -189,7 +208,7 @@ function StrumDrill() {
         {busy && (
           <div className="strum-drill__actions">
             <span className="strum-drill__live">
-              {status === 'calibrating' ? `Strum once on each of ${CALIBRATION_CLICKS} clicks · heard ${heard}` : `Heard ${heard} strums`}
+              {status === 'starting' ? 'Starting microphone and click...' : status === 'calibrating' ? `Strum once on each of ${CALIBRATION_CLICKS} clicks · heard ${heard}` : `Heard ${heard} strums`}
             </span>
             <button type="button" className="strum-drill__secondary" onClick={stop}>
               Stop
@@ -201,7 +220,7 @@ function StrumDrill() {
           <div className="strum-drill__result">
             <ol className="strum-drill__beats" aria-label="Each strum">
               {score.results.map((r, i) => (
-                <li key={i} className={`strum-drill__beat strum-drill__beat--${r.verdict}`} title={r.offset === null ? 'missed' : `${Math.round(r.offset)} ms`}>
+                <li key={i} className={`strum-drill__beat strum-drill__beat--${r.verdict}`} aria-label={`Strum ${i + 1}: ${r.verdict === 'on' ? 'on time' : r.verdict}`} title={r.offset === null ? 'missed' : `${Math.round(r.offset)} ms`}>
                   {r.target.up ? '↑' : '↓'}
                 </li>
               ))}
@@ -233,7 +252,7 @@ function StrumDrill() {
         )}
 
         {!latencyMs && status === 'idle' && <p className="strum-drill__hint">Line the mic up once so early and late are measured right.</p>}
-        {message && <p className="strum-drill__hint">{message}</p>}
+        {message && <p role="status" className="strum-drill__hint">{message}</p>}
         {listener.status === 'error' && <p className="strum-drill__error">{listener.error}</p>}
       </div>
     </div>

@@ -1,7 +1,7 @@
 # Progress Tracking
 
 ## Purpose
-Persists per-user progress, drives the unlocking lesson map (a node unlocks once its prerequisites clear, including knowledge-only nodes), retains run-through history with last score per song, and persists per-song tempo preferences. Covers F2, F22, and the persistence side of F37.
+Persists per-user progress: the guitar chord lessons, which open one at a time in teaching order, the run history with the last and best score per song, and the per-song tempo. Covers F2, F22 and the persistence side of F37. There is no lesson map and no prerequisite graph.
 
 ## Requirements
 
@@ -18,40 +18,47 @@ The system SHALL durably persist each user's lesson-node completion state agains
 - **THEN** each user's completion state is stored independently
 - **AND** neither user's progress is visible to the other
 
-### Requirement: Unlocking Lesson Map with Prerequisites (F2)
-The system SHALL model lessons as map nodes where a node is locked until all its declared prerequisites are cleared, and SHALL unlock it exactly when they clear. (F2)
+### Requirement: Ordered chord unlocking (F2)
+The system SHALL open the guitar chord lessons one at a time in teaching order: the first is always open, and each later one opens once the lesson before it is cleared — either passed, or skipped via "Unlock anyway". It SHALL NOT model lessons as nodes in a graph with declared prerequisites, and there is no lesson map. Cleared state SHALL persist against the account while signed in and in the browser otherwise, and the two SHALL merge when a signed-out player signs in, a pass taking precedence over a skip for the same lesson.
 
-#### Scenario: Node unlocks when prerequisites cleared
-- **WHEN** a user clears a locked node's last outstanding prerequisite
-- **THEN** that node's state becomes unlocked
-- **AND** the change appears in the map the UI reads
+#### Scenario: Clearing a lesson opens the next
+- **WHEN** a player clears a chord lesson
+- **THEN** the next chord in teaching order becomes available
+- **AND** the one after it stays locked
 
-#### Scenario: Node stays locked with unmet prerequisites
-- **WHEN** a node has one or more uncleared prerequisites
-- **THEN** the node remains locked
-- **AND** the UI receives it as unavailable
+#### Scenario: An uncleared lesson locks everything after it
+- **WHEN** a chord lesson has not been cleared
+- **THEN** every lesson after it in teaching order is unavailable
 
-#### Scenario: Knowledge-only node clears without audio
-- **WHEN** a user completes a knowledge-only node (e.g. "Meet the guitar") that needs no microphone
-- **THEN** the node is recorded as cleared via the same mechanism as play-along nodes
-- **AND** it can satisfy downstream nodes' prerequisites
+#### Scenario: Unlock anyway counts as cleared
+- **WHEN** a player takes "Unlock anyway" on a chord
+- **THEN** that chord is recorded as cleared by skip
+- **AND** the next chord becomes available
+
+#### Scenario: Local and account progress merge on sign-in
+- **WHEN** a player who practised signed out signs in
+- **THEN** their browser progress and their account progress are merged
+- **AND** for a lesson cleared both ways, a pass takes precedence over a skip
 
 ### Requirement: Run-Through History with Last Score (F22)
-The system SHALL record a per-user run-through history per song and retain the last score per song for display on the lesson map and run-through summaries. (F22)
+The system SHALL record a per-user run history per song and SHALL retain the last and the best score among comparable runs, for display on the song and in its run summaries. Runs SHALL be comparable only within the same song, practice mode, part and version. A run SHALL count toward the history only if it was a full run — from the first scored note to the end — so a partial or looped pass cannot set a best. (F22)
 
-#### Scenario: Attempt is added to history
-- **WHEN** an authenticated user finishes a run-through and submits its result
-- **THEN** a new entry with its score and timestamp is stored for that song
-- **AND** it appears in that song's attempt history for the user
+#### Scenario: A full run enters the history
+- **WHEN** a player finishes a run that judged every scored note from the first to the end
+- **THEN** the run is recorded against that song
+- **AND** the song shows the last and best score among comparable runs
 
-#### Scenario: Last score is retained and returned
-- **WHEN** a user has completed one or more run-throughs of a song
-- **THEN** the most recent run-through's score is retrievable as that song's last score
-- **AND** a newer attempt replaces the previously returned last score
+#### Scenario: A partial or looped pass sets nothing
+- **WHEN** a player stops a run early, seeks past notes, or loops a passage
+- **THEN** that run does not set the last or the best score
+
+#### Scenario: Only comparable runs are shown together
+- **WHEN** a player switches practice mode, part or version
+- **THEN** the history shown is that of the runs matching the new choice
 
 #### Scenario: History scoped to the user
-- **WHEN** a user requests a song's run-through history
-- **THEN** only that user's attempts for that song are returned
+- **WHEN** a user requests a song's run history
+- **THEN** only that user's runs for that song are returned
 
 ### Requirement: Per-Song Tempo Preference Persistence (F37)
 The system SHALL persist a per-user, per-song tempo preference in the 50–100% range and return it on later visits, supporting the notation-rendering tempo control. (F37)

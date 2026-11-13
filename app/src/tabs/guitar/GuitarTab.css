@@ -1,3 +1,4 @@
+@import '../../styles/tokens.css';
 .guitar-tab {
   box-sizing: border-box;
   height: 100%;
@@ -103,3 +104,13 @@
     display: none;
   }
 }
+/* The section shell stays in place as the practice content changes. */
+
+.guitar-tab { background: var(--gs-bg); color: var(--gs-text); }
+.guitar-tab__top { background: var(--gs-surface); border-bottom: 1px solid var(--gs-border); padding-bottom: 12px; }
+.guitar-tab__views { background: var(--gs-raised); border: 1px solid var(--gs-border); border-radius: 18px; }
+.guitar-tab__view { color: var(--gs-muted); min-height: 44px; padding: 8px 14px; border-radius: 12px; }
+.guitar-tab__view--active { color: var(--gs-accent); background: var(--gs-accent-soft); box-shadow: inset 0 0 0 2px var(--gs-accent); }
+.guitar-tab :is(button, input, select, summary):focus-visible { outline: 3px solid var(--gs-accent); outline-offset: 4px; }
+.guitar-tab button:disabled { opacity: .5; cursor: not-allowed; }
+.guitar-tab > :not(.guitar-tab__body) { flex-shrink: 0; }

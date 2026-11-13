@@ -30,7 +30,7 @@ export const QUESTIONS_PER_ROUND = 10
 export const QUALITY_POOL = CHORDS.filter((chord) => QUALITIES.includes(chord.quality))
 
 /** "Which chord?" until the player picks their own: the common open chords. */
-export const DEFAULT_PICKS = ['Em', 'Am', 'C', 'G', 'D', 'E', 'A', 'Dm']
+export const DEFAULT_PICKS = ['Em', 'Am', 'C', 'G', 'D', 'E']
 
 /** Fewest chords a "Which chord?" round can be made from. */
 export const MIN_POOL = 2
@@ -70,7 +70,11 @@ export function makeRound(
   { pool = levelId === 'quality' ? QUALITY_POOL : CHORDS, weights = {}, count = QUESTIONS_PER_ROUND, random = Math.random } = {},
 ) {
   const level = LEVELS.find((l) => l.id === levelId)
+  if (!level || !Number.isInteger(count) || count < 1) return []
+  pool = [...new Map(pool.filter((chord) => CHORDS.some((known) => known.id === chord?.id)).map((chord) => [chord.id, chord])).values()]
+  if (pool.length < MIN_POOL) return []
   const qualities = QUALITIES.filter((quality) => pool.some((chord) => chord.quality === quality))
+  if (levelId === 'quality' && qualities.length < 2) return []
   const questions = []
   let previous = null
   for (let i = 0; i < count; i += 1) {
@@ -83,7 +87,7 @@ export function makeRound(
       previous = answer
       continue
     }
-    const answer = pickWeighted(candidates, (chord) => weights[chord.id] ?? 1, random)
+    const answer = pickWeighted(candidates, (chord) => Number.isFinite(weights[chord.id]) && weights[chord.id] > 0 ? weights[chord.id] : 1, random)
     const others = shuffle(pool.filter((chord) => chord !== answer), random).slice(0, Math.min(level.choices, pool.length) - 1)
     const choices = shuffle([answer, ...others], random).map((chord) => chord.id)
     questions.push({ answer, choices, correct: answer.id })
@@ -131,12 +135,12 @@ function save(key, value) {
   }
 }
 
-export const loadStats = () => load(STATS_KEY, {}, (v) => v && typeof v === 'object' && !Array.isArray(v))
+export const loadStats = () => load(STATS_KEY, {}, (v) => v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every((stat) => stat && ['right', 'wrong'].every((key) => Number.isSafeInteger(stat[key]) && stat[key] >= 0)))
 export const saveStats = (stats) => save(STATS_KEY, stats)
 
 /** The chord ids picked for "Which chord?", in CHORDS order. */
 export const loadPicks = () =>
-  load(PICKS_KEY, DEFAULT_PICKS, (v) => Array.isArray(v) && v.length >= MIN_POOL && v.every((id) => CHORDS.some((c) => c.id === id)))
+  load(PICKS_KEY, DEFAULT_PICKS, (v) => Array.isArray(v) && new Set(v).size === v.length && v.length >= MIN_POOL && v.every((id) => CHORDS.some((c) => c.id === id)))
 export const savePicks = (ids) => save(PICKS_KEY, ids)
 
 export function initialExercise() {
@@ -146,12 +150,14 @@ export function initialExercise() {
 export function exerciseReducer(state, action) {
   switch (action.type) {
     case 'start':
+      if (!LEVELS.some((level) => level.id === action.level) || !action.questions?.length) return state
       return { ...initialExercise(), status: 'asking', level: action.level, questions: action.questions }
 
     case 'answer': {
       // One answer per question; taps after the first are ignored.
       if (state.status !== 'asking') return state
       const question = state.questions[state.index]
+      if (!question?.choices.includes(action.choice)) return state
       const result = { answer: question.answer.id, picked: action.choice, correct: action.choice === question.correct }
       return { ...state, status: 'answered', results: [...state.results, result] }
     }

@@ -14,13 +14,19 @@ import { CHORDS } from './chords.js'
  */
 
 export const STORAGE_KEY = 'harmonic.guitar.cleared'
+let unsaved = null
+const isCleared = (value) => value === 'passed' || value === 'skipped'
+export function normalizeCleared(cleared) {
+  return Object.fromEntries(CHORDS.filter((chord) => isCleared(cleared?.[chord.id])).map((chord) => [chord.id, cleared[chord.id]]))
+}
+export function clearClearedMemory() { unsaved = null }
 
 /** Per chord id: 'passed' | 'skipped' | 'unlocked' | 'locked'. */
 export function chordStatuses(cleared) {
   const statuses = {}
   CHORDS.forEach((chord, i) => {
-    const open = i === 0 || Boolean(cleared[CHORDS[i - 1].id])
-    statuses[chord.id] = cleared[chord.id] ?? (open ? 'unlocked' : 'locked')
+    const open = i < unlockedCount(cleared)
+    statuses[chord.id] = !open ? 'locked' : isCleared(cleared[chord.id]) ? cleared[chord.id] : 'unlocked'
   })
   return statuses
 }
@@ -28,25 +34,34 @@ export function chordStatuses(cleared) {
 /** How many chords, from the start of CHORDS, are open (unlocked chords are always a prefix). */
 export function unlockedCount(cleared) {
   let count = 1
-  while (count < CHORDS.length && cleared[CHORDS[count - 1].id]) count++
+  while (count < CHORDS.length && isCleared(cleared[CHORDS[count - 1].id])) count++
   return count
 }
 
 /** Saved progress, or {} when storage is empty, blocked or unreadable. */
 export function loadCleared() {
+  if (unsaved) return { ...unsaved }
   try {
     const saved = JSON.parse(globalThis.localStorage.getItem(STORAGE_KEY) ?? '{}')
-    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
+    return normalizeCleared(saved)
   } catch {
     return {}
   }
 }
 
-export function saveCleared(cleared) {
+export function writeCleared(cleared) {
+  const clean = normalizeCleared(cleared)
   try {
-    globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(cleared))
+    globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(clean))
+    unsaved = null
+    return true
   } catch {
-    // Private window or blocked storage: progress lasts until reload.
+    unsaved = clean
+    return false
   }
+}
+export function saveCleared(cleared) {
+  const persisted = writeCleared(cleared)
   progressSaved()
+  return persisted
 }

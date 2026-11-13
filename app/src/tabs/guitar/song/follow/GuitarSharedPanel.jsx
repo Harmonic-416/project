@@ -5,6 +5,7 @@ import { RUN_MODE_LABEL, attemptNotesLine } from '../../../vocal/practice/practi
 import { troubleSummary } from './troubleTracker.js'
 import { entryAt, songTimeAt } from './recordingTiming.js'
 import { seekToTick } from './playerControls.js'
+import RunReview from './RunReview.jsx'
 
 const LEGEND = [
   ['hit', 'played'],
@@ -35,10 +36,13 @@ const WAIT_LEGEND = [
  * `ready` once its player is up). Runs saved before that have no timing,
  * and their cursor stays put.
  */
-function GuitarSharedPanel({ attempt, entries, overlay, supabase, api = null, ready = false }) {
-  const [recordingUrl, setRecordingUrl] = useState(null)
+function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supabase, api = null, ready = false }) {
+  const [reloads, setReloads] = useState(0)
+  const key = `${attempt.id}:${reloads}`
+  const [recording, setRecording] = useState(null)
+  const recordingUrl = recording?.key === key ? recording.url : null
+  const recordingError = recording?.key === key ? recording.error : null
   const audioRef = useRef(null)
-  const [recordingError, setRecordingError] = useState(null)
   const verdicts = attempt.verdicts ?? []
 
   useEffect(() => {
@@ -52,17 +56,17 @@ function GuitarSharedPanel({ attempt, entries, overlay, supabase, api = null, re
     let cancelled = false
     getSharedRecordingUrl(supabase, attempt).then(
       (url) => {
-        if (!cancelled) setRecordingUrl(url)
+        if (!cancelled) setRecording({ key, url, error: !url && attempt.recording_path ? 'The recording is unavailable. Try loading it again.' : null })
       },
       (err) => {
         console.error(err)
-        if (!cancelled) setRecordingError('The recording could not be loaded.')
+        if (!cancelled) setRecording({ key, url: null, error: 'The recording could not be loaded.' })
       },
     )
     return () => {
       cancelled = true
     }
-  }, [attempt, supabase])
+  }, [attempt, supabase, key])
 
   // The cursor on the note being played at this point of the recording.
   const timing = attempt.timing
@@ -122,18 +126,22 @@ function GuitarSharedPanel({ attempt, entries, overlay, supabase, api = null, re
       {recordingUrl && (
         <div className="guitar-shared__listen">
           <span className="guitar-shared__listen-label">Listen to {who} play</span>
-          <audio ref={audioRef} className="shared-attempt__audio" controls preload="metadata" src={recordingUrl}>
+          <audio ref={audioRef} className="shared-attempt__audio" controls preload="metadata" src={recordingUrl}
+            aria-label={`Recording of ${who}'s guitar run`}
+            onPlay={() => { api?.pause(); onTransportStart?.() }}
+            onError={() => setRecording({ key, url: null, error: 'Playback failed or the recording link expired. Try loading it again.' })}>
             Your browser can’t play this recording.
           </audio>
         </div>
       )}
-      {loading && <p className="share-attempt__hint">Loading the recording…</p>}
+      {loading && <p role="status" className="share-attempt__hint">Loading the recording…</p>}
       {!attempt.recording_path && (
         <p className="share-attempt__hint">
           {who} didn’t include a recording with this run, so there’s nothing to listen to; their marks are on the tab.
         </p>
       )}
-      {recordingError && <p className="share-attempt__error">{recordingError}</p>}
+      {recordingError && <p role="alert" className="share-attempt__error">{recordingError} <button type="button" className="practice-status__link" onClick={() => setReloads((n) => n + 1)}>Retry recording</button></p>}
+      {recordingUrl && !timing?.length && <p className="share-attempt__hint">This older recording has no cursor timing. You can still listen and inspect its note results.</p>}
       <p className="guitar-shared__score">
         {wait ? (
           <strong>{attemptNotesLine(verdicts, 'wait')}</strong>
@@ -155,6 +163,7 @@ function GuitarSharedPanel({ attempt, entries, overlay, supabase, api = null, re
           </li>
         ))}
       </ul>
+      <RunReview entries={entries} verdicts={verdicts} mode={wait ? 'wait' : 'trouble'} onSelect={(entry) => { if (api && ready) { seekToTick(api, entry.tick); api.scrollToCursor() } }} />
     </section>
   )
 }
