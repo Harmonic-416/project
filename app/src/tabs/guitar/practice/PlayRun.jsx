@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useLessonCountIn } from './useLessonCountIn.js'
+import { useEffect, useRef } from 'react'
 import ChordDiagram from './ChordDiagram.jsx'
 import { SECONDS_PER_CHORD, playScore } from './playState.js'
 import './PlayRun.css'
@@ -8,13 +9,15 @@ const RESULT_TEXT = { verified: 'heard it', wrong: 'something else', silent: 'to
 
 /**
  * Play mode screen: Start → 3-2-1 → each chord of the progression stays up
- * until it's strummed cleanly, or for SECONDS_PER_CHORD at most, with a
+ * for SECONDS_PER_CHORD, with a
  * progress bar; then the next one comes on its own. Ends with a score and
  * one chip per chord. `state`/`dispatch` come from playReducer (owned by
  * PracticeScreen, so the mic and the result buttons reach it).
  */
 function PlayRun({ chords, state, dispatch, labelMode }) {
   const { status, count, index, results } = state
+  const countInError = useLessonCountIn(status, count)
+  const runStartRef = useRef(null)
 
   // Countdown: one tick per second.
   useEffect(() => {
@@ -23,10 +26,12 @@ function PlayRun({ chords, state, dispatch, labelMode }) {
     return () => clearTimeout(id)
   }, [status, count, dispatch])
 
-  // Running: move to the next chord when this one's time is up (a clean strum moves on sooner).
+  // Deadlines share one origin so rendering delays cannot accumulate into tempo drift.
   useEffect(() => {
-    if (status !== 'running') return undefined
-    const id = setTimeout(() => dispatch({ type: 'advance' }), SECONDS_PER_CHORD * 1000)
+    if (status !== 'running') { runStartRef.current = null; return undefined }
+    runStartRef.current ??= performance.now()
+    const remaining = runStartRef.current + (index + 1) * SECONDS_PER_CHORD * 1000 - performance.now()
+    const id = setTimeout(() => dispatch({ type: 'advance' }), Math.max(0, remaining))
     return () => clearTimeout(id)
   }, [status, index, dispatch])
 
@@ -40,6 +45,7 @@ function PlayRun({ chords, state, dispatch, labelMode }) {
     const { heard, total } = playScore(results)
     return (
       <div className="play-run play-run--done">
+        {countInError && <p role="status">{countInError}</p>}
         <p className="play-run__score">
           <strong>
             {heard} of {total}
@@ -68,10 +74,10 @@ function PlayRun({ chords, state, dispatch, labelMode }) {
   if (status === 'idle') {
     return (
       <div className="play-run play-run--idle">
+        {countInError && <p role="status">{countInError}</p>}
         <p className="play-run__progression">{progressionText}</p>
         <p className="play-run__hint">
-          {chords.length} chords. Strum each one cleanly and the next comes up; after {SECONDS_PER_CHORD} seconds it
-          comes anyway, so the app keeps going even if you miss one.
+          {chords.length} chords. Each chord lasts {SECONDS_PER_CHORD} seconds. Play along at a steady pace; the progression keeps going whether or not the chord is heard.
         </p>
         <button type="button" className="play-run__primary" onClick={start}>
           Start
@@ -82,6 +88,7 @@ function PlayRun({ chords, state, dispatch, labelMode }) {
 
   return (
     <div className="play-run">
+        {countInError && <p role="status">{countInError}</p>}
       <div className="play-run__top">
         <span className="play-run__step">
           Chord {index + 1} of {chords.length}

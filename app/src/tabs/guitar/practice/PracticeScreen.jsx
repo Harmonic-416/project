@@ -85,7 +85,10 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
   const [labelMode, setLabelMode] = useState(loadLabelMode)
   const [mode, setMode] = useState(initialMode)
   const [hinting, setHinting] = useState(false)
+  const [hintError, setHintError] = useState(null)
+  const [saveError, setSaveError] = useState(false)
   const hintTimer = useRef(null)
+  const launchVersion = useRef(0)
   // Practice and Play have their own run state (practiceRunState.js, playState.js).
   const [run, runDispatch] = useReducer(practiceRunReducer, undefined, () => initialPracticeRun())
   const [play, playDispatch] = useReducer(playReducer, undefined, () => initialPlay())
@@ -122,21 +125,29 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
   // Starting a Practice or Play run turns the mic on too (a tap, so the browser allows it).
   const { start: startListening } = listening
   const runDispatchWithMic = useCallback(
-    (action) => {
-      if (action.type === 'start') startListening()
+    async (action) => {
+      if (action.type === 'start') {
+        const version = ++launchVersion.current
+        if (!(await startListening()) || version !== launchVersion.current) return
+      } else launchVersion.current += 1
       runDispatch(action)
     },
     [startListening],
   )
   const playDispatchWithMic = useCallback(
-    (action) => {
-      if (action.type === 'start') startListening()
+    async (action) => {
+      if (action.type === 'start') {
+        const version = ++launchVersion.current
+        if (!(await startListening()) || version !== launchVersion.current) return
+      } else launchVersion.current += 1
       playDispatch(action)
     },
     [startListening],
   )
 
   const chooseMode = (id) => {
+    launchVersion.current += 1
+    listening.stop()
     setMode(id)
     setHeard(({ n }) => ({ verdict: null, chordId: null, extra: [], n }))
     runDispatch({ type: 'reset' })
@@ -155,7 +166,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
 
   const updateCleared = (updated) => {
     setCleared(updated)
-    saveCleared(updated)
+    setSaveError(!saveCleared(updated))
     dispatch({ type: 'unlocked', count: unlockedCount(updated) })
   }
 
@@ -188,12 +199,15 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
   const hint = async () => {
     const eachString = hinting
     listening.muteFor(eachString ? EACH_STRING_SOUND_MS : HINT_SOUND_MS)
+    setHintError(null)
     setHinting(true)
     clearTimeout(hintTimer.current)
     hintTimer.current = setTimeout(() => setHinting(false), eachString ? 3000 : 1600)
     try {
       await (eachString ? player.arpeggiate(chord) : player.strum(chord))
     } catch (err) {
+      setHintError('The reference sound could not start. Try Hint again.')
+      setHinting(false)
       console.error('Hint playback failed', err)
     }
   }
@@ -209,6 +223,8 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
 
   return (
     <div className="practice">
+      {saveError && <p role="status">Progress is available for this visit, but browser storage is blocked. Sign in to sync it, or allow storage before leaving.</p>}
+      {hintError && <p role="alert">{hintError}</p>}
       <section className="practice__lesson" aria-label="Lesson">
         <header className="practice__header">
           {isChanges ? (
@@ -244,6 +260,8 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
             onLearnNext={learnNext}
             onBackToLearn={() => chooseMode('guided')}
             onUnlockAnyway={unlockAnyway}
+            onHint={() => { runDispatch({ type: 'reset' }); hint() }}
+            onSkip={() => { runDispatch({ type: 'reset' }); dispatch({ type: 'skip' }); chooseMode('guided') }}
           />
         ) : (
           <>
@@ -303,7 +321,8 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
               </div>
             </div>
 
-            {state.notice && <p className="practice__notice">{state.notice}</p>}
+            {state.notice && <p className="practice__notice" role="status">{state.notice}</p>}
+            {state.skips.length > 0 && <p className="practice__side-note">Manual skips this visit: {state.skips.length}. Skipping does not mark a chord as passed.</p>}
 
             <CheckBanner
               chord={chord}
@@ -353,7 +372,8 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
           >
             {isListening ? '● Listening · Stop' : listening.status === 'requesting' ? 'Starting mic…' : '🎤 Listen'}
           </button>
-          {listening.error && <span className="practice__listen-error">{listening.error}</span>}
+          {listening.error && <span role="alert" className="practice__listen-error">{listening.error}</span>}
+          {listening.error && (isPractice || isPlay) && <button type="button" onClick={() => (isPractice ? runDispatch : playDispatch)({ type: 'start' })}>Start without microphone</button>}
         </div>
         <div>
           <span className="practice__mark-label">Mark it yourself:</span>

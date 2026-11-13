@@ -21,18 +21,18 @@ import { CHORDS } from './chords.js'
 const IDLE_STRINGS = ['idle', 'idle', 'idle', 'idle', 'idle', 'idle']
 
 export function initialPractice(chordIndex = 0, unlocked = CHORDS.length) {
-  return { chordIndex, unlocked, verdict: 'listening', strings: IDLE_STRINGS, misses: 0, notice: null }
+  return { chordIndex, unlocked, verdict: 'listening', strings: IDLE_STRINGS, misses: 0, notice: null, skips: [] }
 }
 
 function moveTo(state, chordIndex, notice) {
-  return { ...initialPractice(chordIndex % state.unlocked, state.unlocked), notice }
+  return { ...initialPractice(chordIndex % state.unlocked, state.unlocked), skips: state.skips, notice }
 }
 
 export function practiceReducer(state, action) {
   switch (action.type) {
     case 'select':
       if (action.index >= state.unlocked) return state
-      return initialPractice(action.index, state.unlocked)
+      return { ...initialPractice(action.index, state.unlocked), skips: state.skips }
 
     case 'unlocked': {
       // Practice mode passed a chord, or the demo reset progress.
@@ -41,16 +41,17 @@ export function practiceReducer(state, action) {
     }
 
     case 'result': {
+      if (!['verified', 'wrong', 'silent'].includes(action.verdict)) return state
       const strings = action.strings ?? IDLE_STRINGS
       if (action.verdict === 'wrong') return { ...state, verdict: 'wrong', strings, misses: state.misses + 1, notice: null }
       return { ...state, verdict: action.verdict, strings, notice: null }
     }
 
     case 'retry':
-      return initialPractice(state.chordIndex, state.unlocked)
+      return { ...initialPractice(state.chordIndex, state.unlocked), skips: state.skips }
 
     case 'skip':
-      return moveTo(state, state.chordIndex + 1, `Skipped ${CHORDS[state.chordIndex].name}.`)
+      return { ...moveTo(state, state.chordIndex + 1, `Skipped ${CHORDS[state.chordIndex].name}.`), skips: [...(state.skips ?? []), { chordId: CHORDS[state.chordIndex].id, outcome: 'manual-skip' }] }
 
     case 'next':
       return moveTo(state, state.chordIndex + 1, null)

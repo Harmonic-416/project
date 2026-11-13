@@ -1,6 +1,6 @@
 import { PASSED_KEY } from '../exercises/strumProgress.js'
 import { BEST_KEY } from '../practice/changesState.js'
-import { STORAGE_KEY as CLEARED_KEY } from '../practice/unlocks.js'
+import { STORAGE_KEY as CLEARED_KEY, loadCleared, writeCleared, clearClearedMemory } from '../practice/unlocks.js'
 
 /**
  * Everything the Learn tab records, as kept in this browser — the chord
@@ -22,12 +22,13 @@ function read(key) {
 }
 
 export function readLocalProgress() {
-  return Object.fromEntries(Object.entries(KEYS).map(([part, key]) => [part, read(key)]))
+  return Object.fromEntries(Object.entries(KEYS).map(([part, key]) => [part, part === 'cleared' ? loadCleared() : read(key)]))
 }
 
 export function writeLocalProgress(progress) {
+  writeCleared(progress.cleared ?? {})
   try {
-    for (const [part, key] of Object.entries(KEYS)) globalThis.localStorage.setItem(key, JSON.stringify(progress[part] ?? {}))
+    for (const [part, key] of Object.entries(KEYS)) if (part !== 'cleared') globalThis.localStorage.setItem(key, JSON.stringify(progress[part] ?? {}))
   } catch {
     // Private window or blocked storage: the account still has it.
   }
@@ -35,6 +36,7 @@ export function writeLocalProgress(progress) {
 
 /** Forget it in this browser (signing out), so the next player starts fresh. */
 export function clearLocalProgress() {
+  clearClearedMemory()
   try {
     for (const key of Object.values(KEYS)) globalThis.localStorage.removeItem(key)
   } catch {
