@@ -103,13 +103,22 @@ concepts are gone. Replace with:
 > row-level security. A file the user opens from their own device is never uploaded. Covers F9, F10,
 > F23, N3, N5 and the storage side of F4.
 
-### One requirement edited for coherence, beyond S2's list
+### Two requirements edited for coherence, beyond S2's list
 
-`progress-tracking` "Run-Through History with Last Score (F22)" displays the last score *"on the
-lesson map"*. The lesson map is deleted by this change, so leaving F22 alone would strand a
-reference to a concept that no longer exists. Its MODIFIED block also states what the code actually
-keys history on — song, mode, part, version, full runs only — which S4 and S5 will otherwise have to
-contradict.
+Each is a dangling reference created by one of the renames above. Left alone, the contract would
+point one requirement at the negation of another.
+
+- **`progress-tracking` "Run-Through History with Last Score (F22)"** displays the last score *"on
+  the lesson map"*. The lesson map is deleted by this change. Its MODIFIED block also states what
+  the code actually keys history on — song, mode, part, version, full runs only — which S4 and S5
+  would otherwise have to contradict.
+- **`ui` "Live chord and per-string state display (F34)"** renders per-string indicators *"when
+  cleanliness data (F17) is available"*, and after this change F17 is the requirement that forbids a
+  cleanliness score. Now reads from the per-string verdicts, with a scenario covering the four real
+  states (rang clean, buzzed or wrong, not heard yet, not played).
+
+Found by sweeping every spec for references to the renamed concepts, not by reading §4 — which is
+worth repeating for S3 to S6: a rename inside one capability can strand a reference inside another.
 
 ## Non-goals
 

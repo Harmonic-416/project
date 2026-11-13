@@ -22,6 +22,26 @@ now choose when to do one, and Exercises are their own section rather than a sta
 - **THEN** it completes with taps and selections alone
 - **AND** no microphone permission is requested
 
+### Requirement: Live chord and per-string state display (F34)
+During a guitar run the system SHALL display live chord state — expected, heard-something-else, or
+heard-nothing — and SHALL render an indicator for each of the six strings from the per-string
+verdicts (F17).
+
+Edited for coherence, beyond S2's list: its previous text rendered per-string indicators "when
+cleanliness data (F17) is available", and after this change F17 is the requirement that forbids a
+cleanliness score. Leaving it would have pointed one requirement at the negation of another.
+
+#### Scenario: Chord state reflects detection
+- **WHEN** the scoring engine reports the expected chord verified
+- **THEN** the diagram shows the expected/verified state
+- **WHEN** the scoring engine reports nothing was heard
+- **THEN** the diagram shows a heard-nothing state, not wrong or verified
+
+#### Scenario: Per-string indicators reflect each string's verdict
+- **WHEN** per-string verdicts are provided for the current strum
+- **THEN** each of the six string indicators shows that string as rang-clean, buzzed-or-wrong, or not heard yet
+- **AND** a string the chord does not use is shown as not played
+
 ## REMOVED Requirements
 
 ### Requirement: Practice playlist (F4)
