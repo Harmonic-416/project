@@ -1,0 +1,37 @@
+# Files whose behaviour was tuned by ear against real recordings and real
+# playing. A loop optimising these against synthetic signals will overfit and
+# no test will notice, so they are frozen: readable, never writable.
+#
+# This is a FILE list, not a directory freeze, on purpose. song/follow/ also
+# holds presentation and player-command code that polish work legitimately
+# needs (the loop controls, the mode screens, the stylesheet). Freezing the
+# whole folder blocked the highest-value item in the backlog.
+#
+# To change anything here: a human does it, with an instrument, and re-records
+# the benchmark baselines afterwards.
+
+# Judging and windows
+app/src/tabs/guitar/song/follow/noteJudge.js
+app/src/tabs/guitar/song/follow/waitListening.js
+app/src/tabs/guitar/song/follow/listenWindows.js
+app/src/tabs/guitar/song/follow/troubleTracker.js
+app/src/tabs/guitar/song/follow/waitState.js
+app/src/tabs/guitar/song/follow/easyMode.js
+
+# Clock, latency and the microphone
+app/src/tabs/guitar/song/follow/songClock.js
+app/src/tabs/guitar/song/follow/useGuitarListener.js
+
+# After-the-run re-check
+app/src/tabs/guitar/song/follow/matchTranscription.js
+app/src/tabs/guitar/song/follow/refineWithBasicPitch.js
+
+# Chord detection for the lessons
+app/src/tabs/guitar/practice/chordDetect.js
+app/src/tabs/guitar/practice/useLessonListening.js
+
+# Ear-training and strum hearing thresholds
+app/src/tabs/guitar/exercises/strumHearing.js
+
+# The shared capture (whole directory, no presentation code in it)
+app/src/audio/
