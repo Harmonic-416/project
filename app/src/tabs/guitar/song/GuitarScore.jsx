@@ -1,3 +1,4 @@
+import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { createPortal } from 'react-dom'
 import { createBarScrollHandler } from './follow/barScroll.js'
 import * as alphaTab from '@coderline/alphatab'
@@ -195,7 +196,7 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
       <div className="guitar-score__scroll" ref={scrollRef} role="region" aria-label="Guitar tablature and standard notation" tabIndex={0}>
         <div className="guitar-score__surface" ref={surfaceRef} />
       </div>
-      {error && <div role="alert" className="guitar-score__error">The guitar player could not load. Check your connection and try again. <button type="button" onClick={() => { setError(null); drawnRef.current = false; setRetry((n) => n + 1) }}>Retry player</button></div>}
+      {error && <GuitarFeedback kind="error" onRetry={() => { setError(null); drawnRef.current = false; setRetry((n) => n + 1) }} retryLabel="Retry player">The guitar player could not load. Check your connection and try again.</GuitarFeedback>}
       <p className="guitar-score__status">Click a note to seek. Drag across the score to select a passage.</p>
 
     </div>

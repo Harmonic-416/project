@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import LocalSongs from '../src/tabs/guitar/song/LocalSongs.jsx'
 import { listMyFiles, loadMyFile } from '../src/tabs/home/myFiles.js'
 vi.mock('../src/tabs/home/myFiles.js', () => ({ listMyFiles: vi.fn(), loadMyFile: vi.fn(), fileKind: () => 'MusicXML' }))
@@ -23,4 +23,16 @@ describe('Guitar saved files', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
     await screen.findByText(/Your music stays on this device/)
   })
+})
+
+it('does not reopen a delayed saved file after another source was selected', async () => {
+  listMyFiles.mockResolvedValue([{id:'saved',name:'Delayed.musicxml',instrument:'guitar'}])
+  let resolve; let current = true
+  loadMyFile.mockReturnValue(new Promise((done) => {resolve = done}))
+  const open = vi.fn()
+  render(<LocalSongs onOpen={open} onBeginOpen={() => ({isCurrent: () => current})} />)
+  fireEvent.click(await screen.findByRole('button', {name:/Delayed.musicxml/}))
+  current = false
+  await act(async () => resolve({bytes:new ArrayBuffer(1),name:'Delayed.musicxml'}))
+  expect(open).not.toHaveBeenCalled()
 })

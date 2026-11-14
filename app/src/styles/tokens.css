@@ -1,15 +1,125 @@
-/* Guitar practice palette, shared by its library and player. */
+/* Product theme. Light/dark pairs, spacing and responsive rules live here. */
 .guitar-tab {
-  --gs-bg: #16161c;
-  --gs-surface: #202027;
-  --gs-raised: #282830;
-  --gs-border: #363640;
-  --gs-text: #f4f3f1;
-  --gs-muted: #aaa7b3;
-  --gs-accent: #3bb5b8;
-  --gs-accent-soft: #20363b;
-  --gs-warning: #ecc464;
-  --gs-danger: #ff9298;
-  --gs-paper: #ffffff;
+  color-scheme: dark;
+  --gs-bg: light-dark(#f7f6f2, #16161c);
+  --gs-surface: light-dark(#ffffff, #202027);
+  --gs-raised: light-dark(#efece5, #282830);
+  --gs-border: light-dark(#d5d1ca, #363640);
+  --gs-text: light-dark(#24242c, #f4f3f1);
+  --gs-muted: light-dark(#615e69, #b7b3c0);
+  --gs-accent: light-dark(#107476, #3bb5b8);
+  --gs-accent-soft: light-dark(#e3f3f3, #20363b);
+  --gs-lilac: light-dark(#7653c0, #b49aff);
+  --gs-blue: light-dark(#166f98, #4bb9ed);
+  --gs-orange: light-dark(#a24c00, #ffa04b);
+  --gs-warning: light-dark(#7a5300, #ecc464);
+  --gs-warning-soft: light-dark(#fbeccc, #332c1c);
+  --gs-danger: light-dark(#b53a27, #ff9298);
+  --gs-danger-soft: light-dark(#fbeae6, #382328);
+  --gs-hit: light-dark(#377329, #7dce90);
+  --gs-hit-strong: light-dark(#315e26, #9bdfa9);
+  --gs-close: light-dark(#936700, #ecc464);
+  --gs-miss: light-dark(#b53a27, #ff9298);
+  --gs-on-solid: light-dark(#ffffff, #10242a);
+  --gs-paper: light-dark(#ffffff, #ffffff);
+  --gs-header: light-dark(#24242c, #1b1b22);
+  --gs-header-text: light-dark(#f4f3f1, #f4f3f1);
+  --gs-score-accent: light-dark(#128789, #128789);
+  --gs-score-hit: light-dark(#2e9e5b, #2e9e5b);
+  --gs-score-close: light-dark(#946b00, #946b00);
+  --gs-score-miss: light-dark(#cf4b36, #cf4b36);
+  --gs-score-muted: light-dark(#707070, #707070);
+  --gs-transparent: light-dark(transparent, transparent);
+  --gs-space-1: 4px;
+  --gs-space-2: 8px;
+  --gs-space-3: 12px;
+  --gs-space-4: 16px;
+  --gs-space-5: 24px;
+  --gs-radius-control: 12px;
+  --gs-radius-card: 24px;
+  --gs-focus-width: 3px;
+  --gs-focus-offset: 4px;
+  --gs-disabled-opacity: .55;
+  --gs-control-height: 44px;
+  --gs-hover: color-mix(in srgb, var(--gs-accent) 32%, var(--gs-transparent));
+  --gs-motion-duration: 140ms;
+  --hm-accent: var(--gs-accent);
+  --hm-surface: var(--gs-surface);
+  --hm-border: var(--gs-border);
+  --hm-text: var(--gs-text);
+  --hm-text-muted: var(--gs-muted);
+  --hm-danger: var(--gs-danger);
+  --hm-danger-soft: var(--gs-danger-soft);
+  --practice-good: var(--gs-hit);
+  --practice-good-strong: var(--gs-hit-strong);
+  --practice-bad: var(--gs-miss);
+  --practice-warn: var(--gs-warning);
+  --practice-warn-ink: var(--gs-on-solid);
+  --practice-bar: var(--gs-raised);
+  --practice-ink: var(--gs-header);
 }
-.guitar-tab { --gs-hit: #7dce90; --gs-close: #ecc464; --gs-miss: #ff9298; }
+
+/* The only width breakpoints: compact phone, phone, and stacked lesson. */
+@media (max-width: 380px) {
+.guitar-tab .guitar-tab__top .account-chip {
+    padding: 0 4px;
+  }
+
+  .guitar-tab .guitar-tab__top .account-chip__name {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+.guitar-tab .guitar-tab__top .guitar-tab__view {
+    padding: 6px 7px;
+    font-size: 0.9rem;
+  }
+
+  .guitar-tab .guitar-tab__top .account-chip {
+    max-width: 30%;
+  }
+.guitar-tab .guitar-tab__top .account-chip:has(.hm-avatar) {
+    padding: 0 4px;
+  }
+
+  .guitar-tab .guitar-tab__top .account-chip:has(.hm-avatar) .account-chip__name {
+    display: none;
+  }
+.guitar-tab .guitar-song { padding: 22px 16px 32px; } .guitar-tab .guitar-song__search { padding: 16px; gap: 14px; }
+.guitar-tab .guitar-song--open .guitar-song__actions { width: 100%; } .guitar-tab .guitar-song--open .playback-controls__time { flex: 1; }
+.guitar-tab .exercises__levels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+.guitar-tab .practice__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+.guitar-tab .practice__side {
+    padding: 14px 0 0;
+    border-top: 1px solid var(--hm-border);
+    border-left: none;
+  }
+.guitar-tab .practice__modes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Learn uses the same compact and stacked breakpoints as the rest of Guitar. */
+@media (max-width: 560px) {
+  .guitar-tab .learn__overview { grid-template-columns: minmax(0, 1fr); }
+  .guitar-tab .learn-progress { display: none; }
+  .guitar-tab .learn { padding: var(--gs-space-4); }
+  .guitar-tab .learn-continue { padding: var(--gs-space-4); gap: var(--gs-space-4); }
+  .guitar-tab .learn-continue__icon { width: 64px; height: 64px; }
+  .guitar-tab .learn-unit summary { padding: var(--gs-space-4); gap: var(--gs-space-3); }
+  .guitar-tab .learn-unit__heading > span { display: none; }
+  .guitar-tab .lesson-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guitar-tab .learn__activity-kind { display: none; }
+  .guitar-tab .lesson-coach { padding: var(--gs-space-4); }
+  .guitar-tab .lesson-coach__workspace { gap: var(--gs-space-3); }
+  .guitar-tab .lesson-coach__fingers li { gap: var(--gs-space-2); }
+}
+@media (max-width: 380px) {
+  .guitar-tab .lesson-coach__strings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

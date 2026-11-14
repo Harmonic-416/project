@@ -11,9 +11,9 @@
   flex: 1;
   min-height: 240px;
   overflow: auto;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--gs-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--gs-paper);
 }
 
 /* The element alphaTab renders into; the practice marks layer is placed inside it. */
@@ -23,17 +23,17 @@
 
 /* alphaTab's playback cursor and beat highlight. */
 .guitar-score .at-cursor-bar {
-  background: rgba(18, 135, 137, 0.08);
+  background: color-mix(in srgb, var(--gs-score-accent) 8%, var(--gs-transparent));
 }
 
 .guitar-score .at-cursor-beat {
-  background: rgba(18, 135, 137, 0.75);
+  background: color-mix(in srgb, var(--gs-score-accent) 75%, var(--gs-transparent));
   width: 3px;
 }
 
 .guitar-score .at-highlight * {
-  fill: #128789;
-  stroke: #128789;
+  fill: var(--gs-score-accent);
+  stroke: var(--gs-score-accent);
 }
 
 .guitar-score__status,
@@ -43,11 +43,11 @@
 }
 
 .guitar-score__status {
-  color: #6c6a72;
+  color: var(--gs-muted);
 }
 
 .guitar-score__error {
-  color: #cf4b36;
+  color: var(--gs-danger);
 }
 
 .guitar-score__scroll { border: 2px solid var(--gs-border); border-radius: 22px; background: var(--gs-paper); min-height: 280px; }
