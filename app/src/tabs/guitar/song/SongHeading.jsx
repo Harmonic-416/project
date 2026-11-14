@@ -1,4 +1,5 @@
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
+import { createPortal } from 'react-dom'
 import DraftNotice from './DraftNotice.jsx'
 import TabNotice from './TabNotice.jsx'
 import { exportGuitarMidi, exportGuitarPro } from '../notation/exportGuitarNotation.js'
@@ -13,7 +14,12 @@ const FORMAT_LABEL = {
 }
 
 /** Song identity, provenance and file actions stay together above every mode. */
-export default function SongHeading({ notation, viewingShared, showSessions, onSessions, onBack, exportScore, exportError, storageNotice }) {
+export default function SongHeading({ notation, viewingShared, showSessions, onSessions, onBack, exportScore, exportError, storageNotice, infoHost }) {
+  const information = <>
+    {(notation.score?.artist || notation.score?.music || notation.score?.words || notation.score?.subTitle || notation.score?.album) && <div className="song-workspace__credits"><strong>About this score</strong>{notation.score.subTitle && <p>{notation.score.subTitle}</p>}{notation.score.artist && <p>{notation.score.artist}</p>}{notation.score.album && <p>{notation.score.album}</p>}{notation.score.music && <p>Music: {notation.score.music}</p>}{notation.score.words && <p>Words: {notation.score.words}</p>}</div>}
+    {notation.importNotice && <p role="status" className="guitar-song__notice guitar-song__notice--info">{notation.importNotice}</p>}
+    {notation.draft ? <DraftNotice about={notation.draft.about} /> : <TabNotice tab={notation.tab} hasTab={notation.hasTab} originalMidi={notation.format === 'midi'} />}
+  </>
   return <>
       {exportError && <GuitarFeedback kind="error">{exportError}</GuitarFeedback>}
       {storageNotice && <p role="status" className="guitar-song__notice">{storageNotice}</p>}
@@ -43,11 +49,6 @@ export default function SongHeading({ notation, viewingShared, showSessions, onS
           </button>
         </div>
       </div>
-      {notation.importNotice && <p role="status" className="guitar-song__notice guitar-song__notice--info">{notation.importNotice}</p>}
-      {notation.draft ? (
-        <DraftNotice about={notation.draft.about} />
-      ) : (
-        <TabNotice tab={notation.tab} hasTab={notation.hasTab} originalMidi={notation.format === 'midi'} />
-      )}
+      {infoHost ? createPortal(information, infoHost) : information}
   </>
 }

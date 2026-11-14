@@ -109,6 +109,9 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   const [scoresVersion, setScoresVersion] = useState(0) // bumped when a run is saved
   const [settingsHost, setSettingsHost] = useState(null)
   const [transportHost, setTransportHost] = useState(null)
+  const [infoHost, setInfoHost] = useState(null)
+  const [feedbackHost, setFeedbackHost] = useState(null)
+  const [optionsOpen, setOptionsOpen] = useState(false)
   const scoreRef = useRef(null)
   const enableScoreFollow = useCallback(() => scoreRef.current?.enableFollow(), [])
   const pageRef = useRef(null)
@@ -672,8 +675,32 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   }
 
   return (
-    <div ref={pageRef} className="guitar-song guitar-song--open guitar-follow">
-      <SongHeading notation={notation} viewingShared={viewingShared} showSessions={!viewingShared && Boolean(auth?.user && supabase)} onSessions={() => openSessions(sessionSong, 'song')} onBack={() => { requests.cancel(); if (viewingShared) closeShared(); else setNotation(null) }} exportScore={exportScore} exportError={exportError} storageNotice={storageNotice} />
+    <div ref={pageRef} className={`guitar-song guitar-song--open guitar-follow${optionsOpen ? ' guitar-song--options-open' : ''}`}>
+      <header className="song-workspace__heading">
+      <SongHeading infoHost={infoHost} notation={notation} viewingShared={viewingShared} showSessions={!viewingShared && Boolean(auth?.user && supabase)} onSessions={() => openSessions(sessionSong, 'song')} onBack={() => { requests.cancel(); if (viewingShared) closeShared(); else setNotation(null) }} exportScore={exportScore} exportError={exportError} storageNotice={storageNotice} />
+      <button type="button" className="song-workspace__options-button" aria-controls="song-practice-options" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((open) => !open)}>Options</button>
+      </header>
+      <div className="song-workspace">
+        <section className="song-workspace__main" aria-label="Score workspace">
+          {!viewingShared && <div ref={setTransportHost} className="guitar-song__transport-slot" />}
+      <GuitarScore
+        ref={scoreRef}
+        settingsHost={settingsHost}
+        hideControls={viewingShared}
+        score={score}
+        songKey={notation.fingerprint}
+        userId={userId}
+        catalogSongId={notation.catalogSongId}
+        client={supabase}
+        trackIndexes={trackIndexes}
+        onApi={setApi}
+        onSpeedChange={setSpeed}
+        controlsDisabled={viewingShared || (mode === 'trouble' && player.state === 'playing')}
+      />
+          <div ref={setFeedbackHost} className="song-workspace__feedback" />
+        </section>
+        <aside id="song-practice-options" className="song-workspace__sidebar" aria-label="Practice options">
+          <div className="song-workspace__sidebar-heading"><h2>Practice options</h2><button type="button" onClick={() => setOptionsOpen(false)} className="song-workspace__close" aria-label="Close practice options">✕</button></div>
       {!viewingShared && <PracticeModeToggle mode={mode} onChange={changeMode} disabled={!ready} modes={modes} />}
       {!viewingShared && <details className="guitar-song__settings"><summary>Practice settings · part, accompaniment and version</summary><div className="guitar-song__settings-body">
       <PartTabs
@@ -698,21 +725,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
 
       </div></details>}
       {!viewingShared && <div ref={setSettingsHost} className="guitar-song__tempo-slot" />}
-      {!viewingShared && <div ref={setTransportHost} className="guitar-song__transport-slot" />}
-      <GuitarScore
-        ref={scoreRef}
-        settingsHost={settingsHost}
-        hideControls={viewingShared}
-        score={score}
-        songKey={notation.fingerprint}
-        userId={userId}
-        catalogSongId={notation.catalogSongId}
-        client={supabase}
-        trackIndexes={trackIndexes}
-        onApi={setApi}
-        onSpeedChange={setSpeed}
-        controlsDisabled={viewingShared || (mode === 'trouble' && player.state === 'playing')}
-      />
+
       {!ready && !viewingShared && <GuitarFeedback>Loading guitar sound... {Math.round(player.loaded * 100)}%</GuitarFeedback>}
       {viewingShared && (
         <GuitarSharedPanel
@@ -738,6 +751,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           key={`${practised.index}-${easy}`}
           api={api}
           transportHost={transportHost}
+          feedbackHost={feedbackHost}
           onTransportStart={enableScoreFollow}
           timeline={scoredTimeline}
           overlay={overlay}
@@ -755,6 +769,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
             key={`${practised.index}-${easy}`}
             api={api}
             transportHost={transportHost}
+            feedbackHost={feedbackHost}
           onTransportStart={enableScoreFollow}
             score={score}
             timeline={scoredTimeline}
@@ -805,6 +820,9 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           <SessionAttempts supabase={supabase} session={practiceSession} />
         </section>
       )}
+        <div ref={setInfoHost} className="song-workspace__info" />
+        </aside>
+      </div>
     </div>
   )
 }

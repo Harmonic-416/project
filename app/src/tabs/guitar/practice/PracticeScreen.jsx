@@ -1,7 +1,8 @@
 import LessonFocus from './LessonFocus.jsx'
 import LessonModes from './LessonModes.jsx'
+import ChordPicker from './ChordPicker.jsx'
 import GuitarFeedback from './GuitarFeedback.jsx'
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { midiToNoteName } from '../../vocal/audio/pitchDetector.js'
 import CheckBanner from './CheckBanner.jsx'
 import PlayRun from './PlayRun.jsx'
@@ -9,7 +10,7 @@ import PracticeRun from './PracticeRun.jsx'
 import { CHORDS, LABEL_MODES } from './chords.js'
 import { markedStrings } from './lessonVerdicts.js'
 import ChangesRun from './ChangesRun.jsx'
-import { initialPlay, learnedProgression, playReducer, progressionChords } from './playState.js'
+import { initialPlay, strummingLoop, playReducer, progressionChords } from './playState.js'
 import { initialPracticeRun, practiceRunReducer } from './practiceRunState.js'
 import { initialPractice, practiceReducer } from './practiceState.js'
 import { chordStatuses, loadCleared, saveCleared, unlockedCount } from './unlocks.js'
@@ -17,9 +18,6 @@ import { useChordPlayer } from './useChordPlayer.js'
 import { useLessonListening } from './useLessonListening.js'
 import '../../../auth/authTheme.css'
 import './PracticeScreen.css'
-
-// Chord pill marks by unlock status (unlocks.js); plain 'unlocked' has none.
-const PILL_MARK = { passed: '✓', skipped: '↷', locked: '🔒' }
 
 // What the app heard: lit green / red / yellow by the mic, or clicked to mark it yourself.
 const RESULTS = [
@@ -87,8 +85,9 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
   const [launchError, setLaunchError] = useState(null)
   // Practice and Play have their own run state (practiceRunState.js, playState.js).
   const [run, runDispatch] = useReducer(practiceRunReducer, undefined, () => initialPracticeRun())
-  const [play, playDispatch] = useReducer(playReducer, undefined, () => initialPlay())
-  const playChords = progressionChords(learnedProgression(cleared))
+  const playChords = useMemo(() => progressionChords(strummingLoop(cleared)), [cleared])
+  const [play, playDispatch] = useReducer(playReducer, undefined, () => initialPlay(playChords.length))
+  useEffect(() => playDispatch({type:'configure', length:playChords.length}), [playChords])
 
   const chord = CHORDS[state.chordIndex]
   const nextChord = CHORDS[state.chordIndex + 1]
@@ -100,7 +99,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
 
   // Last result, heard by the mic or marked by the player, for the chord that
   // was up; it goes dark once another chord is. `n` replays the flash.
-  const expectedChord = isPlay ? playChords[play.index] : chord
+  const expectedChord = isPlay ? playChords[Math.min(play.index, playChords.length - 1)] : chord
   const [heard, setHeard] = useState({ verdict: null, chordId: null, extra: [], n: 0 })
   const showHeard = (verdict, extra = []) => setHeard(({ n }) => ({ verdict, chordId: expectedChord.id, extra, n: n + 1 }))
   const heardVerdict = heard.chordId === expectedChord.id ? heard.verdict : null
@@ -261,6 +260,13 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
     listening.restart()
     dispatch(action)
   }
+  // A manual skip must cross the unlock boundary, rather than wrap inside it.
+  // Keep the skip intent in the lesson history and never downgrade a pass.
+  const skipChord = () => {
+    clearChord('skipped')
+    moveChord({ type: 'skip' })
+    chooseMode('guided')
+  }
   const startManually = () => {
     launchVersion.current += 1
     setLaunching(false)
@@ -279,7 +285,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
   const listeningLabel = isListening ? 'Listening - Stop' : listening.status === 'requesting' ? 'Starting microphone...' : isPractice || isPlay ? 'Listen' : 'Check my chord'
 
   return (
-    <div className="practice">
+    <div className={`practice practice--focused${mode === 'guided' ? ' practice--guided' : isPractice ? ' practice--checkpoint' : isPlay ? ' practice--loop' : ' practice--switches'}`}>
       {saveError && <p role="status">Progress is available for this visit, but browser storage is blocked. Sign in to sync it, or allow storage before leaving.</p>}
       {hintError && <GuitarFeedback kind="error">{hintError}</GuitarFeedback>}
       {launching && <GuitarFeedback onRetry={() => (isPractice ? runDispatchWithMic : playDispatchWithMic)({ type: 'reset' })} retryLabel="Cancel start">Opening the microphone before the countdown...</GuitarFeedback>}
@@ -288,11 +294,11 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
         <header className="practice__header">
           {isChanges ? (
             <span>
-              Changes · <strong>one minute</strong>
+              Smooth switches · <strong>one minute</strong>
             </span>
           ) : isPlay ? (
             <span>
-              Play · <strong>straight through</strong>
+              Mini strumming loop · <strong>four rounds</strong>
             </span>
           ) : isPractice ? (
             <span>
@@ -301,12 +307,13 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
           ) : (
             <span>
               Lesson {state.chordIndex + 1} of {CHORDS.length} · <strong>{chord.name}</strong>
+              {state.notice && <small className="practice__skip-notice" role="status"> · {state.notice}</small>}
             </span>
           )}
         </header>
 
         {isChanges ? (
-          <ChangesRun unlocked={state.unlocked} />
+          <ChangesRun unlocked={state.unlocked} onLearnChord={() => chooseMode('guided')} />
         ) : isPlay ? (
           <PlayRun chords={playChords} state={play} dispatch={playDispatchWithMic} labelMode={labelMode} />
         ) : isPractice ? (
@@ -320,40 +327,13 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
             onBackToLearn={() => chooseMode('guided')}
             onUnlockAnyway={unlockAnyway}
             onHint={() => { runDispatchWithMic({ type: 'reset' }); hint() }}
-            onSkip={() => { runDispatch({ type: 'reset' }); dispatch({ type: 'skip' }); chooseMode('guided') }}
+            onSkip={skipChord}
           />
         ) : (
           <>
-            <details className="practice__chord-picker"><summary>Choose a chord <span>{chord.id} &middot; {state.chordIndex + 1} / {CHORDS.length}</span></summary>
-            <nav className="practice__chords" aria-label="Chord">
-              {CHORDS.map((c, i) => {
-                const status = statuses[c.id]
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`practice__chord-pill--${status} ${i === state.chordIndex ? 'is-active' : ''}`}
-                    aria-pressed={i === state.chordIndex}
-                    aria-label={status === 'unlocked' ? c.name : `${c.name}, ${status}`}
-                    title={status === 'locked' ? `Pass ${CHORDS[i - 1].name} in Practice to unlock` : undefined}
-                    disabled={status === 'locked'}
-                    onClick={() => moveChord({ type: 'select', index: i })}
-                  >
-                    {c.id}
-                    {PILL_MARK[status] && (
-                      <span className="practice__chord-mark" aria-hidden="true">
-                        {PILL_MARK[status]}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </nav></details>
+            <ChordPicker chord={chord} statuses={statuses} onSelect={(index) => moveChord({ type: 'select', index })} />
 
             <LessonFocus chord={chord} labelMode={labelMode} onLabelMode={chooseLabelMode} hinting={hinting} onHint={hint} strings={state.strings} verdict={state.verdict} />
-
-            {state.notice && <p className="practice__notice" role="status">{state.notice}</p>}
-            {state.skips.length > 0 && <p className="practice__side-note">Manual skips this visit: {state.skips.length}. Skipping does not mark a chord as passed.</p>}
 
             <CheckBanner
               chord={chord}
@@ -362,7 +342,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
               extra={heardVerdict === 'wrong' ? extraText(heard.extra) : null}
               hinting={hinting}
               onHint={hint}
-              onSkip={() => moveChord({ type: 'skip' })}
+              onSkip={skipChord}
               onRetry={retry}
               onNext={() => (needsPractice ? chooseMode('practice') : moveChord({ type: 'next' }))}
               nextLabel={needsPractice ? 'Practice' : 'Next'}
@@ -406,6 +386,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
           <button type="button" className="practice__demo-reset" onClick={resetUnlocks}>
             Reset unlocks
           </button>
+          {state.skips.length > 0 && <p className="practice__side-note">Manual skips this visit: {state.skips.length}. Skipping does not mark a chord as passed.</p>}
         </div></details>
         <p className="practice__sr-only" role="status" aria-live="polite">
           {heardVerdict && `Heard: ${RESULTS.find(([v]) => v === heardVerdict)[1].toLowerCase()}`}

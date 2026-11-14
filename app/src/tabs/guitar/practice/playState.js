@@ -1,4 +1,5 @@
 import { CHORDS } from './chords.js'
+import { unlockedCount } from './unlocks.js'
 
 /**
  * Play mode (F14, F32): chords advance at a steady pace regardless of
@@ -13,13 +14,15 @@ import { CHORDS } from './chords.js'
 
 export const PROGRESSION = ['Em', 'C', 'G', 'D']
 
-// Every chord has the same window, including after a successful strum.
-export const SECONDS_PER_CHORD = 5
-
-/** The run's chords: the four learned most recently, or Em C G D until four are learned. */
+/** The newest one to four open shapes, including the player's current lesson. */
 export function learnedProgression(cleared = {}) {
-  const learned = CHORDS.filter((chord) => ['passed', 'skipped'].includes(cleared[chord.id])).map((chord) => chord.id)
-  return learned.length >= PROGRESSION.length ? learned.slice(-PROGRESSION.length) : PROGRESSION
+  return CHORDS.slice(0, unlockedCount(cleared)).slice(-4).map((chord) => chord.id)
+}
+export const LOOP_ROUNDS = 4
+export const BEATS_PER_BAR = 4
+export const LOOP_BPM = 80
+export function strummingLoop(cleared = {}) {
+  return Array.from({length: LOOP_ROUNDS}, () => learnedProgression(cleared)).flat()
 }
 export const COUNTDOWN_FROM = 3
 
@@ -37,6 +40,8 @@ const next = (state) =>
 
 export function playReducer(state, action) {
   switch (action.type) {
+    case 'configure':
+      return initialPlay(action.length)
     case 'start':
       return { ...initialPlay(state.results.length), status: 'countdown' }
 

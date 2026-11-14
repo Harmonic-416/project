@@ -198,6 +198,41 @@
   font-size: 0.75rem;
 }
 
+.strumming-loop { padding: var(--gs-space-4); display: grid; gap: var(--gs-space-4); }
+.strumming-loop__heading { display: flex; justify-content: space-between; align-items: center; gap: var(--gs-space-4); }
+.strumming-loop__heading small, .strumming-loop__eyebrow { color: var(--gs-lilac); font-weight: 800; letter-spacing: .08em; font-size: .65rem; }
+.strumming-loop h2 { margin: var(--gs-space-1) 0; font-size: clamp(1.2rem, 3vw, 1.8rem); }
+.strumming-loop__heading p, .strumming-loop__invitation p, .strumming-loop__summary > p, .strumming-loop__rhythm p { color: var(--gs-muted); margin: var(--gs-space-1) 0; line-height: 1.5; font-size: .8rem; }
+.strumming-loop__tempo { flex: none; display: grid; gap: var(--gs-space-1); color: var(--gs-muted); font-size: .75rem; }
+.strumming-loop__tempo select { border: 1px solid var(--gs-border); background: var(--gs-raised); color: var(--gs-text); border-radius: var(--gs-radius-control); padding: var(--gs-space-2); font: inherit; }
+.strumming-loop__shapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--gs-space-3); min-height: 0; }
+.strumming-loop__shapes > div { display: flex; flex-direction: column; align-items: center; gap: var(--gs-space-2); padding: var(--gs-space-3); background: var(--gs-raised); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); min-height: 0; }
+.strumming-loop__shapes strong { font-size: .85rem; }
+.strumming-loop__shapes .chord-diagram { width: 100%; max-width: 190px; }
+.strumming-loop__invitation { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gs-space-3); padding-top: var(--gs-space-3); }
+.strumming-loop__invitation p { flex: 1 1 220px; }
+.strumming-loop__sequence { display: flex; gap: var(--gs-space-2); list-style: none; padding: var(--gs-space-3) 0 0; margin: 0; border-top: 1px solid var(--gs-border); }
+.strumming-loop__sequence li { flex: 1; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--gs-space-2); padding: var(--gs-space-2); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); background: var(--gs-raised); }
+.strumming-loop__sequence li > span, .strumming-loop__sequence small { color: var(--gs-muted); font-size: .7rem; }
+.strumming-loop__sequence .is-current { border-color: var(--gs-accent); color: var(--gs-accent); background: var(--gs-accent-soft); }
+.strumming-loop__playing { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: var(--gs-space-4); min-height: 0; }
+.strumming-loop__target { display: flex; align-items: center; flex-direction: column; position: relative; min-height: 0; overflow: hidden; border-radius: var(--gs-radius-control); background: var(--gs-raised); padding: var(--gs-space-2); }
+.strumming-loop__target h3 { margin: 0; font-size: 1.2rem; }
+.strumming-loop__target .chord-diagram { width: 100%; max-width: 220px; }
+.strumming-loop__rhythm { align-self: center; min-width: 0; }
+.strumming-loop__rhythm h3 { font-size: 1.1rem; margin: var(--gs-space-2) 0; }
+.strumming-loop__beats { display: flex; gap: var(--gs-space-2); list-style: none; padding: 0; margin: var(--gs-space-3) 0; }
+.strumming-loop__beats li { flex: 1; display: grid; justify-items: center; gap: var(--gs-space-1); border: 2px solid var(--gs-border); border-radius: var(--gs-radius-control); padding: var(--gs-space-2); color: var(--gs-muted); }
+.strumming-loop__beats li > span { font-size: 1.8rem; line-height: 1; }
+.strumming-loop__beats li[aria-current] { color: var(--gs-on-solid); border-color: var(--gs-accent); background: var(--gs-accent); }
+.strumming-loop__rhythm .play-run__stop { margin-top: var(--gs-space-2); }
+.strumming-loop__summary { text-align: center; align-self: center; }
+.strumming-loop__summary h3 { margin: var(--gs-space-2) 0; font-size: 1.5rem; }
+.strumming-loop__summary .play-run__score strong { font-family: inherit; font-size: 1.8rem; color: var(--gs-accent); }
+.strumming-loop__results { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gs-space-1); list-style: none; padding: 0; margin: var(--gs-space-3) 0; }
+.strumming-loop__results li { display: grid; gap: var(--gs-space-1); min-width: 36px; padding: var(--gs-space-1); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); font-size: .75rem; color: var(--gs-muted); }
+.strumming-loop__results .is-heard { color: var(--gs-hit); border-color: var(--gs-hit); }
+
 @media (prefers-reduced-motion: reduce) {
   .play-run__countdown {
     animation: none;
