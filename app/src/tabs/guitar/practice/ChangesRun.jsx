@@ -24,14 +24,15 @@ const byId = (id) => CHORDS.find((c) => c.id === id)
  * changes it hears too (changesCounter.js), side by side. The tap count is
  * the score, and the best per pair is kept.
  */
-function ChangesRun({ unlocked }) {
-  const choices = CHORDS.slice(0, Math.max(unlocked, 2))
+function ChangesRun({ unlocked, onLearnChord }) {
+  const choices = CHORDS.slice(0, unlocked)
   const [pair, setPair] = useState(() => defaultPair(unlocked))
   const [a, b] = pair.map(byId)
   const [state, dispatch] = useReducer(changesReducer, undefined, initialChanges)
   const [bests, setBests] = useState(loadBests)
   const [showStep, setShowStep] = useState(null) // 0 … SHOW_FLIPS while "Show me" runs
   const [demoError, setDemoError] = useState(null)
+  const [useMic, setUseMic] = useState(false)
   const countInError = useLessonCountIn(state.status, state.count)
   const player = useChordPlayer()
   const counterRef = useRef(null)
@@ -97,14 +98,14 @@ function ChangesRun({ unlocked }) {
   const choose = (slot, id) => {
     const next = [...pair]
     next[slot] = id
-    if (next[0] !== next[1]) { setShowStep(null); setDemoError(null); setPair(next) }
+    if (next[0] !== next[1]) { setShowStep(null); setDemoError(null); listener.stop(); dispatch({type:'reset'}); setPair(next) }
   }
 
   const start = () => {
     setShowStep(null)
     stopSound()
     counterRef.current = createChangeCounter(a, b)
-    listener.start() // from the tap, so the browser allows the mic
+    if (useMic) listener.start()
     dispatch({ type: 'start' })
   }
 
@@ -114,17 +115,18 @@ function ChangesRun({ unlocked }) {
   }
 
   if (unlocked < 2) {
-    return <p className="changes-run__locked">Pass a second chord in Practice first — then change between the two here.</p>
+    return <div className="switches-locked"><span aria-hidden="true">⇄</span><h2>Two shapes. One smooth motion.</h2><p>Open your second chord to start Smooth switches. For now, get comfortable with your first shape.</p><button type="button" className="changes-run__primary" onClick={onLearnChord}>Back to my chord</button></div>
   }
 
   const best = bests[pairKey(a.id, b.id)] ?? 0
-  const phase = showStep !== null && showStep % 2 ? 'to' : 'from'
+  const phase = showStep !== null ? (showStep % 2 ? 'to' : 'from') : state.status === 'running' && state.tapped % 2 === 0 ? 'to' : 'from'
   const busy = state.status === 'countdown' || state.status === 'running'
 
   return (
     <div className="changes-run">
+      <header className="switches-heading"><div><small>BUILD FLUENT FINGERS</small><h2>Smooth switches</h2><p>Give one chord change your full attention.</p></div><span className="switches-best">PAIR BEST <strong>{best}</strong> changes</span></header>
       <div className="changes-run__pair">
-        Change between
+        Your two chords
         {[0, 1].map((slot) => (
           <select key={slot} value={pair[slot]} disabled={busy} onChange={(event) => choose(slot, event.target.value)} aria-label={slot ? 'Second chord' : 'First chord'}>
             {choices.map((c) => (
@@ -135,6 +137,7 @@ function ChangesRun({ unlocked }) {
           </select>
         ))}
       </div>
+      <div className="switches-journey" aria-label="Chord switch"><span className={phase === 'from' ? 'is-current' : ''}>{a.id}</span><span aria-hidden="true">⇄</span><span className={phase === 'to' ? 'is-current' : ''}>{b.id}</span><small>{busy ? `Form ${phase === 'to' ? b.name : a.name}` : 'Watch the fingers, then try the movement.'}</small></div>
 
       <div className="changes-run__body">
         <div className="changes-run__shape">
@@ -145,14 +148,14 @@ function ChangesRun({ unlocked }) {
         </div>
 
         <div className="changes-run__panel">
-          <p className="changes-run__tip">{transitionTip(a, b)}</p>
+          <p className="changes-run__tip">{state.status === 'running' && phase === 'from' ? transitionTip(b, a) : transitionTip(a, b)}</p>
 
           {state.status === 'idle' && (
             <>
               <p className="changes-run__hint">
-                Change back and forth for a minute and tap for every change. First target {FIRST_TARGET}, goal {GOAL}.
-                {best ? ` Your best: ${best}.` : ''}
+                Start on {a.name}. Switch to {b.name}, then tap Changed! for each completed switch. You can also use Space when no control is focused.
               </p>
+              <label className="switches-mic"><input type="checkbox" checked={useMic} onChange={(event) => setUseMic(event.target.checked)} /> Also listen with the microphone <small>Your taps remain your score.</small></label>
               <button type="button" className="changes-run__primary" onClick={start}>
                 Start
               </button>
@@ -178,7 +181,7 @@ function ChangesRun({ unlocked }) {
                 <small>{state.tapped}</small>
               </button>
               <p className="changes-run__counts">
-                Tapped {state.tapped} · heard {state.heard}
+                Counted {state.tapped}{useMic ? ` · microphone heard ${state.heard}` : ' · tap or use Space for each completed switch'}
               </p>
               <button type="button" className="changes-run__secondary" onClick={stop}>
                 Stop
@@ -192,9 +195,9 @@ function ChangesRun({ unlocked }) {
                 <strong>{state.tapped}</strong> changes in a minute
                 {state.tapped >= best && state.tapped > 0 ? ' — your best!' : best ? ` (best ${best})` : ''}
               </p>
-              <p className="changes-run__counts">
+              {useMic && <p className="changes-run__counts">
                 The mic heard {state.heard}. Your taps are the score while the mic’s count is still being checked.
-              </p>
+              </p>}
               <p className="changes-run__hint">
                 {state.tapped >= GOAL
                   ? 'That’s the goal — try a new pair.'

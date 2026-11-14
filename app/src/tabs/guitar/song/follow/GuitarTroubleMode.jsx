@@ -1,3 +1,4 @@
+import GuitarModeFeedback from './GuitarModeFeedback.jsx'
 import * as alphaTab from '@coderline/alphatab'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PlaybackControls from './GuitarPlaybackControls.jsx'
@@ -47,6 +48,7 @@ const ANCHOR_INTERVAL_MS = 40
 function GuitarTroubleMode({
   api,
   transportHost,
+  feedbackHost,
   onTransportStart,
   score,
   timeline,
@@ -347,7 +349,7 @@ function GuitarTroubleMode({
         onSeek={seek}
         disabled={!ready || listener.status === 'requesting' || calibrating}
       />
-      <div className="practice-status" aria-live="polite">
+      <GuitarModeFeedback host={feedbackHost}><div className="practice-status" aria-live="polite">
         {listening && playing ? (
           <span className="practice-status__live">
             {listener.quiet ? 'Couldn’t hear you — play a little louder' : listener.live ? `you: ${listener.live.noteName}` : 'listening…'}
@@ -401,7 +403,7 @@ function GuitarTroubleMode({
           </button>
         )}
         {listener.status === 'error' && <span className="practice-status__error">{listener.error}</span>}
-      </div>
+      </div></GuitarModeFeedback>
       {listener.quiet && listening && playing && <HearingHelp />}
       {!playing && summary && <RunReview entries={entries} verdicts={sharedVerdicts ?? []} mode="trouble" onSelect={(entry) => seek(entry.time)} />}
       {!playing && summary && counts?.scored > 0 && auth && (

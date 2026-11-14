@@ -85,10 +85,12 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
       core: { fontDirectory: FONT_DIRECTORY, includeNoteBounds: true },
       // Staff flags decide what shows (loadGuitarNotation turns on tab + notation).
       display: { scale: scrollRef.current.clientWidth < 480 ? 0.65 : 0.9, barsPerRow: scrollRef.current.clientWidth < 480 ? 1 : -1, layoutMode: alphaTab.LayoutMode.Page },
+      // Song identity lives in the workspace header; keep the first staff in view.
+      notation: { elements: { scoreTitle: false, scoreSubTitle: false, scoreArtist: false, scoreAlbum: false, scoreWords: false, scoreMusic: false, scoreWordsAndMusic: false } },
       player: {
         playerMode: alphaTab.PlayerMode.EnabledSynthesizer,
         soundFont: SOUND_FONT,
-        scrollElement: scrollRef.current.closest('.guitar-tab__body') ?? scrollRef.current,
+        scrollElement: scrollRef.current,
         enableCursor: true,
         enableUserInteraction: true,
         enableElementHighlighting: true,
@@ -98,7 +100,7 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     api.customScrollHandler = createBarScrollHandler((bar) => {
       if (!followEnabledRef.current) return
       const host = surfaceRef.current
-      const outer = host?.closest('.guitar-tab__body')
+      const outer = scrollRef.current
       const surface = host?.querySelector('.at-surface')
       if (!outer || !surface) return
       const region = outer.getBoundingClientRect()
@@ -160,6 +162,7 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     drawnRef.current = false
     followEnabledRef.current = false
     shownFactorRef.current = 1 // a fresh drawing shows the written tempo
+    scrollRef.current?.scrollTo?.({top: 0, left: 0})
     apiRef.current.renderScore(score, trackKey.split(',').map(Number))
   }, [score, trackKey, retry])
 

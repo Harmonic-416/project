@@ -123,3 +123,175 @@
 @media (max-width: 380px) {
   .guitar-tab .lesson-coach__strings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* Small screens keep the music in view and reveal options on demand. */
+@media (max-width: 900px) {
+  .guitar-tab .song-workspace { grid-template-columns: minmax(0, 1fr); }
+  .guitar-tab .song-workspace__sidebar { display: none; }
+  .guitar-tab .guitar-song--options-open .song-workspace__sidebar { display: flex; position: absolute; inset: 0; z-index: 5; box-shadow: 0 4px 0 var(--gs-border); }
+  .guitar-tab :is(.song-workspace__options-button, .song-workspace__close) { display: block; flex: none; min-height: var(--gs-control-height); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); background: var(--gs-surface); color: var(--gs-accent); padding: var(--gs-space-2); font: inherit; font-size: .8rem; cursor: pointer; }
+  .guitar-tab .song-workspace__heading .guitar-song__format { display: none; }
+  .guitar-tab .song-workspace__heading .guitar-song__actions { display: none; }
+  .guitar-tab .guitar-song--options-open .song-workspace__heading .guitar-song__toolbar { flex-wrap: wrap; }
+  .guitar-tab .guitar-song--options-open .song-workspace__heading .guitar-song__actions { display: flex; flex-basis: 100%; }
+  .guitar-tab .song-workspace__main .playback-controls { flex-wrap: wrap; }
+  .guitar-tab .song-workspace__main .playback-controls__time { flex: none; }
+}
+
+/* A player holding a guitar needs the whole Guided workspace in view. Phones
+   retain the stacked lesson; larger screens use the available shell height. */
+@media (width > 560px) {
+  .guitar-tab .learn--in-lesson:has(.practice--focused) { height: 100%; max-width: none; padding: var(--gs-space-2) var(--gs-space-4); }
+  .learn__activity:has(.practice--focused) { height: 100%; min-height: 0; position: relative; display: flex; flex-direction: column; }
+  .learn__activity:has(.practice--focused) .learn__activity-top { position: absolute; inset: 0 auto auto 0; margin: 0; z-index: 2; }
+  .learn__activity:has(.practice--focused) .learn__activity-top h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .learn__activity:has(.practice--focused) .learn__activity-kind { display: none; }
+  .learn__activity .practice--focused { flex: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gs-space-2); }
+  .practice--focused .lesson-modes { margin-left: 112px; grid-row: 1; grid-column: 1; }
+  .practice--focused > :is(.guitar-feedback, p[role="status"]) { grid-row: 2; grid-column: 1; align-self: start; z-index: 5; }
+  .practice--focused .lesson-modes .practice__mode { display: flex; justify-content: center; align-items: center; gap: var(--gs-space-2); padding: var(--gs-space-1) var(--gs-space-2); }
+  .practice--focused .lesson-modes small { display: none; }
+  .practice--focused .practice__lesson { grid-row: 2; grid-column: 1; min-height: 0; overflow: visible; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); position: relative; }
+  .practice--focused .practice__header { grid-column: 1; grid-row: 1; padding: var(--gs-space-2) var(--gs-space-4); border-radius: var(--gs-radius-card) 0 0 0; }
+  .practice--guided .practice__chord-picker { grid-column: 2; grid-row: 1; border: 0; position: relative; }
+  .practice--guided .practice__chord-picker > summary { padding: 0 var(--gs-space-4); height: 100%; }
+  .practice--guided .practice__chord-picker[open] .practice__chords { position: absolute; top: 100%; right: 0; width: min(70vw, 560px); box-sizing: border-box; padding: var(--gs-space-3); border: 1px solid var(--gs-border); background: var(--gs-surface); border-radius: var(--gs-radius-control); z-index: 4; box-shadow: 0 5px 0 var(--gs-border); }
+  .practice--guided .lesson-coach { grid-column: 1 / -1; min-height: 0; padding: var(--gs-space-2) var(--gs-space-4); gap: var(--gs-space-2) var(--gs-space-4); grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; position: relative; container-type: size; }
+  .practice--guided .lesson-coach__prompt { grid-column: 2 / 4; align-items: center; }
+  .practice--guided .lesson-coach__spark,
+  .practice--guided .lesson-coach__eyebrow,
+  .practice--guided .lesson-coach__prompt p { display: none; }
+  .practice--guided .lesson-coach__prompt h2 { font-size: clamp(1.15rem, 4cqh, 2.25rem); margin: 0; }
+  .practice--guided .lesson-coach__workspace { display: contents; }
+  .practice--guided .lesson-coach__diagram { grid-column: 1; grid-row: 1 / 4; min-height: 0; display: flex; align-items: stretch; padding: var(--gs-space-2); }
+  .practice--guided .lesson-coach__diagram .chord-diagram { flex: 1; min-height: 0; min-width: 0; height: 100%; width: 0; max-width: none; max-height: none; }
+  .practice--guided .lesson-coach .practice__labels { flex: none; flex-direction: column; flex-wrap: nowrap; justify-content: center; margin: 0; }
+  .practice--guided .practice__labels button { min-width: 0; padding: var(--gs-space-1); }
+  .practice--guided .lesson-coach__fingers { display: contents; }
+  .practice--guided .lesson-coach__fingers h3 { display: none; }
+  .practice--guided .lesson-coach__fingers ol { grid-column: 2; grid-row: 2; align-self: center; grid-template-columns: minmax(0, 1fr); gap: var(--gs-space-1); }
+  .practice--guided .lesson-coach__fingers li { gap: var(--gs-space-2); }
+  .practice--guided .lesson-coach__fingers li > span { width: 22px; height: 22px; }
+  .practice--guided .lesson-coach__fingers li div { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--gs-space-2); }
+  .practice--guided .lesson-coach__fingers strong { font-size: clamp(.85rem, 2.6cqh, 1.15rem); line-height: 1.4; white-space: nowrap; }
+  .practice--guided .lesson-coach__fingers small { font-size: clamp(.8rem, 2cqh, .95rem); line-height: 1.4; white-space: nowrap; }
+  .practice--guided .lesson-coach__string-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .practice--guided .lesson-coach__fingers p { grid-column: 2; grid-row: 3; margin: 0; line-height: 1.4; font-size: clamp(.8rem, 2cqh, 1rem); }
+  .practice--guided .lesson-coach__hear { grid-column: 2; grid-row: 4; width: 100%; }
+  .practice--guided .lesson-coach__sound { grid-column: 3; grid-row: 2 / 4; border: 0; padding: 0; align-self: center; gap: var(--gs-space-2); }
+  .practice--guided .lesson-coach__sound > div > span { display: none; }
+  .practice--guided .lesson-coach__sound strong { font-size: clamp(.85rem, 2.6cqh, 1.15rem); }
+  .practice--guided .lesson-coach__strings { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gs-space-1); }
+  .practice--guided .lesson-coach__strings button { padding: var(--gs-space-1); }
+  .practice--guided .lesson-coach__strings button small { font-size: .6rem; }
+  .practice--guided .string-states { grid-column: 3; grid-row: 4; display: grid; align-content: center; gap: var(--gs-space-1); }
+  .practice--guided .string-states__label { margin: 0; font-size: .75rem; }
+  .practice--guided .string-states__row { gap: var(--gs-space-1); }
+  .practice--guided .string-states__dot { width: 26px; height: 26px; }
+  .practice--guided .lesson-coach__tab { grid-column: 1; grid-row: 4; }
+  .practice--guided .lesson-coach__tab summary { display: flex; align-items: center; }
+  .practice--guided .lesson-coach__tab[open] .practice__tab { position: absolute; inset: var(--gs-space-2) auto auto var(--gs-space-4); width: calc((100% - 4 * var(--gs-space-4)) / 3); height: calc(100% - 64px); box-sizing: border-box; margin: 0; display: grid; place-content: center; background: var(--gs-surface); border-radius: var(--gs-radius-control); z-index: 2; }
+  .practice--guided .practice__lesson > :is(.check-banner, .practice__notice, .practice__side-note) { grid-column: 1 / -1; }
+  .practice--guided .practice__lesson .check-banner { padding: var(--gs-space-2) var(--gs-space-4); border-radius: 0 0 var(--gs-radius-card) var(--gs-radius-card); gap: var(--gs-space-2); }
+  .practice--guided .check-banner__status { font-size: .85rem; }
+  .practice--guided .check-banner__actions { gap: var(--gs-space-1); }
+  .practice--guided .check-banner__actions button { padding: var(--gs-space-1) var(--gs-space-2); min-width: 0; font-size: .8rem; }
+  .practice--focused .practice__demo { grid-row: 3; grid-column: 1; display: flex; justify-content: space-between; align-items: center; gap: var(--gs-space-3); position: relative; }
+  .practice--focused .practice__demo .practice__listen { background: var(--gs-accent); color: var(--gs-on-solid); font-weight: 800; }
+  .practice--focused .practice__self-mark { border: 0; padding: 0; }
+  .practice--focused .practice__self-mark summary { display: flex; align-items: center; }
+  .practice--focused .practice__self-mark[open] > div { position: absolute; bottom: 100%; right: 0; padding: var(--gs-space-3); border: 1px solid var(--gs-border); background: var(--gs-surface); border-radius: var(--gs-radius-control); z-index: 4; }
+}
+
+@media (width > 560px) and (orientation: portrait) {
+  .practice--guided .lesson-coach { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; }
+  .practice--guided .lesson-coach__prompt { grid-column: 2; }
+  .practice--guided .lesson-coach__diagram { grid-row: 1 / 3; }
+  .practice--guided .lesson-coach__fingers { display: block; grid-column: 2; grid-row: 2; align-self: center; }
+  .practice--guided .lesson-coach__fingers p { margin: var(--gs-space-2) 0; }
+  .practice--guided .lesson-coach__fingers ol { grid-template-columns: minmax(0, 1fr); gap: var(--gs-space-3); }
+  .practice--guided .lesson-coach__sound { grid-column: 1 / -1; grid-row: 3; }
+  .practice--guided .lesson-coach__strings { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .practice--guided .string-states { grid-column: 2; grid-row: 4; flex-wrap: wrap; }
+  .practice--guided .lesson-coach__tab { grid-row: 4; }
+  .practice--guided .lesson-coach__tab[open] .practice__tab { width: calc((100% - 3 * var(--gs-space-4)) / 2); height: calc(100% - 160px); }
+}
+
+/* The three-strum checkpoint shares Guided's screen-sized shell. Its target
+   stays beside the streak and controls throughout countdown and playing. */
+@media (width > 560px) {
+  .practice--checkpoint .practice__header { grid-column: 1 / -1; border-radius: var(--gs-radius-card) var(--gs-radius-card) 0 0; }
+  .practice--checkpoint .play-run { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto auto; gap: var(--gs-space-2) var(--gs-space-4); padding: var(--gs-space-2) var(--gs-space-4); }
+  .practice--checkpoint .play-run > .practice-run__actions { grid-column: 2; grid-row: 1; gap: var(--gs-space-2); }
+  .practice--checkpoint .play-run__top { grid-column: 2; grid-row: 2; align-self: end; flex-wrap: wrap; gap: var(--gs-space-2); }
+  .practice--checkpoint .play-run__stage { grid-column: 1; grid-row: 1 / 7; min-height: 0; height: 100%; max-width: none; overflow: hidden; border-radius: var(--gs-radius-control); }
+  .practice--checkpoint .play-run__stage .chord-diagram { flex: 1; min-height: 0; height: 0; width: 100%; }
+  .practice--checkpoint .play-run__chord { flex: none; font-family: inherit; }
+  .practice--checkpoint .play-run__bar { grid-column: 2; grid-row: 3; max-width: none; }
+  .practice--checkpoint .play-run__dots { grid-column: 2; grid-row: 4; }
+  .practice--checkpoint .practice-run__status { grid-column: 2; grid-row: 5; }
+  .practice--checkpoint .play-run > .play-run__stop { grid-column: 2; grid-row: 6; justify-self: center; }
+  .practice--checkpoint :is(.play-run--idle, .play-run--done) { display: flex; justify-content: center; gap: var(--gs-space-4); padding: var(--gs-space-4); }
+  .practice--checkpoint .play-run__hint { max-width: min(100%, 560px); }
+  .practice--checkpoint .play-run__score strong { font-family: inherit; font-size: clamp(1.4rem, 3vw, 2.2rem); }
+}
+
+@media (width > 560px) {
+  .practice--focused .chord-picker__trigger { padding: 0 var(--gs-space-4); }
+  :is(.practice--loop, .practice--switches) .practice__header { grid-column: 1 / -1; border-radius: var(--gs-radius-card) var(--gs-radius-card) 0 0; }
+  .practice--loop .strumming-loop { grid-column: 1 / -1; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gs-space-2); container: strumming / size; }
+  .practice--loop .strumming-loop__intro { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+  .practice--loop .strumming-loop__shapes .chord-diagram { flex: 1; min-height: 0; height: 0; }
+  .practice--loop .strumming-loop__target .chord-diagram { flex: 1; min-height: 0; height: 0; max-width: none; }
+  .practice--loop .strumming-loop__sequence { padding-top: var(--gs-space-2); }
+  .practice--loop .strumming-loop__heading p { margin: 0; }
+  .practice--loop .strumming-loop__summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gs-space-1) var(--gs-space-4); text-align: left; }
+  .practice--loop .strumming-loop__summary > :not(.strumming-loop__results) { grid-column: 1; margin: 0; }
+  .practice--loop .strumming-loop__summary h3 { font-size: 1.1rem; }
+  .practice--loop .strumming-loop__summary .play-run__score strong { font-size: 1.4rem; }
+  .practice--loop .strumming-loop__summary .play-run__primary { justify-self: start; margin-top: var(--gs-space-2); }
+  .practice--loop .strumming-loop__results { grid-column: 2; grid-row: 1 / 7; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: center; }
+  .practice--switches .changes-run { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); padding: var(--gs-space-3) var(--gs-space-4); container: switches / size; }
+  .practice--switches .changes-run__body { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); margin-top: 0; gap: var(--gs-space-4); }
+  .practice--switches .changes-run__shape { min-height: 0; }
+  .practice--switches .changes-run__shape .chord-transition { flex: 1; min-height: 0; height: 0; width: 100%; max-width: none; }
+  .practice--switches .changes-run__panel { min-height: 0; justify-content: center; gap: var(--gs-space-2); }
+  .practice--switches .switches-heading p { margin: 0; }
+  .practice--switches .changes-run__tip { font-size: .8rem; }
+  .practice--switches .changes-run__tap { flex-direction: row; justify-content: space-between; }
+}
+@container strumming (height < 400px) {
+  .practice--loop .strumming-loop__heading small { display: none; }
+  .practice--loop .strumming-loop__heading h2 { font-size: 1.2rem; margin: 0; }
+  .practice--loop .strumming-loop__heading p { font-size: .75rem; line-height: 1.25; }
+  .practice--loop .strumming-loop__intro { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--gs-space-4); }
+  .practice--loop .strumming-loop__shapes > div { padding: var(--gs-space-2); gap: var(--gs-space-1); }
+  .practice--loop .strumming-loop__invitation { padding: 0; flex-direction: column; justify-content: center; align-items: flex-start; flex-wrap: nowrap; }
+  .practice--loop .strumming-loop__invitation p { flex: none; font-size: .75rem; line-height: 1.4; }
+  .practice--loop .strumming-loop__rhythm { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gs-space-1) var(--gs-space-2); align-items: center; }
+  .practice--loop .strumming-loop__rhythm h3 { font-size: .85rem; margin: 0; }
+  .practice--loop .strumming-loop__beats { grid-column: 1 / -1; margin: 0; }
+  .practice--loop .strumming-loop__beats li { padding: var(--gs-space-1); }
+  .practice--loop .strumming-loop__beats li > span { font-size: 1.2rem; }
+  .practice--loop .strumming-loop__rhythm p { margin: 0; font-size: .7rem; }
+  .practice--loop .strumming-loop__rhythm .play-run__stop { margin: 0; }
+}
+@container switches (height < 450px) {
+  .practice--switches .switches-heading small { display: none; }
+  .practice--switches .switches-heading h2 { font-size: 1.2rem; }
+  .practice--switches .switches-best { display: flex; align-items: center; gap: var(--gs-space-2); }
+  .practice--switches .changes-run__pair { margin-top: var(--gs-space-1); }
+  .practice--switches .switches-journey { padding: var(--gs-space-1) 0; }
+  .practice--switches .changes-run__panel .changes-run__hint { font-size: .75rem; line-height: 1.3; }
+  .practice--switches .changes-run__panel .changes-run__tip { font-size: .75rem; }
+  .practice--switches .switches-mic { gap: var(--gs-space-1); }
+}
+@media (max-width: 560px) {
+  .guitar-tab .strumming-loop__heading { flex-wrap: wrap; }
+  .guitar-tab .strumming-loop__shapes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guitar-tab .strumming-loop__playing { grid-template-columns: minmax(0, 1fr); }
+  .guitar-tab .switches-journey { flex-wrap: wrap; }
+  .guitar-tab .switches-journey small { flex-basis: 100%; }
+  .guitar-tab .chord-library__header { padding: var(--gs-space-4); }
+  .guitar-tab .chord-library__list { padding: var(--gs-space-4); }
+}

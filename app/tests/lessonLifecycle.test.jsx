@@ -13,6 +13,27 @@ beforeEach(() => {vi.useFakeTimers(); mic.start.mockImplementation(async () => t
 afterEach(() => {cleanup(); vi.useRealTimers(); localStorage.clear(); vi.clearAllMocks()})
 const tick = async (seconds) => {for (let index=0;index<seconds;index++) await act(async () => vi.advanceTimersByTime(1000))}
 const begin = async () => {await act(async () => fireEvent.click(screen.getByRole('button',{name:'Start',exact:true}))); await tick(3)}
+it.each(['guided', 'practice'])('Skip in %s persists a skip and opens the next locked chord', (mode) => {
+  const view = render(<PracticeScreen initialMode={mode} />)
+  fireEvent.click(screen.getByRole('button', {name:'Skip',exact:true}))
+  expect(screen.getByRole('img', {name:'A minor chord diagram'})).toBeTruthy()
+  expect(JSON.parse(localStorage.getItem('harmonic.guitar.cleared')).Em).toBe('skipped')
+  expect(screen.getByText(/Manual skips this visit: 1/)).toBeTruthy()
+  view.unmount()
+  render(<PracticeScreen initialChord="Am" />)
+  expect(screen.getByRole('img', {name:'A minor chord diagram'})).toBeTruthy()
+})
+it('Skip stops an active checkpoint and does not downgrade an existing pass', async () => {
+  localStorage.setItem('harmonic.guitar.cleared', JSON.stringify({Em:'passed'}))
+  render(<PracticeScreen initialMode="practice" initialChord="Em" />)
+  await begin()
+  mic.stop.mockClear()
+  fireEvent.click(screen.getByRole('button', {name:'Skip',exact:true}))
+  expect(mic.stop).toHaveBeenCalled()
+  expect(screen.queryByRole('button', {name:'Stop',exact:true})).toBeNull()
+  expect(screen.getByRole('img', {name:'A minor chord diagram'})).toBeTruthy()
+  expect(JSON.parse(localStorage.getItem('harmonic.guitar.cleared')).Em).toBe('passed')
+})
 it.each(['practice','play'])('releases the microphone when %s is stopped', async (mode) => {
   render(<PracticeScreen initialMode={mode} />)
   await begin(); mic.stop.mockClear()
@@ -32,7 +53,7 @@ it('releases the microphone after the uninterrupted Play run completes', async (
   render(<PracticeScreen initialMode="play" />)
   await begin(); mic.stop.mockClear()
   await tick(20)
-  expect(screen.getByText('chords heard')).toBeTruthy()
+  expect(screen.getByText('bars heard')).toBeTruthy()
   expect(mic.stop).toHaveBeenCalledOnce()
 })
 it('cancels a pending start without a delayed permission response restarting it', async () => {

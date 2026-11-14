@@ -1,8 +1,8 @@
 const MODES = [
   ['guided', 'Guided', 'Shape & sound'],
   ['practice', 'Practice', '3 clean strums'],
-  ['play', 'Play', 'Steady play-through'],
-  ['changes', 'Changes', 'One-minute drill'],
+  ['play', 'Play', 'Mini strumming loop'],
+  ['changes', 'Smooth switches', 'Two chords · one minute'],
 ]
 
 export default function LessonModes({ mode, onChange }) {

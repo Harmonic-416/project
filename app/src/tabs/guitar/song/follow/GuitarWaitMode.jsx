@@ -1,3 +1,4 @@
+import GuitarModeFeedback from './GuitarModeFeedback.jsx'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import PlaybackControls from './GuitarPlaybackControls.jsx'
 import ShareAttempt from '../../../vocal/components/ShareAttempt.jsx'
@@ -49,7 +50,7 @@ function lightsOf(result) {
  * Each time the cursor moves on is noted against the recording
  * (recordingTiming.waitTiming), so their cursor moves with it.
  */
-function GuitarWaitMode({ api, transportHost, onTransportStart, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
+function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
   const { entries, duration } = timeline
   const reducer = useMemo(() => waitReducer(entries), [entries])
   const [state, dispatch] = useReducer(reducer, entries, initialWait)
@@ -219,7 +220,7 @@ function GuitarWaitMode({ api, transportHost, onTransportStart, timeline, overla
         onSeek={(time) => restart({ type: 'goto', index: entryIndexAtTime(entries, time) })}
         disabled={!ready || !entries.length || listener.status === 'requesting'}
       />
-      <div className="practice-status" aria-live="polite">
+      <GuitarModeFeedback host={feedbackHost}><div className="practice-status" aria-live="polite">
         {summary ? (
           <strong>
             Done — {summary.firstTry} of {summary.scored} first try
@@ -273,7 +274,7 @@ function GuitarWaitMode({ api, transportHost, onTransportStart, timeline, overla
           </>
         )}
         {listener.status === 'error' && <span className="practice-status__error">{listener.error}</span>}
-      </div>
+      </div></GuitarModeFeedback>
       {listener.quiet && listening && <HearingHelp />}
       {summary && <RunReview entries={entries} verdicts={state.results} mode="wait" onSelect={(entry) => { restart({ type: 'goto', index: entry.index }); seekToTick(api, entry.tick) }} />}
       {summary && summary.scored > 0 && take && auth && shareSong && (
@@ -295,9 +296,9 @@ function GuitarWaitMode({ api, transportHost, onTransportStart, timeline, overla
         />
       )}
       {target?.kind === 'chord' && (
-        <div className="guitar-follow__strings">
+        <GuitarModeFeedback host={feedbackHost}><div className="guitar-follow__strings">
           <StringStates chord={shapeOf(target)} strings={lightsOf(chordResult)} />
-        </div>
+        </div></GuitarModeFeedback>
       )}
     </>
   )
