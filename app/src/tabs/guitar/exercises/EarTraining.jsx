@@ -1,9 +1,11 @@
+import EarRoundSummary from './EarRoundSummary.jsx'
+import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { useEffect, useReducer, useRef, useState } from 'react'
 import ChordDiagram from '../practice/ChordDiagram.jsx'
 import { chordFor, chordsFor, loadSongChords } from '../practice/chordNames.js'
-import { CHORDS } from '../practice/chords.js'
 import { useChordPlayer } from '../practice/useChordPlayer.js'
 import {
+  DEFAULT_PICKS,
   LEVELS,
   MIN_POOL,
   QUALITY_POOL,
@@ -11,20 +13,15 @@ import {
   accuracy,
   exerciseReducer,
   initialExercise,
-  loadPicks,
-  loadStats,
+  clearLegacyEarResults,
   makeRound,
   missWeights,
-  missedChords,
   recordAnswer,
-  roundScore,
-  savePicks,
-  saveStats,
 } from './earTraining.js'
 import '../../../auth/authTheme.css'
 import './Exercises.css'
 
-const QUALITY_LABEL = { major: 'Major', minor: 'Minor', 7: 'Seventh' }
+const QUALITY_LABEL = { major: 'Major', minor: 'Minor' }
 
 const choiceLabel = (choice) => QUALITY_LABEL[choice] ?? chordFor(choice)?.name ?? choice
 const percent = (share) => `${Math.round(share * 100)}%`
@@ -34,32 +31,40 @@ const percent = (share) => `${Math.round(share * 100)}%`
  * chord?", the chords to train), then for each of ten questions the app
  * strums a chord (again, or one string at a time, as often as you like) and
  * you pick what you heard. Each answer shows the chord's shape when there is
- * one, and a wrong one lets you hear your pick beside the right chord. How
- * you do on each chord is kept, and the chords you miss come up more often.
+ * one, and a wrong one lets you compare your pick with the right chord.
+ * Missed chords come up more often during this visit; no results are saved.
  * Needs no microphone. Rules in earTraining.js, sound in chordSound.js.
  */
 function EarTraining() {
   const [levelId, setLevelId] = useState(LEVELS[0].id)
-  const [picks, setPicks] = useState(loadPicks)
-  const [stats, setStats] = useState(loadStats)
+  const [picks, setPicks] = useState(() => [...DEFAULT_PICKS])
+  const [stats, setStats] = useState({})
   const [song] = useState(loadSongChords) // { title, chords } of the last song opened with chord names
   const [state, dispatch] = useReducer(exerciseReducer, undefined, initialExercise)
   const [soundError, setSoundError] = useState(null)
+  const [source, setSource] = useState('chosen')
+  const [soundPending, setSoundPending] = useState(false)
+  const audioGeneration = useRef(0)
+  const actionLock = useRef(false)
   const player = useChordPlayer()
   const nextRef = useRef(null)
+  const lastSound = useRef(null)
 
   const { status, questions, index, results } = state
   const level = LEVELS.find((l) => l.id === (state.level ?? levelId))
   const question = questions[index]
   const result = status === 'answered' ? results[index] : null
   const lastQuestion = index + 1 >= questions.length
-  const songPool = chordsFor(song?.chords)
+  const songPool = chordsFor(song?.chords).filter((chord) => DEFAULT_PICKS.includes(chord.id))
   const pools = {
     quality: QUALITY_POOL,
-    chord: CHORDS.filter((chord) => picks.includes(chord.id)),
-    song: songPool,
+    chord: source === 'song' ? songPool : QUALITY_POOL.filter((chord) => picks.includes(chord.id)),
   }
   const ready = (id) => pools[id].length >= MIN_POOL
+  useEffect(clearLegacyEarResults, [])
+
+  useEffect(() => { actionLock.current = false }, [status, index])
+  useEffect(() => () => { audioGeneration.current += 1 }, [])
 
   // Answering disables the choices, so keep keyboard focus on the way on.
   useEffect(() => {
@@ -68,42 +73,56 @@ function EarTraining() {
 
   // Always from a tap (Start, Next, a play button), so the browser lets audio start.
   const listen = (chord, how = 'strum') => {
+    if (!chord) return
+    lastSound.current = { chord, how }
+    const generation = ++audioGeneration.current
     setSoundError(null)
+    setSoundPending(true)
     player[how](chord).catch((err) => {
+      if (generation !== audioGeneration.current) return
       console.error('Exercise playback failed', err)
-      setSoundError('The sound couldn’t start. On a phone, open the app over HTTPS.')
+      setSoundError('The sound could not start. Check your audio output, then try Play again.')
+    }).finally(() => {
+      if (generation === audioGeneration.current) setSoundPending(false)
     })
   }
 
   const start = () => {
     const weights = levelId === 'quality' ? {} : missWeights(stats)
     const round = makeRound(levelId, { pool: pools[levelId], weights })
+    if (!round.length) return
+    actionLock.current = false
     dispatch({ type: 'start', level: levelId, questions: round })
     listen(round[0].answer)
   }
 
   // Naming a chord counts towards how you do on it; quality answers don't.
   const answer = (choice) => {
+    if (actionLock.current || status !== 'asking' || soundPending || soundError || !question.choices.includes(choice)) return
+    actionLock.current = true
     dispatch({ type: 'answer', choice })
     if (level.id === 'quality') return
     const updated = recordAnswer(stats, question.answer.id, choice === question.correct)
     setStats(updated)
-    saveStats(updated)
   }
 
   const togglePick = (id) => {
-    const updated = picks.includes(id) ? picks.filter((p) => p !== id) : CHORDS.map((c) => c.id).filter((c) => c === id || picks.includes(c))
+    const updated = picks.includes(id) ? picks.filter((p) => p !== id) : QUALITY_POOL.map((c) => c.id).filter((c) => c === id || picks.includes(c))
     setPicks(updated)
-    if (updated.length >= MIN_POOL) savePicks(updated)
   }
 
   const next = () => {
+    if (actionLock.current || status !== 'answered') return
+    actionLock.current = true
     if (lastQuestion) player.stop()
     else listen(questions[index + 1].answer)
     dispatch({ type: 'next' })
   }
 
   const quit = () => {
+    audioGeneration.current += 1
+    setSoundPending(false)
+    setSoundError(null)
     player.stop()
     dispatch({ type: 'reset' })
   }
@@ -141,14 +160,19 @@ function EarTraining() {
               </button>
             ))}
           </div>
-          {levelId === 'chord' && (
+          <p className="exercises__hint">Results are not saved. Leaving Exercises clears this visit.</p>
+          {levelId === 'chord' && <div className="exercises__pick" role="group" aria-label="Practice material">
+            <button type="button" aria-pressed={source === 'chosen'} onClick={() => setSource('chosen')}>Chosen chords</button>
+            <button type="button" aria-pressed={source === 'song'} onClick={() => setSource('song')}>Last song</button>
+          </div>}
+          {levelId === 'chord' && source === 'chosen' && (
             <div className="exercises__picks">
               <p className="exercises__hint">
                 Pick the chords to train; the ones you miss come up more often.
                 {picks.length < MIN_POOL && ` Pick at least ${MIN_POOL}.`}
               </p>
               <div className="exercises__pick-chords" role="group" aria-label="Chords to train">
-                {CHORDS.map((chord) => {
+                {QUALITY_POOL.map((chord) => {
                   const share = accuracy(stats[chord.id])
                   return (
                     <button
@@ -167,11 +191,10 @@ function EarTraining() {
               </div>
             </div>
           )}
-          {levelId === 'song' && (
+          {levelId === 'chord' && source === 'song' && (
             <p className="exercises__hint">
-              {ready('song')
-                ? `From “${song.title}”: ${songPool.map((c) => c.id).join(' · ')}`
-                : 'Open a song with chord names in Songs, then come back to train its chords.'}
+              {songPool.length ? `Beginner chords from ${song.title}: ${songPool.map((chord) => chord.id).join(', ')}.` : 'Open a song with beginner chord names in Songs to use its material here.'}
+              {!ready('chord') && ' At least four of Em, Am, C, G, D and E are needed for four answer choices. Choose Chosen chords to practise now.'}
             </p>
           )}
           <button type="button" className="exercises__primary" onClick={start} disabled={!ready(levelId)}>
@@ -204,6 +227,7 @@ function EarTraining() {
           </div>
 
           <p className="exercises__prompt">{level.title}</p>
+          {soundPending && <GuitarFeedback>Starting guitar sound...</GuitarFeedback>}
           <div className="exercises__choices" role="group" aria-label="Answers">
             {question.choices.map((choice) => {
               const mark = !result
@@ -218,7 +242,7 @@ function EarTraining() {
                   key={choice}
                   type="button"
                   className={`exercises__choice ${mark}`}
-                  disabled={status !== 'asking'}
+                  disabled={status !== 'asking' || soundPending || Boolean(soundError)}
                   onClick={() => answer(choice)}
                 >
                   {choiceLabel(choice)}
@@ -266,52 +290,10 @@ function EarTraining() {
         </div>
       )}
 
-      {status === 'done' && <RoundSummary results={results} onListen={listen} onAgain={start} onChangeLevel={quit} />}
+      {status === 'done' && <EarRoundSummary results={results} onListen={listen} onAgain={start} onChangeLevel={quit} />}
 
-      {soundError && <p className="exercises__error">{soundError}</p>}
+      {soundError && <GuitarFeedback kind="error" onRetry={() => lastSound.current && listen(lastSound.current.chord, lastSound.current.how)} retryLabel="Retry sound">{soundError}</GuitarFeedback>}
     </section>
-  )
-}
-
-/** End of a round: the score, and the chords to listen for again (tap to hear one). */
-function RoundSummary({ results, onListen, onAgain, onChangeLevel }) {
-  const { correct, total } = roundScore(results)
-  const missed = missedChords(results)
-
-  return (
-    <div className="exercises__done">
-      <p className="exercises__score">
-        <strong>
-          {correct} of {total}
-        </strong>{' '}
-        correct
-      </p>
-      {missed.length ? (
-        <>
-          <p className="exercises__lead">Listen to these again:</p>
-          <ul className="exercises__chips">
-            {missed.map(({ id, misses }) => (
-              <li key={id}>
-                <button type="button" className="exercises__chip" onClick={() => onListen(chordFor(id))}>
-                  <strong>{chordFor(id).name}</strong>
-                  <small>missed {misses === 1 ? 'once' : `${misses} times`} · ▶ play</small>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <p className="exercises__lead">Every chord right.</p>
-      )}
-      <div className="exercises__actions">
-        <button type="button" className="exercises__primary" onClick={onAgain}>
-          Play again
-        </button>
-        <button type="button" className="exercises__secondary" onClick={onChangeLevel}>
-          Change level
-        </button>
-      </div>
-    </div>
   )
 }
 

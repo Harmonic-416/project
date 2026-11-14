@@ -28,6 +28,7 @@ function ChordDiagram({ chord, labelMode, pulse = false }) {
       role="img"
       aria-label={`${chord.name} chord diagram`}
     >
+      <desc>{chord.frets.map((fret, index) => `String ${6 - index} (${STRING_NAMES[index]}): ${fret < 0 ? 'do not play' : fret === 0 ? 'open' : `fret ${fret}, label ${dotLabel(chord, index, labelMode)}`}`).join('; ')}.</desc>
       {/* frets (the first one is the thick nut) */}
       {Array.from({ length: FRETS_SHOWN + 1 }, (_, f) => (
         <line

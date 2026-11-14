@@ -4,7 +4,7 @@ import './TuneUpPrompt.css'
  * "Tune first?" (F39): a banner above Songs, where the mic scores you, until
  * the guitar has been tuned this session, or when the notes played start
  * sounding out of tune (`drift`, cents; negative = flat). It never blocks:
- * Not now hides it for the session.
+ * Already tuned hides it for the session.
  */
 function TuneUpPrompt({ drift = null, onTune, onDismiss }) {
   const text =
@@ -23,7 +23,7 @@ function TuneUpPrompt({ drift = null, onTune, onDismiss }) {
           Tune now
         </button>
         <button type="button" className="tune-up-prompt__dismiss" onClick={onDismiss}>
-          Not now
+          Already tuned
         </button>
       </div>
     </div>

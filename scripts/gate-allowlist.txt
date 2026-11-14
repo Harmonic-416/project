@@ -1,0 +1,20 @@
+# A human's work-in-progress, which the gate must not blame on the loop.
+# Covers two checks: untracked files in never-touch paths, and files already
+# modified outside the loop's scope when the run started.
+# Anything NOT listed here still fails, so a migration or a vocal edit the
+# agent invents is still caught. Remove a line once the file is committed.
+
+# Untracked, in never-touch paths
+supabase/migrations/0016_guitar_tab_jobs.sql
+harmonic-design-document/harmonic-design-document-og.md
+harmonic-design-document/harmonic-master-design-document.md
+
+# Modified before the loop started, outside the Guitar Songs/Learn/Exercises scope
+# (the in-flight server-side transcription work)
+src/lib/arrangements.ts
+tests/backend/arrangements.test.ts
+worker/arranger/README.md
+worker/arranger/audio.js
+worker/arranger/models.js
+worker/arranger/package.json
+worker/arranger/worker.js

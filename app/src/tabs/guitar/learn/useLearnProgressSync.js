@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getGuitarProgress, mergeGuitarProgress, saveGuitarProgress } from '@backend/progress'
 import { supabase } from '../../../lib/supabaseClient.js'
 import { clearLocalProgress, readLocalProgress, writeLocalProgress } from './learnProgress.js'
-import { onProgressSaved } from './progressEvents.js'
+import { onProgressSaved, setProgressSyncStatus } from './progressEvents.js'
 
 /**
  * The Learn tab's progress on the player's account (migration 0013). The
@@ -25,7 +25,7 @@ export function useLearnProgressSync(userId) {
   useEffect(() => {
     const was = previousUser.current
     previousUser.current = userId
-    if (was && !userId) {
+    if (was && was !== userId) {
       clearLocalProgress()
       setVersion((v) => v + 1)
     }
@@ -38,17 +38,28 @@ export function useLearnProgressSync(userId) {
     const sync = () => {
       queue = queue
         .then(async () => {
-          const local = readLocalProgress()
-          const merged = mergeGuitarProgress(local, await getGuitarProgress(supabase))
           if (!live) return false
-          await saveGuitarProgress(supabase, merged)
-          writeLocalProgress(merged)
-          return JSON.stringify(merged) !== JSON.stringify(local)
+          setProgressSyncStatus(userId, 'saving')
+          const remote = await getGuitarProgress(supabase)
+          if (!live) return false
+          const local = readLocalProgress()
+          const merged = mergeGuitarProgress(local, remote)
+          await saveGuitarProgress(supabase, merged, userId)
+          if (!live) return false
+          // A lesson may finish during the request. Its newer local result
+          // must survive until the already-queued next sync writes it.
+          const latest = mergeGuitarProgress(merged, readLocalProgress())
+          writeLocalProgress(latest)
+          setProgressSyncStatus(userId, 'saved')
+          return JSON.stringify(latest) !== JSON.stringify(local)
         })
         .then((changed) => {
           if (live && changed) setVersion((v) => v + 1)
         })
-        .catch((err) => console.error('Could not save guitar progress to your account', err))
+        .catch((err) => {
+          if (live) setProgressSyncStatus(userId, 'error')
+          console.error('Could not save guitar progress to your account', err)
+        })
     }
     sync()
     const stop = onProgressSaved(sync)

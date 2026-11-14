@@ -33,7 +33,7 @@
   border: none;
   border-radius: 22px;
   background: var(--hm-accent);
-  color: #ffffff;
+  color: var(--gs-on-solid);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -72,7 +72,7 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--hm-surface) 78%, transparent);
+  background: color-mix(in srgb, var(--hm-surface) 78%, var(--gs-transparent));
   color: var(--hm-accent);
   font-size: 4.5rem;
   font-weight: 800;
@@ -143,21 +143,21 @@
 .play-run__chip--verified .play-run__chip-mark {
   border-color: var(--practice-good-strong);
   background: var(--practice-good);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .play-run__dot--wrong,
 .play-run__chip--wrong .play-run__chip-mark {
   border-color: var(--practice-bad);
   background: var(--practice-bad);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .play-run__stop {
   padding: 6px 16px;
   border: 1px solid var(--hm-border);
   border-radius: 8px;
-  background: transparent;
+  background: var(--gs-transparent);
   color: var(--hm-text-muted);
   font: inherit;
   font-size: 0.85rem;

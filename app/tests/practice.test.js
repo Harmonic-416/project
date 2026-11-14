@@ -79,6 +79,14 @@ describe('practiceReducer', () => {
     expect(practiceReducer(last, { type: 'next' }).chordIndex).toBe(0)
   })
 
+  it('retains explicit manual-skip outcomes without treating silence as a failed attempt', () => {
+    let state = practiceReducer(initialPractice(0), { type: 'skip' })
+    state = practiceReducer(state, { type: 'result', verdict: 'silent' })
+    state = practiceReducer(state, { type: 'retry' })
+    expect(state.skips).toEqual([{ chordId: 'Em', outcome: 'manual-skip' }])
+    expect(state.misses).toBe(0)
+  })
+
   it('locked chords cannot be opened, and moving on stays within the unlocked ones', () => {
     const onlyEm = initialPractice(0, 1)
     expect(practiceReducer(onlyEm, { type: 'select', index: 2 })).toBe(onlyEm)

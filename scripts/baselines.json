@@ -1,0 +1,30 @@
+{
+  "measured": "2026-11-13",
+  "scope": "Guitar tab: Songs, Learn, Exercises (and practice/, which is Learn's implementation, and song/follow/, whose presentation files polish work needs). Excludes fretboard, tuner, vocal, home, social. The files in scripts/frozen-files.txt are frozen but still measured: GuitarFollow.css is not frozen and accounts for 32 of the hex literals.",
+  "note": "The polish ratchet. Each metric may only move in its direction. Re-record with: node scripts/assert-baseline.mjs --write",
+  "hexLiterals": {
+    "value": 148,
+    "direction": "down-or-equal",
+    "target": "0 — every colour resolves through app/src/styles/tokens.css"
+  },
+  "untokenisedSheets": {
+    "value": 5,
+    "direction": "down-or-equal",
+    "target": "0 — every in-scope sheet themes through tokens"
+  },
+  "breakpointVariants": {
+    "value": 4,
+    "direction": "down-or-equal",
+    "target": "3 or fewer, all from tokens.css"
+  },
+  "appTestFiles": {
+    "value": 72,
+    "direction": "up-or-equal",
+    "target": "never drops — whole-app, so a guitar fix cannot break a vocal test"
+  },
+  "largestInScopeComponent": {
+    "value": 850,
+    "direction": "down-or-equal",
+    "target": "~400 — GuitarSong.jsx is the outlier; split it along its section seams"
+  }
+}

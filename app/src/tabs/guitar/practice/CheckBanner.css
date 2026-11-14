@@ -33,13 +33,13 @@
 .check-banner--verified .check-banner__icon {
   border-color: var(--practice-good-strong);
   background: var(--practice-good);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .check-banner--wrong .check-banner__icon {
   border-color: var(--practice-bad);
   background: var(--practice-bad);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .check-banner__actions {
@@ -59,10 +59,6 @@
   cursor: pointer;
 }
 
-.check-banner__actions button:hover:not(:disabled) {
-  border-color: var(--hm-accent);
-}
-
 .check-banner__actions button:disabled {
   opacity: 0.6;
   cursor: progress;
@@ -71,6 +67,6 @@
 .check-banner__actions .check-banner__primary {
   border-color: var(--hm-accent);
   background: var(--hm-accent);
-  color: #ffffff;
+  color: var(--gs-on-solid);
   font-weight: 600;
 }

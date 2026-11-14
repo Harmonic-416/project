@@ -13,8 +13,10 @@ import { voiceStrums } from './voicings.js'
 
 /**
  * A song → the guitarist's part of it, as a draft tab, on this device
- * (nothing is uploaded). Not the whole song squeezed onto a guitar: only
- * what the guitar in it plays, the way a band's guitarist learns their part.
+ * (nothing is uploaded), or for a YouTube link on the arranger worker
+ * (worker/arranger/, which runs transcribeAudio). Not the whole song
+ * squeezed onto a guitar: only what the guitar in it plays, the way a
+ * band's guitarist learns their part.
  *
  *   decode    the file, then at each model's rate (audio.js)
  *   listen    YAMNet on the whole song (guitarPresence.js): a recording of
@@ -53,12 +55,13 @@ const RATE = 22050 // Basic Pitch's and Beat This!'s
 const titleOf = (filename) => filename.replace(/\.[a-z0-9]+$/i, '').trim() || 'Recording'
 
 /**
- * Transcribe the guitar of `file` (a File or Blob with a name).
- * `onProgress({ stage, label, value, device })`: `value` is the whole job's
- * 0 … 1, `device` where the separator runs: 'gpu' (a graphics card, the
- * whole job about 7× faster) or 'cpu' (also if the card gives out partway).
- * `signal` (an AbortSignal) cancels. `anyway` transcribes even when no
- * guitar was found.
+ * Transcribe the guitar of `file` (a File or Blob with a name) in the
+ * browser: decoded and resampled with Web Audio, the models from the app
+ * (see transcribeAudio). `onProgress({ stage, label, value, device })`:
+ * `value` is the whole job's 0 … 1, `device` where the separator runs:
+ * 'gpu' (a graphics card, the whole job about 7× faster) or 'cpu' (also if
+ * the card gives out partway). `signal` (an AbortSignal) cancels. `anyway`
+ * transcribes even when no guitar was found.
  *
  * Returns { status: 'no-guitar', heard } when there's no guitar part to
  * teach (`heard`: the share of the song with guitar, 0 … 1), or { status:
@@ -70,6 +73,39 @@ const titleOf = (filename) => filename.replace(/\.[a-z0-9]+$/i, '').trim() || 'R
 export async function transcribeFile(file, { onProgress, signal, anyway = false } = {}) {
   if (file.size > MAX_BYTES) throw new Error('That file is over 100 MB. Try a shorter recording.')
   const { gpu } = await loadRuntime()
+  onProgress?.({ stage: 'decode', label: STAGES[0].label, value: 0, device: gpu ? 'gpu' : 'cpu' })
+  let decoded
+  try {
+    decoded = await decodeFile(file)
+  } catch {
+    throw new Error('This file couldn’t be read as audio. Try an MP3, WAV, M4A or OGG.')
+  }
+  if (decoded.duration > MAX_SECONDS) throw new Error('That recording is over 10 minutes. Try a shorter one.')
+  const song = (await resample(decoded, 1, RATE)).getChannelData(0)
+  const song16k = (await resample(decoded, 1, YAMNET_RATE)).getChannelData(0)
+  signal?.throwIfAborted()
+  // Stereo only for the separator, and only if the song needs separating.
+  const stereo = async () => {
+    const both = await resample(decoded, 2, 44100)
+    return [both.getChannelData(0), both.getChannelData(1)]
+  }
+  const toMono = async (channels, rate) => (await resample(bufferOf(channels, 44100), 1, rate)).getChannelData(0)
+  return transcribeAudio({ song, song16k, stereo }, { onProgress, signal, anyway, gpu: Boolean(gpu), toMono, title: titleOf(file.name ?? '') })
+}
+
+/**
+ * The stages after decoding, wherever the audio came from (the browser,
+ * or the arranger worker on a server, worker/arranger/): `song` the song
+ * mono at 22.05 kHz, `song16k` mono at 16 kHz, `stereo()` resolves to
+ * [left, right] at 44.1 kHz (asked for only when the guitar has to be
+ * separated). `toMono([left, right], rate)` turns the separated guitar
+ * (44.1 kHz stereo) into mono at `rate`. `models` are the worker's
+ * ({ runtime (onnxruntime), separator, beats, yamnet (model bytes),
+ * basicPitch }), or the app's own when left out. `gpu` weights the progress
+ * bar. `onProgress`, `signal` and `anyway` are transcribeFile's; returns
+ * what it returns, with `title`.
+ */
+export async function transcribeAudio({ song, song16k, stereo }, { toMono, models = {}, gpu = false, onProgress, signal, anyway = false, title = 'Recording' } = {}) {
   let device = gpu ? 'gpu' : 'cpu'
   const share = (s) => (gpu ? s.gpuWeight : s.weight)
   let done = 0
@@ -81,21 +117,11 @@ export async function transcribeFile(file, { onProgress, signal, anyway = false 
     onProgress?.({ stage: id, label, value: done, device })
     return (fraction) => onProgress?.({ stage: id, label, value: done + weight * Math.min(1, Math.max(0, fraction)), device })
   }
-
-  stage('decode')
-  let decoded
-  try {
-    decoded = await decodeFile(file)
-  } catch {
-    throw new Error('This file couldn’t be read as audio. Try an MP3, WAV, M4A or OGG.')
-  }
-  if (decoded.duration > MAX_SECONDS) throw new Error('That recording is over 10 minutes. Try a shorter one.')
-  const song = (await resample(decoded, 1, RATE)).getChannelData(0)
-  const song16k = (await resample(decoded, 1, YAMNET_RATE)).getChannelData(0)
-  signal?.throwIfAborted()
+  const { runtime, separator, beats: beatModel, yamnet, basicPitch: model } = models
+  const handedIn = (bytes) => (runtime ? { runtime, model: bytes } : {})
 
   stage('listen')
-  const screen = screenRecording(await yamnetScores(song16k))
+  const screen = screenRecording(await yamnetScores(song16k, handedIn(yamnet)))
   signal?.throwIfAborted()
 
   // The guitar on its own: separated from the band, or the recording itself.
@@ -104,18 +130,17 @@ export async function transcribeFile(file, { onProgress, signal, anyway = false 
   let heard = 1
   if (screen.kind !== 'solo') {
     const { separateGuitar } = await import('./separate.js')
-    const stereo = await resample(decoded, 2, 44100)
-    const separated = await separateGuitar([stereo.getChannelData(0), stereo.getChannelData(1)], {
+    const separated = await separateGuitar(await stereo(), {
       onProgress: stage('isolate'),
       onDevice: (where) => {
         device = where
       },
       signal,
+      ...handedIn(separator),
     })
-    const stem = bufferOf(separated, 44100)
-    guitar = (await resample(stem, 1, RATE)).getChannelData(0)
-    const stem16k = (await resample(stem, 1, YAMNET_RATE)).getChannelData(0)
-    const stemYamnet = await yamnetScores(stem16k)
+    guitar = await toMono(separated, RATE)
+    const stem16k = await toMono(separated, YAMNET_RATE)
+    const stemYamnet = await yamnetScores(stem16k, handedIn(yamnet))
     const frames = Math.min(stemYamnet.frames, Math.floor(song16k.length / (HOP_SECONDS * YAMNET_RATE)) + 1)
     const found = guitarFrames({ stemYamnet, stemLevels: frameLevels(stem16k, frames), songLevels: frameLevels(song16k, frames) })
     heard = found.presence
@@ -125,7 +150,7 @@ export async function transcribeFile(file, { onProgress, signal, anyway = false 
   }
 
   const basicPitch = await import('../follow/refineWithBasicPitch.js')
-  const { notes: transcribed, frames, onsets } = await basicPitch.transcribeAudio(guitar, { thresholds: basicPitch.TRANSCRIBE, onProgress: stage('notes'), signal })
+  const { notes: transcribed, frames, onsets } = await basicPitch.transcribeAudio(guitar, { thresholds: basicPitch.TRANSCRIBE, onProgress: stage('notes'), signal, basicPitch: model })
   const notes = guitarNotes(transcribed, { guitar, song: guitar === song ? null : song, active })
   if (!notes.length) {
     if (!anyway) return { status: 'no-guitar', heard }
@@ -133,7 +158,7 @@ export async function transcribeFile(file, { onProgress, signal, anyway = false 
   }
 
   const { trackBeats } = await import('./beats.js')
-  const bars = await trackBeats(song, { onProgress: stage('beats'), signal })
+  const bars = await trackBeats(song, { onProgress: stage('beats'), signal, ...handedIn(beatModel) })
 
   stage('tab')
   const draft = draftScore({ notes, frames, onsets, bars, samples: guitar }, { frameTime: basicPitch.frameTime })
@@ -145,7 +170,7 @@ export async function transcribeFile(file, { onProgress, signal, anyway = false 
   return {
     status: 'ok',
     musicXml: draft.musicXml,
-    title: titleOf(file.name ?? ''),
+    title,
     bpm: draft.bpm,
     beatsPerBar: draft.beatsPerBar,
     chords: used,

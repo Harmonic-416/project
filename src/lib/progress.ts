@@ -142,9 +142,10 @@ export async function getGuitarProgress(supabase: SupabaseClient): Promise<Guita
 }
 
 /** Save the signed-in player's guitar progress (replaces what was saved). */
-export async function saveGuitarProgress(supabase: SupabaseClient, progress: GuitarProgress): Promise<void> {
+export async function saveGuitarProgress(supabase: SupabaseClient, progress: GuitarProgress, expectedUserId?: string): Promise<void> {
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) throw userError ?? new Error('Not authenticated')
+  if (expectedUserId && userData.user.id !== expectedUserId) throw new Error('Account changed before progress could be saved')
   const { error } = await supabase.from('guitar_progress').upsert({
     user_id: userData.user.id,
     cleared: progress.cleared,

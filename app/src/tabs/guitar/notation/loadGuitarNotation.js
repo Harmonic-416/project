@@ -5,6 +5,7 @@ import { parseMidiFile } from '../../vocal/midi/parseMidi.js'
 import { titleFromFilename, unzipMxl } from '../../vocal/notation/loadNotation.js'
 import { addGuitarTab } from './fretAssign.js'
 import { tidyMidiForTab } from './tidyMidi.js'
+import { loadMuseScore } from './museScore.js'
 
 /**
  * Guitar notation import. Everything the Guitar tab opens comes out as
@@ -26,6 +27,8 @@ import { tidyMidiForTab } from './tidyMidi.js'
  */
 
 const EXTENSION_FORMATS = {
+  mscx: 'musescore',
+  mscz: 'musescore',
   gp: 'guitar-pro',
   gp3: 'guitar-pro',
   gp4: 'guitar-pro',
@@ -115,6 +118,7 @@ function loadBytes(bytes, settings) {
 }
 
 export async function loadGuitarNotation(arrayBuffer, filename, { title, settings = new alphaTab.Settings() } = {}) {
+  if (!arrayBuffer.byteLength) throw new Error('This file is empty. Choose a score with notes in it.')
   const format = detectGuitarFormat(filename, arrayBuffer)
   let score
   let tab = { generated: false, parts: [] }
@@ -123,7 +127,9 @@ export async function loadGuitarNotation(arrayBuffer, filename, { title, setting
     tab = converted.tab
     return loadBytes(new TextEncoder().encode(converted.musicXml), settings)
   }
-  if (format === 'midi') {
+  if (format === 'musescore') {
+    score = loadXml(await loadMuseScore(arrayBuffer, /\.mscz$/i.test(filename)))
+  } else if (format === 'midi') {
     const midi = tidyMidiForTab(await parseMidiFile(arrayBuffer))
     const { musicXml } = midiToMusicXml(midi, { lyricStreams: readLyricStreams(arrayBuffer) })
     score = loadXml(musicXml, { skipParts: drumParts(midi) })
@@ -136,6 +142,7 @@ export async function loadGuitarNotation(arrayBuffer, filename, { title, setting
       throw new Error(`Could not read this file as guitar notation (${err.message}).`)
     }
   }
+  if (!scoreNotes(score).length) throw new Error('This score contains no playable notes. Choose another score.')
   // alphaTab turns spaces in titles into no-break spaces; keep ours plain.
   const scoreTitle = score.title?.replace(/ /g, ' ').trim()
   return {
@@ -145,5 +152,6 @@ export async function loadGuitarNotation(arrayBuffer, filename, { title, setting
     sourceBytes: arrayBuffer,
     hasTab: hasTablature(score),
     tab,
+    importNotice: format === 'musescore' ? 'Converted from MuseScore. Pitches and rhythm were imported; layout, ornaments and fingering may differ. Check the score before practising.' : null,
   }
 }

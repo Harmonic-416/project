@@ -1,0 +1,47 @@
+{
+  "$comment": "Harness-enforced guardrails for the Harmonic loop. COPY THIS TO .claude/settings.json yourself — an agent is not allowed to grant its own permissions, which is why it is staged here. CLAUDE.md states these rules in prose; this file makes them physical, so the loop cannot write to a denied path even if it decides it should. See docs/spec-reconciliation.md §8.",
+  "permissions": {
+    "deny": [
+      "Write(./supabase/migrations/**)",
+      "Edit(./supabase/migrations/**)",
+      "Write(./.github/workflows/**)",
+      "Edit(./.github/workflows/**)",
+      "Write(./openspec/specs/**)",
+      "Edit(./openspec/specs/**)",
+      "Write(./harmonic-design-document/**)",
+      "Edit(./harmonic-design-document/**)",
+      "Write(./app/src/tabs/guitar/song/follow/**)",
+      "Edit(./app/src/tabs/guitar/song/follow/**)",
+      "Write(./app/src/audio/**)",
+      "Edit(./app/src/audio/**)",
+      "Write(./package-lock.json)",
+      "Edit(./package-lock.json)",
+      "Write(./vercel.json)",
+      "Edit(./vercel.json)",
+      "Write(./PROMPT.md)",
+      "Edit(./PROMPT.md)",
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(npx supabase db push:*)",
+      "Bash(npm run db:push:*)"
+    ],
+    "allow": [
+      "Bash(npm run ci)",
+      "Bash(npm test:*)",
+      "Bash(npm --prefix app test:*)",
+      "Bash(npm --prefix app run lint)",
+      "Bash(npm --prefix app run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(bash scripts/gate.sh:*)",
+      "Bash(node scripts/assert-baseline.mjs:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git branch:*)"
+    ]
+  }
+}

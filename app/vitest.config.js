@@ -6,7 +6,11 @@ export default defineConfig({
   // JSX in component tests (*.test.jsx, which opt into jsdom per file).
   plugins: [react()],
   // As in vite.config.js: the shared backend layer at the repo root.
-  resolve: { alias: { '@backend': fileURLToPath(new URL('../src/lib', import.meta.url)) } },
+  resolve: {
+    alias: { '@backend': fileURLToPath(new URL('../src/lib', import.meta.url)) },
+    // Resolve shared backend imports from app/node_modules in app-only CI installs.
+    dedupe: ['@supabase/supabase-js', '@tonejs/midi'],
+  },
   define: { __SONG_FILES__: '[]', __GUITAR_SONG_FILES__: '[]' },
   test: {
     include: ['tests/**/*.test.{js,jsx}'],

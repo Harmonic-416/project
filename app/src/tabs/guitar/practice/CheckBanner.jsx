@@ -23,6 +23,7 @@ function CheckBanner({ chord, verdict, misses, extra, hinting, onHint, onSkip, o
         </span>
         {message.text}
       </p>
+      {misses >= 3 && verdict === 'wrong' && <p role="status">Stuck? Hear the Hint, Skip this chord, or Retry to start fresh.</p>}
       <div className="check-banner__actions">
         <button type="button" onClick={onHint}>
           {hinting ? 'Each string' : 'Hint'}
@@ -30,13 +31,10 @@ function CheckBanner({ chord, verdict, misses, extra, hinting, onHint, onSkip, o
         <button type="button" onClick={onSkip}>
           Skip
         </button>
-        {verdict === 'verified' ? (
+        <button type="button" onClick={onRetry}>Retry</button>
+        {verdict === 'verified' && (
           <button type="button" className="check-banner__primary" onClick={onNext}>
             {nextLabel}
-          </button>
-        ) : (
-          <button type="button" onClick={onRetry}>
-            Retry
           </button>
         )}
       </div>

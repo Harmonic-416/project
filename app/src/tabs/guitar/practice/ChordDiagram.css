@@ -37,7 +37,7 @@
 }
 
 .chord-diagram__dot text {
-  fill: #ffffff;
+  fill: var(--gs-on-solid);
   font-size: 12px;
   font-weight: 700;
   text-anchor: middle;

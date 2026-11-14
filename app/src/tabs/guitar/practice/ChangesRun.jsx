@@ -6,6 +6,9 @@ import { createChangeCounter } from './changesCounter.js'
 import { FIRST_TARGET, GOAL, changesReducer, defaultPair, initialChanges, loadBests, pairKey, recordBest } from './changesState.js'
 import { transitionTip } from './chordTransition.js'
 import { useChordPlayer } from './useChordPlayer.js'
+import { useLessonCountIn } from './useLessonCountIn.js'
+import { isChangeTapKey } from './changesKeys.js'
+import GuitarFeedback from './GuitarFeedback.jsx'
 import './ChangesRun.css'
 
 const SHOW_FLIPS = 6 // A → B → A → B … for "Show me"
@@ -28,6 +31,8 @@ function ChangesRun({ unlocked }) {
   const [state, dispatch] = useReducer(changesReducer, undefined, initialChanges)
   const [bests, setBests] = useState(loadBests)
   const [showStep, setShowStep] = useState(null) // 0 … SHOW_FLIPS while "Show me" runs
+  const [demoError, setDemoError] = useState(null)
+  const countInError = useLessonCountIn(state.status, state.count)
   const player = useChordPlayer()
   const counterRef = useRef(null)
   const statusRef = useRef(state.status)
@@ -69,7 +74,7 @@ function ChangesRun({ unlocked }) {
   useEffect(() => {
     if (state.status !== 'running') return undefined
     const onKey = (event) => {
-      if (event.code !== 'Space') return
+      if (!isChangeTapKey(event)) return
       event.preventDefault()
       dispatch({ type: 'tap' })
     }
@@ -78,22 +83,26 @@ function ChangesRun({ unlocked }) {
   }, [state.status])
 
   // "Show me": flip between the shapes, strumming each, a few times.
-  const { strum } = player
+  const { strum, stop: stopSound } = player
   useEffect(() => {
     if (showStep === null) return undefined
-    strum(showStep % 2 ? b : a).catch((err) => console.error('Changes playback failed', err))
+    let live = true
+    strum(showStep % 2 ? b : a).catch(() => {
+      if (live) { setDemoError('The reference sound could not start. Try Show me the change again.'); setShowStep(null) }
+    })
     const id = setTimeout(() => setShowStep((step) => (step + 1 >= SHOW_FLIPS ? null : step + 1)), SHOW_STEP_MS)
-    return () => clearTimeout(id)
-  }, [showStep, a, b, strum])
+    return () => { live = false; clearTimeout(id); stopSound() }
+  }, [showStep, a, b, strum, stopSound])
 
   const choose = (slot, id) => {
     const next = [...pair]
     next[slot] = id
-    if (next[0] !== next[1]) setPair(next)
+    if (next[0] !== next[1]) { setShowStep(null); setDemoError(null); setPair(next) }
   }
 
   const start = () => {
     setShowStep(null)
+    stopSound()
     counterRef.current = createChangeCounter(a, b)
     listener.start() // from the tap, so the browser allows the mic
     dispatch({ type: 'start' })
@@ -130,7 +139,7 @@ function ChangesRun({ unlocked }) {
       <div className="changes-run__body">
         <div className="changes-run__shape">
           <ChordTransition from={a} to={b} phase={phase} />
-          <button type="button" className="changes-run__secondary" disabled={busy || showStep !== null} onClick={() => setShowStep(0)}>
+          <button type="button" className="changes-run__secondary" disabled={busy || showStep !== null} onClick={() => { setDemoError(null); setShowStep(0) }}>
             {showStep !== null ? 'Showing…' : 'Show me the change'}
           </button>
         </div>
@@ -151,9 +160,12 @@ function ChangesRun({ unlocked }) {
           )}
 
           {state.status === 'countdown' && (
+            <>
             <div className="changes-run__countdown" aria-live="assertive">
               {state.count}
             </div>
+            <button type="button" className="changes-run__secondary" onClick={stop}>Stop</button>
+            </>
           )}
 
           {state.status === 'running' && (
@@ -196,7 +208,9 @@ function ChangesRun({ unlocked }) {
             </>
           )}
 
-          {listener.status === 'error' && <p className="changes-run__error">{listener.error}</p>}
+          {demoError && <GuitarFeedback kind="error">{demoError}</GuitarFeedback>}
+          {countInError && <GuitarFeedback kind="error">{countInError}</GuitarFeedback>}
+          {listener.status === 'error' && <GuitarFeedback kind="error">{listener.error} You can still count changes with the Changed! button.</GuitarFeedback>}
         </div>
       </div>
     </div>

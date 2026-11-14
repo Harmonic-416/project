@@ -1,10 +1,8 @@
 import { CHORDS } from './chords.js'
 
 /**
- * Play mode (F14, F32): the chords go by on their own. A clean strum of
- * the chord that's up moves on to the next at once; otherwise its
- * SECONDS_PER_CHORD run out and the next comes anyway, the app never
- * waiting for you. Each chord gets whatever was heard while it was up; a
+ * Play mode (F14, F32): chords advance at a steady pace regardless of
+ * detection. Each chord keeps the best evidence heard during its window; a
  * chord with nothing heard counts as missed. At the end you get a score (F33).
  * Pure reducer, unit-tested in app/tests/playState.test.js. The component
  * (PlayRun.jsx) owns the timers and dispatches 'tick' / 'advance'.
@@ -15,12 +13,12 @@ import { CHORDS } from './chords.js'
 
 export const PROGRESSION = ['Em', 'C', 'G', 'D']
 
-// The longest a chord stays up; a clean strum moves on sooner.
+// Every chord has the same window, including after a successful strum.
 export const SECONDS_PER_CHORD = 5
 
 /** The run's chords: the four learned most recently, or Em C G D until four are learned. */
 export function learnedProgression(cleared = {}) {
-  const learned = CHORDS.filter((chord) => cleared[chord.id]).map((chord) => chord.id)
+  const learned = CHORDS.filter((chord) => ['passed', 'skipped'].includes(cleared[chord.id])).map((chord) => chord.id)
   return learned.length >= PROGRESSION.length ? learned.slice(-PROGRESSION.length) : PROGRESSION
 }
 export const COUNTDOWN_FROM = 3
@@ -49,11 +47,13 @@ export function playReducer(state, action) {
         : { ...state, status: 'running', count: 0 }
 
     case 'result': {
-      // Whatever the app heard for the chord that is up right now; a clean strum moves on.
+      // The microphone changes the verdict, never the transport position.
       if (state.status !== 'running') return state
+      const rank = { verified: 3, wrong: 2, silent: 1 }
+      if (!rank[action.verdict]) return state
       const results = [...state.results]
-      results[state.index] = action.verdict
-      return action.verdict === 'verified' ? next({ ...state, results }) : { ...state, results }
+      if (rank[action.verdict] > (rank[results[state.index]] ?? 0)) results[state.index] = action.verdict
+      return { ...state, results }
     }
 
     case 'advance': // the current chord's time is up
