@@ -1,3 +1,4 @@
+import GuitarFeedback from '../../practice/GuitarFeedback.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { getSharedRecordingUrl } from '@backend/attempts'
 import '../../../vocal/components/ShareAttempt.css'
@@ -134,13 +135,13 @@ function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supaba
           </audio>
         </div>
       )}
-      {loading && <p role="status" className="share-attempt__hint">Loading the recording…</p>}
+      {loading && <GuitarFeedback>Loading the recording...</GuitarFeedback>}
       {!attempt.recording_path && (
         <p className="share-attempt__hint">
           {who} didn’t include a recording with this run, so there’s nothing to listen to; their marks are on the tab.
         </p>
       )}
-      {recordingError && <p role="alert" className="share-attempt__error">{recordingError} <button type="button" className="practice-status__link" onClick={() => setReloads((n) => n + 1)}>Retry recording</button></p>}
+      {recordingError && <GuitarFeedback kind="error" onRetry={() => setReloads((n) => n + 1)} retryLabel="Retry recording">{recordingError}</GuitarFeedback>}
       {recordingUrl && !timing?.length && <p className="share-attempt__hint">This older recording has no cursor timing. You can still listen and inspect its note results.</p>}
       <p className="guitar-shared__score">
         {wait ? (

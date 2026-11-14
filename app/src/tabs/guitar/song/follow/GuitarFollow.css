@@ -2,9 +2,9 @@
 
 .guitar-follow {
   /* StringStates (practice/StringStates.css) reads these colours. */
-  --practice-good: #6a9f4e;
-  --practice-good-strong: #4f7d38;
-  --practice-bad: #c8553d;
+
+
+
 }
 
 /* Marks on the tab and notation (useTabOverlay.js): a box per note head. */
@@ -22,11 +22,11 @@
   stroke-width: 1.5;
 }
 
-.tab-overlay__mark--target { fill: #128789; stroke: #128789; fill-opacity: 0.25; stroke-width: 2; }
-.tab-overlay__mark--hit { fill: #2e9e5b; stroke: #2e9e5b; }
-.tab-overlay__mark--close { fill: #e0a100; stroke: #e0a100; }
-.tab-overlay__mark--miss { fill: #cf4b36; stroke: #cf4b36; fill-opacity: 0.25; }
-.tab-overlay__mark--skipped { fill: #9a9a9a; stroke: #9a9a9a; fill-opacity: 0.1; stroke-dasharray: 3 2; }
+.tab-overlay__mark--target { fill: var(--gs-score-accent); stroke: var(--gs-score-accent); fill-opacity: 0.25; stroke-width: 2; }
+.tab-overlay__mark--hit { fill: var(--gs-score-hit); stroke: var(--gs-score-hit); }
+.tab-overlay__mark--close { fill: var(--gs-score-close); stroke: var(--gs-score-close); }
+.tab-overlay__mark--miss { fill: var(--gs-score-miss); stroke: var(--gs-score-miss); fill-opacity: 0.25; }
+.tab-overlay__mark--skipped { fill: var(--gs-score-muted); stroke: var(--gs-score-muted); fill-opacity: 0.1; stroke-dasharray: 3 2; }
 
 .guitar-follow__strings {
   padding: 0 4px;
@@ -36,8 +36,8 @@
 .guitar-follow .practice-status__link--nudge {
   padding: 2px 10px;
   border-radius: 999px;
-  background: #128789;
-  color: #ffffff;
+  background: var(--gs-accent);
+  color: var(--gs-on-solid);
   text-decoration: none;
   font-weight: 600;
 }
@@ -50,7 +50,7 @@
   gap: 6px 16px;
   padding: 0 4px;
   font-size: 0.85rem;
-  color: #24242c;
+  color: var(--gs-text);
 }
 
 .song-extras__item {
@@ -62,20 +62,20 @@
 .song-extras__item select {
   font: inherit;
   padding: 2px 4px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--gs-border);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--gs-surface);
 }
 
 .song-extras__hint {
-  color: #6c6a72;
+  color: var(--gs-muted);
   font-size: 0.8rem;
 }
 
 .song-extras__link {
   border: none;
   background: none;
-  color: #128789;
+  color: var(--gs-accent);
   font: inherit;
   font-size: 0.85rem;
   text-decoration: underline;
@@ -84,11 +84,11 @@
 }
 
 .song-extras__button {
-  border: 1px solid #128789;
+  border: 1px solid var(--gs-accent);
   border-radius: 8px;
   padding: 6px 14px;
-  background: #128789;
-  color: #ffffff;
+  background: var(--gs-accent);
+  color: var(--gs-on-solid);
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
@@ -107,9 +107,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--gs-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--gs-surface);
   font-size: 0.85rem;
 }
 
@@ -129,9 +129,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--gs-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--gs-surface);
   font-size: 0.9rem;
 }
 
@@ -157,7 +157,7 @@
   padding: 0;
   list-style: none;
   font-size: 0.8rem;
-  color: #6c6a72;
+  color: var(--gs-muted);
 }
 
 .guitar-shared__legend li {
@@ -173,10 +173,10 @@
   border: 1.5px solid currentColor;
 }
 
-.guitar-shared__swatch--hit { color: #2e9e5b; background: rgba(46, 158, 91, 0.25); }
-.guitar-shared__swatch--close { color: #e0a100; background: rgba(224, 161, 0, 0.25); }
-.guitar-shared__swatch--miss { color: #cf4b36; background: rgba(207, 75, 54, 0.25); }
-.guitar-shared__swatch--skipped { color: #9a9a9a; border-style: dashed; }
+.guitar-shared__swatch--hit { color: var(--gs-hit); background: color-mix(in srgb, var(--gs-hit) 25%, var(--gs-transparent)); }
+.guitar-shared__swatch--close { color: var(--gs-close); background: color-mix(in srgb, var(--gs-close) 25%, var(--gs-transparent)); }
+.guitar-shared__swatch--miss { color: var(--gs-danger); background: color-mix(in srgb, var(--gs-miss) 25%, var(--gs-transparent)); }
+.guitar-shared__swatch--skipped { color: var(--gs-muted); border-style: dashed; }
 
 /* Practice feedback uses text as well as colour, including in reduced motion. */
 .guitar-follow .practice-status, .run-review, .hearing-help { color: var(--gs-text); background: var(--gs-surface); border: 2px solid var(--gs-border); border-radius: 22px; padding: 20px; }

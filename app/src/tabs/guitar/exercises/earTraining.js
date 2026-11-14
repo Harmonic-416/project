@@ -1,39 +1,16 @@
 import { CHORDS } from '../practice/chords.js'
 
-/**
- * Ear training (F41): the app plays a chord and the player picks what they
- * heard. Three levels, as ear-training courses and apps order them:
- *   - "What kind of chord?": major, minor or seventh, the chord's character;
- *   - "Which chord?": name it among the chords the player picked to train,
- *     the ones they keep missing coming up more often;
- *   - "Chords from my song": the same, with the chords of the last song
- *     they opened in Songs (practice/chordNames.js).
- * No microphone. Pure apart from the storage helpers, unit-tested in
- * app/tests/earTraining.test.js; EarTraining.jsx owns the sound.
- *
- *   status: 'idle' → 'asking' → 'answered' → 'asking' … → 'done'
- *   questions[i]: { answer: chord, choices: string[], correct: string }
- *                 choices are qualities ('major', 'minor', '7') or chord ids
- *   results[i]: { answer: chordId, picked, correct: boolean }
- */
-
+/** Ear training has two levels and six beginner shapes. Results are memory-only. */
 export const LEVELS = [
-  { id: 'quality', title: 'What kind of chord?', text: 'Major, minor or seventh: hear its character', choices: 3 },
-  { id: 'chord', title: 'Which chord?', text: 'Name it among the chords you pick to train', choices: 4 },
-  { id: 'song', title: 'Chords from my song', text: 'The chords of the last song you opened', choices: 4 },
+  { id: 'quality', title: 'Major or minor?', text: 'Hear the character of a beginner chord', choices: 2 },
+  { id: 'chord', title: 'Which chord?', text: 'Recognise the chord by name', choices: 4 },
 ]
-
-export const QUALITIES = ['major', 'minor', '7']
+export const QUALITIES = ['major', 'minor']
 export const QUESTIONS_PER_ROUND = 10
-
-/** The chords the quality level draws from: every major, minor and seventh shape. */
-export const QUALITY_POOL = CHORDS.filter((chord) => QUALITIES.includes(chord.quality))
-
-/** "Which chord?" until the player picks their own: the common open chords. */
 export const DEFAULT_PICKS = ['Em', 'Am', 'C', 'G', 'D', 'E']
-
-/** Fewest chords a "Which chord?" round can be made from. */
-export const MIN_POOL = 2
+export const QUALITY_POOL = CHORDS.filter((chord) => DEFAULT_PICKS.includes(chord.id))
+/** Four distinct names are required for every chord question. */
+export const MIN_POOL = 4
 
 const pickOne = (items, random) => items[Math.floor(random() * items.length)]
 
@@ -67,11 +44,11 @@ function shuffle(items, random) {
  */
 export function makeRound(
   levelId,
-  { pool = levelId === 'quality' ? QUALITY_POOL : CHORDS, weights = {}, count = QUESTIONS_PER_ROUND, random = Math.random } = {},
+  { pool = QUALITY_POOL, weights = {}, count = QUESTIONS_PER_ROUND, random = Math.random } = {},
 ) {
   const level = LEVELS.find((l) => l.id === levelId)
   if (!level || !Number.isInteger(count) || count < 1) return []
-  pool = [...new Map(pool.filter((chord) => CHORDS.some((known) => known.id === chord?.id)).map((chord) => [chord.id, chord])).values()]
+  pool = [...new Map(pool.filter((chord) => QUALITY_POOL.some((known) => known.id === chord?.id)).map((chord) => [chord.id, chord])).values()]
   if (pool.length < MIN_POOL) return []
   const qualities = QUALITIES.filter((quality) => pool.some((chord) => chord.quality === quality))
   if (levelId === 'quality' && qualities.length < 2) return []
@@ -115,33 +92,14 @@ export function missWeights(stats) {
   return Object.fromEntries(Object.entries(stats).map(([id, stat]) => [id, 1 + 2 * (1 - (accuracy(stat) ?? 1))]))
 }
 
-const STATS_KEY = 'harmonic.guitar.earStats'
-const PICKS_KEY = 'harmonic.guitar.earChords'
-
-function load(key, fallback, valid) {
+/** Remove results retained by older versions; never read them into a new visit. */
+export function clearLegacyEarResults() {
   try {
-    const saved = JSON.parse(globalThis.localStorage.getItem(key) ?? 'null')
-    return valid(saved) ? saved : fallback
+    if (globalThis.localStorage.getItem('harmonic.guitar.earStats') !== null) globalThis.localStorage.removeItem('harmonic.guitar.earStats')
   } catch {
-    return fallback
+    // New results still stay in memory when browser storage is inaccessible.
   }
 }
-
-function save(key, value) {
-  try {
-    globalThis.localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Private window or blocked storage: it lasts until reload.
-  }
-}
-
-export const loadStats = () => load(STATS_KEY, {}, (v) => v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every((stat) => stat && ['right', 'wrong'].every((key) => Number.isSafeInteger(stat[key]) && stat[key] >= 0)))
-export const saveStats = (stats) => save(STATS_KEY, stats)
-
-/** The chord ids picked for "Which chord?", in CHORDS order. */
-export const loadPicks = () =>
-  load(PICKS_KEY, DEFAULT_PICKS, (v) => Array.isArray(v) && new Set(v).size === v.length && v.length >= MIN_POOL && v.every((id) => CHORDS.some((c) => c.id === id)))
-export const savePicks = (ids) => save(PICKS_KEY, ids)
 
 export function initialExercise() {
   return { status: 'idle', level: null, questions: [], index: 0, results: [] }

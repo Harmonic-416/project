@@ -11,15 +11,12 @@ import {
   accuracy,
   exerciseReducer,
   initialExercise,
-  loadPicks,
-  loadStats,
+  clearLegacyEarResults,
   makeRound,
   missWeights,
   missedChords,
   recordAnswer,
   roundScore,
-  savePicks,
-  saveStats,
 } from '../src/tabs/guitar/exercises/earTraining.js'
 
 /** Seeded stand-in for Math.random (mulberry32), so rounds are repeatable. */
@@ -37,7 +34,7 @@ function seeded(seed) {
 const run = (actions, state = initialExercise()) => actions.reduce(exerciseReducer, state)
 
 describe('chord quality (F41)', () => {
-  it('each major, minor and seventh shape sounds its third, and a seventh its flat seventh', () => {
+  it('each beginner major/minor shape sounds its own third', () => {
     for (const chord of QUALITY_POOL) {
       const root = parseChordName(chord.id).pitchClass
       const pitchClasses = new Set(chordMidi(chord).map((midi) => midi % 12))
@@ -48,7 +45,7 @@ describe('chord quality (F41)', () => {
     }
   })
 
-  it('has major, minor and seventh chords to ask about', () => {
+  it('asks exactly major and minor qualities', () => {
     expect(new Set(QUALITY_POOL.map((c) => c.quality))).toEqual(new Set(QUALITIES))
   })
 })
@@ -73,28 +70,25 @@ describe('making a round', () => {
     })
   }
 
-  it('quality: the answer is the chord’s quality, offered as Major | Minor | Seventh', () => {
+  it('quality: the answer is the chord’s quality, offered as Major | Minor', () => {
     for (const q of makeRound('quality', { random: seeded(2) })) {
-      expect(q.choices).toEqual(['major', 'minor', '7'])
+      expect(q.choices).toEqual(['major', 'minor'])
       expect(q.correct).toBe(q.answer.quality)
     }
   })
 
-  it('quality: each kind about a third of the time, however many shapes each has', () => {
+  it('quality: each kind about half of the time, however many shapes each has', () => {
     const answers = Array.from({ length: 100 }, (_, seed) => makeRound('quality', { random: seeded(seed) })).flat()
     for (const quality of QUALITIES) {
       const share = answers.filter((q) => q.correct === quality).length / answers.length
-      expect(share, quality).toBeGreaterThan(0.27)
-      expect(share, quality).toBeLessThan(0.4)
+      expect(share, quality).toBeGreaterThan(0.4)
+      expect(share, quality).toBeLessThan(0.6)
     }
   })
 
-  it('chord: only the chords in the pool, with fewer choices when the pool is small', () => {
-    const pool = CHORDS.filter((c) => ['G', 'C'].includes(c.id))
-    for (const q of makeRound('chord', { pool, random: seeded(4) })) {
-      expect(['G', 'C']).toContain(q.answer.id)
-      expect([...q.choices].sort()).toEqual(['C', 'G'])
-    }
+  it('chord: never starts a round without four distinct answer choices', () => {
+    const pool = CHORDS.filter((chord) => ['G', 'C'].includes(chord.id))
+    expect(makeRound('chord', { pool, random: seeded(4) })).toEqual([])
   })
 
   // Never twice in a row caps it: with C weighted 3 among four chords, C is asked 3/8 of the time and each other 5/24.
@@ -126,7 +120,7 @@ describe('making a round', () => {
         .flat()
         .map((q) => q.answer.id),
     )
-    expect(asked).toEqual(new Set(CHORDS.map((c) => c.id)))
+    expect(asked).toEqual(new Set(DEFAULT_PICKS))
   })
 })
 
@@ -216,20 +210,24 @@ describe('how the player does on each chord', () => {
     expect(missWeights({ G: { right: 4, wrong: 0 }, C: { right: 1, wrong: 1 }, D: { right: 0, wrong: 2 } })).toEqual({ G: 1, C: 2, D: 3 })
   })
 
-  it('remembers the stats and the picked chords, with the common open chords by default', () => {
-    const store = new Map()
-    globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }
-    expect(loadPicks()).toEqual(DEFAULT_PICKS)
-    expect(loadStats()).toEqual({})
-    savePicks(['G', 'C', 'D7'])
-    saveStats({ C: { right: 2, wrong: 1 } })
-    expect(loadPicks()).toEqual(['G', 'C', 'D7'])
-    expect(loadStats()).toEqual({ C: { right: 2, wrong: 1 } })
-    savePicks(['G']) // too few, or unknown chords: back to the default
-    expect(loadPicks()).toEqual(DEFAULT_PICKS)
-    savePicks(['G', 'Xyz'])
-    expect(loadPicks()).toEqual(DEFAULT_PICKS)
+  it('clears legacy saved results without reading them into a new session', () => {
+    const store = new Map([['harmonic.guitar.earStats', JSON.stringify({ C: {right: 2, wrong: 1} })]])
+    globalThis.localStorage = { getItem: (key) => store.get(key) ?? null, removeItem: (key) => store.delete(key) }
+    clearLegacyEarResults()
+    expect(store.has('harmonic.guitar.earStats')).toBe(false)
+    clearLegacyEarResults()
+    expect(store.size).toBe(0)
   })
+  it('does not require browser storage for a round', () => {
+    globalThis.localStorage = { getItem: () => { throw new Error('Blocked storage') } }
+    expect(() => clearLegacyEarResults()).not.toThrow()
+    expect(makeRound('chord')).toHaveLength(10)
+  })
+  it('has exactly two levels and exactly the six specified beginner chords', () => {
+    expect(LEVELS.map((level) => level.title)).toEqual(['Major or minor?', 'Which chord?'])
+    expect(QUALITY_POOL.map((chord) => chord.id).sort()).toEqual(['Am','C','D','E','Em','G'])
+  })
+
 })
 
 

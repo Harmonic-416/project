@@ -1,9 +1,8 @@
 .exercises {
   /* Greens and reds for ChordDiagram's dots and the strum drill's marks. */
-  --practice-good: #6a9f4e;
-  --practice-good-strong: #4f7d38;
-  --practice-bad: #c8553d;
-  --practice-ink: #1f1c1a;
+
+
+
 
   max-width: 760px;
   margin: 0 auto;
@@ -12,11 +11,7 @@
   color: var(--hm-text);
 }
 
-@media (prefers-color-scheme: dark) {
-  .exercises {
-    --practice-ink: #0f0f12;
-  }
-}
+
 
 .exercises__pick {
   display: flex;
@@ -105,12 +100,12 @@
   gap: 8px;
   padding: 12px 16px;
   background: var(--practice-ink);
-  color: #f2f1ee;
+  color: var(--gs-header-text);
   font-size: 0.95rem;
 }
 
 .exercises__count {
-  color: #d99a5b;
+  color: var(--gs-warning);
   font-size: 0.8rem;
   white-space: nowrap;
 }
@@ -136,17 +131,13 @@
 /* ── level cards (like the Learn / Practice / Play cards) ───── */
 .exercises__levels {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
   max-width: 680px;
 }
 
-@media (max-width: 480px) {
-  .exercises__levels {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 
 .exercises__level {
   display: flex;
@@ -163,8 +154,8 @@
 }
 
 .exercises__level.is-active {
-  border: 2px solid #c07a3e;
-  background: color-mix(in srgb, #c07a3e 14%, var(--hm-surface));
+  border: 2px solid var(--gs-accent);
+  background: color-mix(in srgb, var(--gs-accent) 14%, var(--hm-surface));
 }
 
 .exercises__level-top {
@@ -179,7 +170,7 @@
 }
 
 .exercises__level-top small {
-  color: #c07a3e;
+  color: var(--gs-accent);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -196,7 +187,7 @@
   border: none;
   border-radius: 22px;
   background: var(--hm-accent);
-  color: #ffffff;
+  color: var(--gs-on-solid);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -207,17 +198,11 @@
   padding: 6px 14px;
   border: 1px solid var(--hm-border);
   border-radius: 8px;
-  background: transparent;
+  background: var(--gs-transparent);
   color: var(--hm-text);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
-}
-
-.exercises__secondary:hover,
-.exercises__level:hover,
-.exercises__choice:enabled:hover {
-  border-color: var(--hm-accent);
 }
 
 .exercises__quit {
@@ -312,13 +297,13 @@
 .exercises__choice.is-correct {
   border-color: var(--practice-good-strong);
   background: var(--practice-good);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .exercises__choice.is-wrong {
   border-color: var(--practice-bad);
   background: var(--practice-bad);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .exercises__choice.is-dim {
@@ -355,11 +340,7 @@
   color: var(--practice-bad);
 }
 
-@media (prefers-color-scheme: dark) {
-  .exercises__verdict.is-correct {
-    color: var(--practice-good);
-  }
-}
+
 
 .exercises__shape {
   display: flex;
@@ -409,7 +390,7 @@
   padding: 8px 14px;
   border: 2px solid var(--practice-bad);
   border-radius: 12px;
-  background: transparent;
+  background: var(--gs-transparent);
   color: var(--hm-text);
   font: inherit;
   cursor: pointer;

@@ -62,8 +62,8 @@
 
 .changes-run__primary {
   border: none;
-  background: var(--hm-accent, #128789);
-  color: #ffffff;
+  background: var(--hm-accent);
+  color: var(--gs-on-solid);
   font-weight: 600;
 }
 
@@ -82,7 +82,7 @@
 .changes-run__countdown {
   font-size: 3rem;
   font-weight: 700;
-  color: var(--hm-accent, #128789);
+  color: var(--hm-accent);
 }
 
 .changes-run__time {
@@ -101,8 +101,8 @@
   padding: 18px 12px;
   border: none;
   border-radius: 16px;
-  background: var(--practice-good, #6a9f4e);
-  color: #ffffff;
+  background: var(--practice-good);
+  color: var(--gs-on-solid);
   font: inherit;
   font-size: 1.3rem;
   font-weight: 700;
@@ -130,5 +130,5 @@
 }
 
 .changes-run__error {
-  color: var(--practice-bad, #c8553d);
+  color: var(--practice-bad);
 }

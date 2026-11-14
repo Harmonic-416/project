@@ -1,11 +1,10 @@
 .practice {
-  --practice-good: #6a9f4e;
-  --practice-good-strong: #4f7d38;
-  --practice-bad: #c8553d;
-  --practice-warn: #e3b341;
-  --practice-warn-ink: #3a2c05;
-  --practice-bar: #efece5;
-  --practice-ink: #1f1c1a;
+
+
+
+
+
+
 
   display: flex;
   flex-direction: column;
@@ -17,12 +16,7 @@
   color: var(--hm-text);
 }
 
-@media (prefers-color-scheme: dark) {
-  .practice {
-    --practice-bar: #26262d;
-    --practice-ink: #0f0f12;
-  }
-}
+
 
 /* ── lesson card ─────────────────────────────────────────────── */
 .practice__lesson {
@@ -38,7 +32,7 @@
   justify-content: space-between;
   padding: 12px 16px;
   background: var(--practice-ink);
-  color: #f2f1ee;
+  color: var(--gs-header-text);
   font-size: 0.95rem;
 }
 
@@ -55,7 +49,7 @@
   padding: 4px 12px;
   border: 1px solid var(--hm-border);
   border-radius: 14px;
-  background: transparent;
+  background: var(--gs-transparent);
   color: var(--hm-text-muted);
   font: inherit;
   font-size: 0.85rem;
@@ -67,7 +61,7 @@
 .practice__labels button.is-active {
   border-color: var(--hm-accent);
   background: var(--hm-accent);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 /* unlock state (unlocks.js): locked chords wait for Practice */
@@ -93,11 +87,7 @@
   padding: 16px;
 }
 
-@media (max-width: 560px) {
-  .practice__body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 
 .practice__chord {
   display: flex;
@@ -134,13 +124,7 @@
   border-left: 1px solid var(--hm-border);
 }
 
-@media (max-width: 560px) {
-  .practice__side {
-    padding: 14px 0 0;
-    border-top: 1px solid var(--hm-border);
-    border-left: none;
-  }
-}
+
 
 .practice__side-label {
   color: var(--hm-text-muted);
@@ -170,11 +154,7 @@
   gap: 10px;
 }
 
-@media (max-width: 560px) {
-  .practice__modes {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+
 
 .practice__mode {
   display: flex;
@@ -191,8 +171,8 @@
 }
 
 .practice__mode.is-active {
-  border: 2px solid #c07a3e;
-  background: color-mix(in srgb, #c07a3e 14%, var(--hm-surface));
+  border: 2px solid var(--gs-accent);
+  background: color-mix(in srgb, var(--gs-accent) 14%, var(--hm-surface));
 }
 
 .practice__mode:disabled {
@@ -211,7 +191,7 @@
 }
 
 .practice__mode-top small {
-  color: #c07a3e;
+  color: var(--gs-accent);
   font-weight: 700;
 }
 
@@ -244,15 +224,11 @@
   padding: 5px 10px;
   border: 1px solid var(--hm-border);
   border-radius: 8px;
-  background: transparent;
+  background: var(--gs-transparent);
   color: var(--hm-text);
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
-}
-
-.practice__demo button:hover {
-  border-color: var(--hm-accent);
 }
 
 .practice__demo .practice__demo-reset {
@@ -293,7 +269,7 @@
 
 .practice__demo button.is-lit {
   opacity: 1;
-  color: #ffffff;
+  color: var(--gs-on-solid);
   font-weight: 600;
 }
 
@@ -317,7 +293,7 @@
 .practice__flash {
   position: absolute;
   inset: 0;
-  background: #ffffff;
+  background: var(--gs-surface);
   opacity: 0;
   pointer-events: none;
   animation: practice-flash 0.6s ease-out;
@@ -347,3 +323,56 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+/* A focused challenge, with optional tools instead of a wall of controls. */
+.practice { max-width: 860px; }
+.practice__lesson { border: 2px solid var(--gs-border); border-radius: var(--gs-radius-card); }
+.practice__header { color: var(--gs-muted); font-size: .8rem; padding: var(--gs-space-3) var(--gs-space-5); }
+.lesson-modes { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--gs-space-2); }
+.lesson-modes .practice__mode { display: grid; gap: var(--gs-space-1); text-align: center; padding: var(--gs-space-3) var(--gs-space-2); border-radius: var(--gs-radius-control); border: 2px solid var(--gs-border); color: var(--gs-muted); background: var(--gs-surface); font: inherit; cursor: pointer; }
+.lesson-modes .practice__mode strong { font: inherit; font-weight: 800; font-size: .95rem; }
+.lesson-modes .practice__mode small { font-size: .7rem; }
+.lesson-modes .practice__mode.is-active { color: var(--gs-accent); border-color: var(--gs-accent); background: var(--gs-accent-soft); }
+.practice__chord-picker { border-bottom: 1px solid var(--gs-border); }
+.practice__chord-picker > summary { display: flex; justify-content: space-between; align-items: center; gap: var(--gs-space-3); padding: var(--gs-space-2) var(--gs-space-5); cursor: pointer; color: var(--gs-muted); font-size: .8rem; }
+.practice__chord-picker > summary span { color: var(--gs-lilac); font-weight: 750; }
+.practice__chord-picker .practice__chords { padding-bottom: var(--gs-space-4); }
+.practice__demo { border: 0; padding: 0; }
+.practice__listen { background: var(--gs-accent); color: var(--gs-on-solid); padding: var(--gs-space-3) var(--gs-space-5); border-radius: var(--gs-radius-control); border: 0; font-weight: 800; }
+.practice__self-mark { border-top: 1px solid var(--gs-border); padding-top: var(--gs-space-3); color: var(--gs-muted); }
+.practice__self-mark summary { cursor: pointer; font-size: .8rem; }
+.practice__self-mark > div { display: flex; flex-wrap: wrap; gap: var(--gs-space-2); padding-top: var(--gs-space-3); }
+.practice__lesson .check-banner { padding: var(--gs-space-4) var(--gs-space-5); gap: var(--gs-space-3); }
+.practice__lesson .check-banner__actions { flex-wrap: wrap; }
+.practice__lesson .check-banner__actions button { font-weight: 750; border-radius: var(--gs-radius-control); }
+.practice .play-run__progression, .practice .play-run__chord, .practice .changes-run__score strong { font-family: inherit; }
+.lesson-coach { padding: var(--gs-space-5); display: grid; gap: var(--gs-space-4); }
+.lesson-coach__prompt { display: flex; align-items: flex-start; gap: var(--gs-space-3); }
+.lesson-coach__spark { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: var(--gs-radius-control); background: color-mix(in srgb, var(--gs-lilac) 15%, var(--gs-raised)); color: var(--gs-lilac); font-size: 1.8rem; }
+.lesson-coach__eyebrow { color: var(--gs-lilac); font-size: .65rem; }
+.lesson-coach__prompt h2 { font-size: clamp(1.3rem,3vw,1.8rem); letter-spacing: -.02em; margin: var(--gs-space-1) 0; line-height: 1.2; font-weight: 850; }
+.lesson-coach__prompt p { color: var(--gs-muted); font-size: .85rem; line-height: 1.5; margin: var(--gs-space-2) 0 0; }
+.lesson-coach__workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--gs-space-5); align-items: center; }
+.lesson-coach__diagram { min-width: 0; border: 1px solid var(--gs-border); background: var(--gs-raised); border-radius: var(--gs-radius-card); padding: var(--gs-space-3); }
+.lesson-coach__diagram .chord-diagram { width: 100%; max-width: 190px; max-height: 230px; display: block; margin: auto; }
+.lesson-coach .practice__labels { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--gs-space-1); margin-top: var(--gs-space-2); }
+.lesson-coach .practice__labels button { padding: var(--gs-space-1) var(--gs-space-2); font-size: .7rem; }
+.lesson-coach__fingers h3 { font-size: 1rem; margin: 0 0 var(--gs-space-3); }
+.lesson-coach__fingers ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gs-space-3); }
+.lesson-coach__fingers li { display: flex; gap: var(--gs-space-3); align-items: center; }
+.lesson-coach__fingers li > span { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 50%; background: var(--gs-accent-soft); color: var(--gs-accent); font-weight: 800; }
+.lesson-coach__fingers li div { display: grid; gap: var(--gs-space-1); }
+.lesson-coach__fingers strong { font-size: .85rem; }
+.lesson-coach__fingers small, .lesson-coach__fingers p { color: var(--gs-muted); font-size: .75rem; line-height: 1.5; }
+.lesson-coach__fingers p { margin: var(--gs-space-3) 0; }
+.lesson-coach__hear { font: inherit; font-size: .8rem; font-weight: 750; color: var(--gs-accent); background: var(--gs-accent-soft); border: 1px solid var(--gs-accent); border-radius: var(--gs-radius-control); padding: var(--gs-space-2) var(--gs-space-3); cursor: pointer; }
+.lesson-coach__sound { border-top: 1px solid var(--gs-border); padding-top: var(--gs-space-4); display: grid; gap: var(--gs-space-3); }
+.lesson-coach__sound > div:first-child { display: grid; gap: var(--gs-space-1); }
+.lesson-coach__sound strong { font-size: .85rem; }
+.lesson-coach__sound > div > span { color: var(--gs-muted); font-size: .75rem; }
+.lesson-coach__strings { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: var(--gs-space-2); }
+.lesson-coach__strings button { display: grid; gap: var(--gs-space-1); padding: var(--gs-space-2) var(--gs-space-1); border: 1px solid var(--gs-border); border-bottom-width: 4px; border-radius: var(--gs-radius-control); background: var(--gs-raised); color: var(--gs-text); font: inherit; cursor: pointer; min-width: 0; }
+.lesson-coach__strings button small { color: var(--gs-muted); font-size: .65rem; }
+.lesson-coach__strings button:active { border-bottom-width: 1px; }
+.lesson-coach .string-states { align-items: flex-start; }
+.lesson-coach .string-states__row { justify-content: flex-start; }
+.lesson-coach__tab summary { cursor: pointer; font-size: .75rem; color: var(--gs-muted); }

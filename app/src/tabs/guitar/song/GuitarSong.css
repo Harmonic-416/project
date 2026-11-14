@@ -16,7 +16,7 @@
 }
 
 .guitar-song__header p {
-  color: #6c6a72;
+  color: var(--gs-muted);
   margin: 0;
   font-size: 0.9rem;
 }
@@ -31,7 +31,7 @@
 .guitar-song__back {
   border: none;
   background: none;
-  color: #128789;
+  color: var(--gs-accent);
   font: inherit;
   font-weight: 600;
   padding: 4px 0;
@@ -51,14 +51,14 @@
   font-size: 0.75rem;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #e2dfd8;
-  color: #24242c;
+  background: var(--gs-border);
+  color: var(--gs-text);
 }
 
 /* A transcription: a best guess until it's checked. */
 .guitar-song__format--draft {
-  background: #fbeccc;
-  color: #7a5300;
+  background: var(--gs-warning-soft);
+  color: var(--gs-warning);
 }
 
 .guitar-song__actions {
@@ -68,11 +68,11 @@
 }
 
 .guitar-song__actions button {
-  border: 1px solid #128789;
+  border: 1px solid var(--gs-accent);
   border-radius: 8px;
   padding: 6px 12px;
-  background: #ffffff;
-  color: #128789;
+  background: var(--gs-surface);
+  color: var(--gs-accent);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -82,8 +82,8 @@
   margin: 0;
   padding: 8px 12px;
   border-radius: 8px;
-  background: #fbeccc;
-  color: #7a5300;
+  background: var(--gs-warning-soft);
+  color: var(--gs-warning);
   font-size: 0.85rem;
 }
 
@@ -98,8 +98,8 @@
 
 /* Tab made from the notes: worth knowing, not a warning. */
 .guitar-song__notice--info {
-  background: #e3f3f3;
-  color: #0d6466;
+  background: var(--gs-accent-soft);
+  color: var(--gs-accent);
 }
 
 .guitar-song__search {
@@ -108,10 +108,10 @@
   gap: 12px;
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--gs-border);
   border-radius: 10px;
-  background: #ffffff;
-  color: #24242c;
+  background: var(--gs-surface);
+  color: var(--gs-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -123,24 +123,24 @@
 }
 
 .guitar-song__search small {
-  color: #6c6a72;
+  color: var(--gs-muted);
   font-size: 0.8rem;
 }
 
 .guitar-song__status {
   margin: 0;
-  color: #6c6a72;
+  color: var(--gs-muted);
 }
 
 /* The open song's last and best full run in this mode (run history, F22). */
 .guitar-song__history {
   margin: 0;
-  color: #6c6a72;
+  color: var(--gs-muted);
   font-size: 0.9rem;
 }
 
 .guitar-song__status--error {
-  color: #cf4b36;
+  color: var(--gs-danger);
 }
 
 .guitar-song { max-width: 1040px; width: 100%; margin-inline: auto; padding: 28px 24px 40px; gap: 20px; }
@@ -161,7 +161,7 @@
 .guitar-song__local { padding: 22px; border: 2px solid var(--gs-border); border-radius: 22px; background: var(--gs-surface); }
 .guitar-song__local h3 { margin-top: 0; }
 .guitar-song .notation-uploader { background: var(--gs-accent); color: var(--gs-bg); border: 2px solid var(--gs-accent); border-radius: 18px; padding: 20px; font-weight: 800; box-shadow: 0 5px 0 var(--gs-accent-soft); }
-.guitar-song .notation-uploader:focus-within { outline: 3px solid var(--gs-text); outline-offset: 4px; }
+
 .guitar-song__back, .guitar-song__actions button { border: 2px solid var(--gs-border); border-radius: 16px; padding: 10px 16px; background: var(--gs-surface); color: var(--gs-accent); min-height: 44px; font-weight: 750; }
 .guitar-song__format { background: var(--gs-raised); color: var(--gs-muted); padding: 5px 12px; }
 .guitar-song__status, .guitar-song__history { color: var(--gs-muted); }
@@ -172,8 +172,8 @@
 .guitar-song .practice-modes__option { color: var(--gs-text); background: var(--gs-surface); border: 2px solid var(--gs-border); border-radius: 18px; padding: 18px 10px; min-height: 76px; font-weight: 800; box-shadow: 0 5px 0 var(--gs-border); }
 .guitar-song .practice-modes__option[aria-pressed="true"] { background: var(--gs-accent-soft); border-color: var(--gs-accent); color: var(--gs-accent); }
 .guitar-song .practice-modes__hint { color: var(--gs-muted); }
-@media (hover: hover) { .guitar-song :is(.guitar-song__search, .song-library__item, .guitar-song__actions button):hover:not(:disabled) { border-color: var(--gs-accent); } }
-@media (max-width: 480px) { .guitar-song { padding: 22px 16px 32px; } .guitar-song__search { padding: 16px; gap: 14px; } }
+@media (hover: hover) { }
+
 @media (prefers-reduced-motion: reduce) { .guitar-song *, .guitar-tab__view { animation: none !important; transition: none !important; } }
 .guitar-song__reference { align-self: flex-start; border: 2px solid var(--gs-border); border-radius: 16px; padding: 12px 18px; background: var(--gs-surface); color: var(--gs-muted); font: inherit; font-weight: 750; cursor: pointer; }
 .guitar-song__reference[aria-pressed="true"] { border-color: var(--gs-accent); color: var(--gs-accent); background: var(--gs-accent-soft); }
@@ -198,7 +198,7 @@
 .guitar-song--open .tempo-control { color: var(--gs-text); min-height: 48px; gap: 16px; flex-wrap: wrap; }
 .guitar-song--open .tempo-control__value { color: var(--gs-muted); }
 .guitar-song--open .guitar-song__toolbar { gap: 14px; }
-@media (max-width: 480px) { .guitar-song--open .guitar-song__actions { width: 100%; } .guitar-song--open .playback-controls__time { flex: 1; } }
+
 .guitar-song .practice-modes { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
 .guitar-song .practice-modes__options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 0; background: none; overflow: visible; }
 .guitar-song .practice-modes__hint { line-height: 1.6; }

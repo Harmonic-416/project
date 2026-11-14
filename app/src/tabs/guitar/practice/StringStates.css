@@ -33,13 +33,13 @@
 .string-states__dot--good {
   border-color: var(--practice-good-strong);
   background: var(--practice-good);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .string-states__dot--bad {
   border-color: var(--practice-bad);
   background: var(--practice-bad);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .string-states__dot--muted {

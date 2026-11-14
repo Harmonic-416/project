@@ -1,3 +1,4 @@
+import GuitarFeedback from './practice/GuitarFeedback.jsx'
 import { lazy, Suspense, useCallback, useState } from 'react'
 import './GuitarTab.css'
 import Tuner from './tuner/Tuner.jsx'
@@ -114,7 +115,7 @@ function GuitarTab({
           ) : view === 'fretboard' ? (
             <Fretboard />
           ) : (
-            <Suspense fallback={<p className="guitar-tab__loading">Loading songs…</p>}>
+            <Suspense fallback={<GuitarFeedback>Loading songs...</GuitarFeedback>}>
               <GuitarSong
                 auth={auth}
                 onNavigate={onNavigate}

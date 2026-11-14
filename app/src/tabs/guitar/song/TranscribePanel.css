@@ -10,7 +10,7 @@
 
 .transcribe__note,
 .transcribe__hint {
-  color: #6c6a72;
+  color: var(--gs-muted);
   font-size: 0.85rem;
 }
 
@@ -24,14 +24,14 @@
 .transcribe__bar {
   height: 8px;
   border-radius: 999px;
-  background: #e2dfd8;
+  background: var(--gs-border);
   overflow: hidden;
 }
 
 .transcribe__bar span {
   display: block;
   height: 100%;
-  background: #128789;
+  background: var(--gs-accent);
   transition: width 0.3s ease;
 }
 
@@ -41,11 +41,11 @@
 
 .transcribe__cancel {
   align-self: flex-start;
-  border: 1px solid #cf4b36;
+  border: 1px solid var(--gs-danger);
   border-radius: 8px;
   padding: 6px 14px;
-  background: #ffffff;
-  color: #cf4b36;
+  background: var(--gs-surface);
+  color: var(--gs-danger);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -80,25 +80,20 @@
 }
 
 .my-transcriptions__row small {
-  color: #6c6a72;
+  color: var(--gs-muted);
   font-size: 0.75rem;
   font-weight: 400;
 }
 
 .my-transcriptions__delete {
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--gs-border);
   border-radius: 8px;
   padding: 0 12px;
-  background: #ffffff;
-  color: #6c6a72;
+  background: var(--gs-surface);
+  color: var(--gs-muted);
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
-}
-
-.my-transcriptions__delete:hover {
-  border-color: #cf4b36;
-  color: #cf4b36;
 }
 
 /* "Guitar doesn't seem to be part of this song." */
@@ -118,8 +113,8 @@
   border: none;
   border-radius: 8px;
   padding: 8px 16px;
-  background: #128789;
-  color: #ffffff;
+  background: var(--gs-accent);
+  color: var(--gs-on-solid);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -130,7 +125,7 @@
   border: none;
   background: none;
   padding: 0;
-  color: #6c6a72;
+  color: var(--gs-muted);
   font: inherit;
   font-size: 0.85rem;
   text-decoration: underline;

@@ -38,3 +38,16 @@ describe('Guitar tempo synchronization', () => {
     await waitFor(() => expect(result.current.message).toBe('Tempo saved to your account.'))
   })
 })
+
+it('keeps separate anonymous tempo preferences when switching songs', () => {
+  const initial = {fingerprint:'first',userId:null,client:null}
+  const {result,rerender} = renderHook((props) => useGuitarTempo(props), {initialProps:initial})
+  act(() => result.current.change(60))
+  rerender({...initial,fingerprint:'second'})
+  expect(result.current.tempo).toBe(100)
+  act(() => result.current.change(80))
+  rerender(initial)
+  expect(result.current.tempo).toBe(60)
+  rerender({...initial,fingerprint:'second'})
+  expect(result.current.tempo).toBe(80)
+})
