@@ -124,7 +124,57 @@
   .guitar-tab .lesson-coach__strings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+@media (width > 560px) {
+  .exercise-studio--active { min-height: 100%; }
+  .guitar-tab .exercise-studio__hero { max-width: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--gs-space-5); align-items: center; padding: 0 0 var(--gs-space-3); }
+  .guitar-tab .exercise-studio__hero > .workout__eyebrow { grid-column: 1 / -1; }
+  .guitar-tab .exercise-studio__hero h1 { font-size: 2rem; margin: var(--gs-space-2) 0; }
+  .guitar-tab .exercise-studio__hero p { margin: 0; font-size: .85rem; }
+  .guitar-tab .exercise-studio__skills { margin-bottom: var(--gs-space-4); }
+  .guitar-tab .exercise-studio__cards { gap: var(--gs-space-4); }
+  .guitar-tab .exercise-card { padding: var(--gs-space-4); gap: var(--gs-space-1) var(--gs-space-3); }
+  .guitar-tab .exercise-card__icon { width: 48px; height: 48px; font-size: 1.6rem; }
+  .guitar-tab .exercise-card__action { margin-top: var(--gs-space-2); }
+  .chord-workout[data-phase="asking"], .chord-workout[data-phase="answered"] { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .workout__intro { grid-column: 2; grid-row: 1; }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .workout__progress { grid-column: 2; grid-row: 2; flex-wrap: wrap; }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .chord-workout__challenge { display: contents; }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) :is(.chord-builder,.chord-quiz) { grid-column: 1; grid-row: 1 / 6; }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .chord-quiz { grid-template-columns: minmax(0, 1fr); gap: var(--gs-space-3); }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .chord-quiz > .chord-diagram { max-height: 220px; }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .chord-quiz__answers { grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--gs-space-2); }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .chord-workout__hint { grid-column: 2; grid-row: 3; justify-self: center; }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) .workout__feedback { grid-column: 2; grid-row: 4; }
+  .chord-workout:is([data-phase="asking"],[data-phase="answered"]) > .workout__actions { grid-column: 2; grid-row: 5; align-self: end; }
+}
+@media (max-width: 560px) {
+  .guitar-tab .exercise-studio { padding: var(--gs-space-4); }
+  .guitar-tab .exercise-studio__cards { grid-template-columns: minmax(0,1fr); }
+  .guitar-tab .exercise-studio__toolbar > span { display: none; }
+  .guitar-tab .workout { padding: var(--gs-space-4); }
+  .guitar-tab .chord-workout__challenge { flex-wrap: wrap; }
+  .guitar-tab .chord-quiz { grid-template-columns: minmax(0,1fr); gap: var(--gs-space-3); }
+  .guitar-tab .chord-quiz__answers { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .guitar-tab .rhythm-studio__lane { gap: var(--gs-space-1); }
+  .guitar-tab .rhythm-studio__lane strong { font-size: 1.4rem; }
+  .guitar-tab .rhythm-studio__stage { padding: var(--gs-space-3); }
+}
+
 /* Small screens keep the music in view and reveal options on demand. */
+@media (width > 900px) {
+  .guitar-tab .rhythm-studio { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); align-items: start; }
+  .guitar-tab .rhythm-studio__stage { grid-column: 1; grid-row: 1 / 4; }
+  .guitar-tab .rhythm-studio > .workout__intro { grid-column: 2; grid-row: 1; }
+  .guitar-tab .rhythm-studio__settings { grid-column: 2; grid-row: 2; }
+  .guitar-tab .rhythm-studio__settings label { flex-basis: 100%; }
+  .guitar-tab .rhythm-studio__result { grid-column: 1 / -1; grid-row: 4; }
+  .guitar-tab .rhythm-studio > .workout__actions { grid-column: 2; grid-row: 3; }
+  .guitar-tab .rhythm-studio__result h3 { font-size: 1.3rem; }
+  .guitar-tab .rhythm-studio__result p { margin: var(--gs-space-2) 0; }
+  .guitar-tab .rhythm-studio__stage > p { margin: var(--gs-space-3) 0; }
+  .guitar-tab .rhythm-studio__lane { gap: var(--gs-space-1); }
+  .guitar-tab .rhythm-studio__stage h3 { margin-top: var(--gs-space-2); }
+}
 @media (max-width: 900px) {
   .guitar-tab .song-workspace { grid-template-columns: minmax(0, 1fr); }
   .guitar-tab .song-workspace__sidebar { display: none; }

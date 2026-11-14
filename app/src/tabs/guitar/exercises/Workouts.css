@@ -1,0 +1,85 @@
+.exercise-studio { width: 100%; max-width: 1120px; padding: var(--gs-space-5); }
+.exercise-studio__hero { padding: var(--gs-space-3) 0 var(--gs-space-4); max-width: 680px; }
+.exercise-studio__hero h1 { font-size: clamp(2rem,4vw,3rem); line-height: 1.12; letter-spacing: -.04em; margin: var(--gs-space-3) 0; }
+.exercise-studio__hero p { color: var(--gs-muted); line-height: 1.6; max-width: 580px; }
+.workout__eyebrow { color: var(--gs-lilac); font-size: .7rem; font-weight: 800; letter-spacing: .1em; }
+.exercise-studio__skills { display: flex; flex-wrap: wrap; gap: var(--gs-space-2); margin-bottom: var(--gs-space-5); }
+.exercise-studio__skills span { color: var(--gs-muted); font-size: .75rem; border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); padding: var(--gs-space-2) var(--gs-space-3); }
+.exercise-studio__cards { padding: 0; margin: 0; list-style: none; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--gs-space-5); }
+.exercise-card { --workout-color: var(--gs-lilac); display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: var(--gs-space-2) var(--gs-space-4); width: 100%; height: 100%; text-align: left; padding: var(--gs-space-5); border: 2px solid var(--gs-border); border-radius: var(--gs-radius-card); background: var(--gs-surface); color: var(--gs-text); box-shadow: 0 5px 0 var(--gs-border); font: inherit; cursor: pointer; }
+.exercise-card--orange { --workout-color: var(--gs-orange); }
+.exercise-card--blue { --workout-color: var(--gs-blue); }
+.exercise-card--teal { --workout-color: var(--gs-accent); }
+.exercise-card__icon { grid-column: 1; grid-row: 1 / 3; width: 64px; height: 64px; display: grid; place-items: center; border-radius: var(--gs-radius-control); background: color-mix(in srgb,var(--workout-color) 14%,var(--gs-raised)); color: var(--workout-color); font-size: 2rem; }
+.exercise-card__category { color: var(--workout-color); font-size: .65rem; font-weight: 800; letter-spacing: .08em; }
+.exercise-card > strong { font-size: 1.4rem; line-height: 1.2; }
+.exercise-card__description, .exercise-card > small, .exercise-card__action { grid-column: 1 / -1; }
+.exercise-card__description { color: var(--gs-muted); font-size: .9rem; line-height: 1.6; margin-top: var(--gs-space-2); }
+.exercise-card > small { color: var(--gs-muted); font-size: .75rem; }
+.exercise-card__action { margin-top: var(--gs-space-3); color: var(--workout-color); font-weight: 800; display: flex; justify-content: space-between; }
+.exercise-studio__footnote { color: var(--gs-muted); font-size: .75rem; line-height: 1.6; margin: var(--gs-space-5) 0 0; }
+.exercise-studio__toolbar { display: flex; align-items: center; gap: var(--gs-space-3); margin-bottom: var(--gs-space-3); }
+.exercise-studio__toolbar > span { font-size: .65rem; font-weight: 800; letter-spacing: .08em; color: var(--gs-lilac); }
+.exercise-studio__toolbar > small { margin-left: auto; color: var(--gs-muted); font-size: .7rem; }
+.exercise-studio button:not(.exercise-card), .workout__pool summary { min-height: var(--gs-control-height); }
+.exercise-studio__toolbar button, .workout button { font: inherit; color: var(--gs-text); background: var(--gs-raised); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); padding: var(--gs-space-2) var(--gs-space-3); font-size: .85rem; font-weight: 700; cursor: pointer; }
+.exercise-studio__toolbar button { color: var(--gs-accent); background: var(--gs-surface); }
+.workout { border: 2px solid var(--gs-border); border-radius: var(--gs-radius-card); padding: var(--gs-space-5); background: var(--gs-surface); display: grid; gap: var(--gs-space-4); }
+.workout__intro h2 { font-size: clamp(1.4rem,3vw,2rem); margin: var(--gs-space-1) 0 var(--gs-space-2); }
+.workout__intro p { font-size: .85rem; color: var(--gs-muted); margin: 0; line-height: 1.5; }
+.workout__setup-note { padding: var(--gs-space-4); background: var(--gs-raised); border-radius: var(--gs-radius-control); }
+.workout__setup-note p, .workout__complete p { color: var(--gs-muted); line-height: 1.6; font-size: .85rem; }
+.workout__setup-note > span { color: var(--gs-lilac); font-weight: 750; font-size: .9rem; }
+.workout__pool { border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); padding: var(--gs-space-3); }
+.workout__pool summary { display: flex; align-items: center; color: var(--gs-accent); font-size: .85rem; font-weight: 750; cursor: pointer; }
+.workout__presets, .workout__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gs-space-2); }
+.workout__presets { margin: var(--gs-space-2) 0; }
+.workout__chord-picks { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: var(--gs-space-2); }
+.workout button[aria-pressed="true"] { border-color: var(--gs-lilac); color: var(--gs-lilac); background: color-mix(in srgb,var(--gs-lilac) 10%,var(--gs-raised)); }
+.workout .workout__primary { background: var(--gs-accent); border-color: var(--gs-accent); color: var(--gs-on-solid); justify-self: start; }
+.workout__progress { display: flex; align-items: center; gap: var(--gs-space-3); font-size: .75rem; color: var(--gs-muted); }
+.workout__progress > span { flex: none; }
+.workout__progress progress { flex: 1; min-width: 0; width: 80px; height: 8px; accent-color: var(--gs-lilac); }
+.chord-workout__challenge { display: flex; align-items: center; justify-content: center; gap: var(--gs-space-5); }
+.chord-quiz { display: grid; grid-template-columns: minmax(140px,1fr) minmax(160px,1fr); align-items: center; gap: var(--gs-space-5); width: 100%; }
+.chord-quiz > .chord-diagram { width: 100%; max-width: 240px; max-height: 300px; margin: auto; padding: var(--gs-space-3); box-sizing: border-box; border-radius: var(--gs-radius-card); background: var(--gs-raised); }
+.chord-quiz__answers { display: grid; gap: var(--gs-space-3); }
+.chord-workout__hint { display: grid; justify-items: center; gap: var(--gs-space-2); min-width: 140px; max-width: 220px; color: var(--gs-lilac); }
+.chord-workout__hint > .chord-diagram { width: 100%; max-width: 140px; }
+.chord-workout__hint small { color: var(--gs-muted); font-size: .75rem; line-height: 1.4; text-align: center; }
+.workout__feedback { color: var(--gs-muted); font-size: .85rem; line-height: 1.5; margin: 0; min-height: 1.5em; }
+.workout__feedback--correct { color: var(--gs-hit); }
+.workout__feedback--wrong { color: var(--gs-warning); }
+.workout__complete h3 { margin: var(--gs-space-2) 0; font-size: 1.8rem; color: var(--gs-accent); }
+.workout__review { display: flex; flex-wrap: wrap; gap: var(--gs-space-3); margin: var(--gs-space-4) 0; }
+.workout__review details { padding: var(--gs-space-3); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); }
+.workout__review summary { cursor: pointer; color: var(--gs-lilac); font-size: .85rem; }
+.workout__review .chord-diagram { width: 150px; display: block; }
+.workout__actions > span { font-size: .75rem; color: var(--gs-muted); }
+.chord-builder { width: 100%; max-width: 430px; display: grid; gap: var(--gs-space-3); }
+.chord-builder__heading h3 { font-size: 1.2rem; margin: 0 0 var(--gs-space-1); }
+.chord-builder__heading p { color: var(--gs-muted); font-size: .75rem; line-height: 1.4; margin: 0; }
+.chord-builder__board { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: var(--gs-space-2); }
+.chord-builder fieldset { min-width: 0; padding: 0; margin: 0; border: 0; display: grid; gap: var(--gs-space-1); }
+.chord-builder legend { width: 100%; text-align: center; margin-bottom: var(--gs-space-2); font-size: .75rem; font-weight: 750; color: var(--gs-muted); }
+.chord-builder__board button { padding: var(--gs-space-1); font-size: .95rem; }
+.chord-builder fieldset.is-wrong { outline: 1px solid var(--gs-warning); border-radius: var(--gs-radius-control); }
+.chord-builder fieldset.is-correct { outline: 1px solid var(--gs-hit); border-radius: var(--gs-radius-control); }
+.rhythm-studio__settings { display: flex; flex-wrap: wrap; gap: var(--gs-space-3); }
+.rhythm-studio__settings label { flex: 1 1 160px; display: grid; gap: var(--gs-space-1); font-size: .75rem; color: var(--gs-muted); }
+.rhythm-studio select { border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); padding: var(--gs-space-2); background: var(--gs-raised); color: var(--gs-text); font: inherit; font-size: .85rem; min-width: 0; }
+.rhythm-studio__stage { padding: var(--gs-space-4); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-card); background: var(--gs-raised); text-align: center; }
+.rhythm-studio__stage h3 { font-size: 1.4rem; margin: var(--gs-space-2) 0; }
+.rhythm-studio__stage > p { color: var(--gs-muted); font-size: .85rem; line-height: 1.5; }
+.rhythm-studio__lane { display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); list-style: none; padding: 0; margin: var(--gs-space-4) 0; gap: var(--gs-space-2); }
+.rhythm-studio__lane li { display: grid; gap: var(--gs-space-1); justify-items: center; padding: var(--gs-space-3) var(--gs-space-1); border: 2px solid var(--gs-border); border-radius: var(--gs-radius-control); color: var(--gs-lilac); }
+.rhythm-studio__lane strong { font-size: 2rem; line-height: 1.2; }
+.rhythm-studio__lane span { font-size: .8rem; color: var(--gs-muted); }
+.rhythm-studio__lane .is-rest { color: var(--gs-muted); opacity: .6; border-style: dashed; }
+.rhythm-studio__lane .is-current { border-color: var(--gs-accent); background: var(--gs-accent-soft); opacity: 1; }
+.rhythm-studio .rhythm-studio__tap { min-height: 72px; padding: var(--gs-space-3) var(--gs-space-5); background: var(--gs-blue); color: var(--gs-on-solid); border-color: var(--gs-blue); font-size: 1.15rem; touch-action: manipulation; user-select: none; }
+.rhythm-studio__tap small { display: block; font-weight: 500; font-size: .75rem; margin-top: var(--gs-space-1); }
+.rhythm-studio__marks { display: flex; flex-wrap: wrap; gap: var(--gs-space-1); }
+.rhythm-studio__marks span { min-width: 24px; padding: var(--gs-space-1); text-align: center; border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); color: var(--gs-muted); }
+.rhythm-studio__marks .is-on { color: var(--gs-hit); border-color: var(--gs-hit); }
+.rhythm-studio__marks :is(.is-early,.is-late) { color: var(--gs-warning); }
