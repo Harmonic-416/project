@@ -137,3 +137,11 @@ note" already exists. Practice tests 54/54, lint clean. **Browser check pending 
 All items DONE except V18 (BLOCKED: strictness levels change thresholds — Eddie's call). Two DONE items still need a
 by-ear check once audio works: V16 (looping) and V9 (meter in Wait / Trouble). The loop keeps running only to drive
 the arranger experiment (3 strategy branches → Fable judge).
+
+## 2026-11-15 · audio back — V16 and V9 verified
+coreaudiod recovered on its own (AudioContext clock advancing again ~16:42).
+- **V16 loop:** take with misses → "Bars 9–12 · 🔁 Loop it": transport 18.8 → 27.6 s then wraps to 19.1 s; cursor back
+  on bar 9 ("was"); dock chip "🔁 Bars 9–12 ✕".
+- **V9:** Wait for me at −70¢ → meter "A bit higher" with the 35¢ band, "Hear note" + "Skip note ›"; Trouble spots on
+  phone → tuner strip agrees with the tally ("2 a half step off").
+- Fix: a spot starting in the pickup is labelled "Pickup–bar 5" instead of "Bars 0–5" (`spotLabel`, +1 test).
