@@ -16,7 +16,7 @@ Status: `TODO`, `DOING`, `DONE`, `BLOCKED`.
 
 | ID | Status | Item |
 |---|---|---|
-| V1 | TODO | **Live pitch feedback, glanceable.** Replace the tiny text pill ("A4 · target G4 (+23¢)") with a pitch meter beside the score while singing: target note name big, your pitch as a marker on a vertical lane with an in-tune band, colour state (in tune / close / off / octave), and plain-words direction ("a bit higher ↑"). Continuous trail line on the staff instead of loose dots; the current target note glows. |
+| V1 | DONE | **Live pitch feedback, glanceable.** Replace the tiny text pill ("A4 · target G4 (+23¢)") with a pitch meter beside the score while singing: target note name big, your pitch as a marker on a vertical lane with an in-tune band, colour state (in tune / close / off / octave), and plain-words direction ("a bit higher ↑"). Continuous trail line on the staff instead of loose dots; the current target note glows. |
 | V2 | TODO | **Song screen hierarchy.** One sticky bottom action bar: primary "Sing" (record attempt) + secondary Play/Stop + progress; mode cards compact (segmented control); drop helper-text noise. |
 | V3 | TODO | **Attempt result card.** Duolingo-style summary (stars, % in tune, notes hit, "trouble bars" chips that jump to the bar) instead of rows of jargon ("frames within 50¢"). |
 | V4 | TODO | **Songs home.** Song cards show useful info (voice parts, key, range, best stars, length) instead of identical gradient + 🎵; "Continue" row for the last song. |
