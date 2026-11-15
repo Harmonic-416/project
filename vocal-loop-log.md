@@ -57,3 +57,14 @@ animation sits on an inner <g> (a CSS transform would override the outer transla
 alternating 0 / ±170 / −60 ¢: badges appear as notes pass; after the take all notes carry badges.
 **Spotted for V3:** the result card says "45% in tune" (frames ≤50¢) next to "29 of 32 notes sung" (judge, 100¢)
 on a green card — two inconsistent numbers and jargon. Tests: +4 gradeNote/median. Lint clean.
+
+## 2026-11-15 · V3 · take summary card
+`practice/takeSummary.js` (pure): hit/total from judgeNotes, `starsFor`, honest headline ("Every note!" only at
+100%), missed notes grouped into runs of touching bars (bar numbers from new `scoreModel.bars`, pickup = 0), top 3
+by size in score order, direction from per-note medians (majority side; ≥⅓ each way = "unsteady"; none = "not
+heard"), distance in singer words (`howFar`: cents < 90, then half step / whole step). `TakeSummary.jsx` card with
+▶ Hear it (stop → seek → play). Old frame-count row removed; record-panel steps back around the card (no double
+border). sfx.perfect only at 100%; `recordStars('song:<fingerprint>')` for V4's cards.
+**Note for V18:** the judge counts a note after 3 on-pitch frames within 100¢ — a take alternating ±170¢ still
+scores 28–29/32. That leniency is the threshold question already parked for Eddie.
+Tests: +7 (`takeSummary.test.js`). Lint clean. Screenshots light/dark, desktop/phone.
