@@ -102,3 +102,12 @@ fixtures). One conflict (hero subtitle) → Jamie's hero kept, now "MIDI, MusicX
 `satb-features.mscz` renders with the MuseScore chip, key, pickup, repeat, two verses, p + hairpin; part tabs
 S/A/T/B/Piano. Not supported yet (agent): MuseScore ≤2, chord symbols, tremolos, ottavas, transposing instruments
 at concert pitch. PR #57's loadNotation test expects .mscz to be rejected — reconcile whichever merges second.
+
+## 2026-11-15 · V4 · song cards with facts
+`songs/songInfo.js`: fetch each built-in once per visit; MIDI via @tonejs/midi (non-percussion tracks with notes =
+parts, first = tune, duration), MusicXML by regex (score-parts, first part's pitches, measures). `voicesThatFit`
+uses the transpose agent's COMFORTABLE_RANGES (±1 st grace). `SongCardMeta` renders 👥 N parts / 🎤 Solo, length,
+range · voices, best stars (`song:<title>`). SongLibrary's `renderMeta` is opt-in (Guitar unchanged). Not done:
+the "Continue" row (needs a last-song store) — folded into V8's pass if cheap. Tests: songInfo (4).
+Full suite after V5: 16 failures all from load (avg ~15, arranger experiments running models); arrange +
+midiToMusicXml pass alone (50/50).

@@ -31,7 +31,7 @@ Re-ranked 2026-11-15 after `docs/vocal-community-research.md` (R-refs = its reco
 | V5 | DONE | **MuseScore import** — merge `feat/mscz-import`; uploader copy "MIDI, MusicXML or MuseScore". |
 | V16 | DONE | **Loop a passage**: drag across bars / "Loop this" on a trouble spot. (R-S3) |
 | V9 | TODO | **Wait for me / Trouble spots**: same meter; Wait plays the note once when it stops and offers Skip. (R-12) |
-| V4 | TODO | **Songs home cards** with useful info (parts, key, range, best stars) and a Continue row. |
+| V4 | DONE | **Songs home cards** with useful info (parts, key, range, best stars) and a Continue row. |
 | V17 | TODO | **Steadier score**: lyrics larger and higher-contrast, own staff highlighted in multi-part scores. (R-S1, partial — page layout is a bigger change) |
 | V8 | TODO | Phone (390×844) + dark-mode pass on every Vocal screen. |
 | V10 | TODO | Top tab bar: consistent icons; streak / sound buttons labelled. |
