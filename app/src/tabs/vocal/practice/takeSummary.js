@@ -83,6 +83,8 @@ export function summarizeTake({ line, hits, centsByNote, bars }) {
     .map(({ cents: _cents, ...spot }) => ({
       ...spot,
       label: spot.fromBar === null ? 'Start' : spot.fromBar === spot.toBar ? `Bar ${spot.fromBar}` : `Bars ${spot.fromBar}–${spot.toBar}`,
+      // Where the passage ends (the next bar's start), for looping it; null = the end of the song.
+      endTime: bars.find((bar) => spot.toBar !== null && bar.number === spot.toBar + 1)?.time ?? null,
     }))
 
   return { hit, total, ratio, stars: starsFor(ratio), title: headline(ratio), spots, moreSpots: Math.max(0, runs.length - spots.length) }

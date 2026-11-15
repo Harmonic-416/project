@@ -3,13 +3,13 @@ import './TakeSummary.css'
 /**
  * The card after a take (practice/takeSummary.js): stars and a headline from
  * the share of notes that landed — the same verdicts the staff shows — then
- * the few spots worth going back to, in words, each with a button that plays
- * the song from that bar. Pitch accuracy and loudness are secondary lines;
+ * the few spots worth going back to, in words, each with a button that puts
+ * that passage on repeat. Pitch accuracy and loudness are secondary lines;
  * accuracy counts a note sung an octave away as in tune, the way the notes
  * are judged, so a bass singing a treble line isn't told they're 0% in tune.
  * `children` holds the take's actions (download, clear, share).
  */
-function TakeSummary({ summary, accuracy, octaveAccuracy, dynamicsLine, onHear, children }) {
+function TakeSummary({ summary, accuracy, octaveAccuracy, dynamicsLine, onLoop, children }) {
   const tier = summary.ratio >= 0.9 ? 'great' : summary.ratio >= 0.6 ? 'good' : 'start'
   const octaveHelps = octaveAccuracy !== null && octaveAccuracy > accuracy + 0.5
   return (
@@ -46,8 +46,8 @@ function TakeSummary({ summary, accuracy, octaveAccuracy, dynamicsLine, onHear, 
                 <span>
                   <b>{spot.label}</b> · {spot.words}
                 </span>
-                <button type="button" className="take-summary__hear" onClick={() => onHear(spot.time)}>
-                  ▶ Hear it
+                <button type="button" className="take-summary__hear" onClick={() => onLoop(spot)}>
+                  🔁 Loop it
                 </button>
               </li>
             ))}

@@ -413,3 +413,17 @@
 @media (max-width: 560px) {
   .vocal-tab__format { display: none; }
 }
+
+/* A passage on repeat: says which, and one tap stops looping. */
+.v-dock__loop {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 2px solid var(--v-primary);
+  border-radius: var(--v-radius-pill);
+  background: var(--v-primary-soft);
+  color: var(--v-primary-dark);
+  font: inherit;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}

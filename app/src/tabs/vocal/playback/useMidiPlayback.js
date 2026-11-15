@@ -144,9 +144,45 @@ export function useMidiPlayback({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playbackSchedule, cursorTimestamps, beats])
 
+  /** Put the cursor on the step sounding at `time` (score seconds), without touching the Transport. */
+  const cursorTo = useCallback(
+    (time) => {
+      const stepIndex = cursorTimestamps.filter((t) => t <= time).length - 1
+      sheetMusicRef.current?.reset()
+      for (let i = 0; i < stepIndex; i += 1) sheetMusicRef.current?.next()
+    },
+    [cursorTimestamps, sheetMusicRef],
+  )
+
+  // A passage on repeat ({ start, end, label } in score seconds), on the one
+  // Transport: notes, cursor and metronome all wrap together. Cleared when
+  // the score itself changes (another song or part).
+  const [loop, setLoopState] = useState(null)
+  const loopRef = useRef(null)
+  const setLoop = useCallback((range) => {
+    loopRef.current = range
+    setLoopState(range)
+    if (!range) {
+      Tone.Transport.loop = false
+      return
+    }
+    Tone.Transport.loopStart = scoreTicks(range.start)
+    Tone.Transport.loopEnd = scoreTicks(range.end)
+    Tone.Transport.loop = true
+  }, [])
   const play = useCallback(async () => {
     if (!playbackSchedule.length || countInRef.current) return
     await Tone.start()
+    // With a passage on repeat, Play starts inside it.
+    const looped = loopRef.current
+    if (looped) {
+      const at = getScoreSeconds()
+      if (at < looped.start || at >= looped.end) {
+        setScoreSeconds(looped.start)
+        cursorTo(looped.start)
+        setPosition(looped.start)
+      }
+    }
     sheetMusicRef.current?.show()
     const lead = metronomeRef.current.countIn ? countIn(beats, getScoreSeconds()) : null
     if (!lead || !clickRef.current) {
@@ -178,7 +214,7 @@ export function useMidiPlayback({
     }, (startAt - Tone.now()) * 1000)
     countInRef.current = { timer, token }
     setState('counting')
-  }, [playbackSchedule, sheetMusicRef, beats, flash])
+  }, [playbackSchedule, sheetMusicRef, beats, flash, cursorTo])
 
   const pause = useCallback(() => {
     if (!cancelCountIn()) Tone.Transport.pause()
@@ -199,13 +235,19 @@ export function useMidiPlayback({
     (time) => {
       const clamped = Math.max(0, Math.min(time, duration))
       setScoreSeconds(clamped)
-      const stepIndex = cursorTimestamps.filter((t) => t <= clamped).length - 1
-      sheetMusicRef.current?.reset()
-      for (let i = 0; i < stepIndex; i += 1) sheetMusicRef.current?.next()
+      cursorTo(clamped)
       setPosition(clamped)
     },
-    [cursorTimestamps, duration, sheetMusicRef],
+    [cursorTo, duration],
   )
+
+  useEffect(() => () => setLoop(null), [cursorTimestamps, setLoop])
+  useEffect(() => {
+    if (!loop) return undefined
+    const onLoop = (time) => Tone.getDraw().schedule(() => cursorTo(loop.start), time)
+    Tone.Transport.on('loop', onLoop)
+    return () => Tone.Transport.off('loop', onLoop)
+  }, [loop, cursorTo])
 
   // Drive the position readout (for the scrub bar) while playing.
   useEffect(() => {
@@ -224,5 +266,5 @@ export function useMidiPlayback({
     return () => cancelAnimationFrame(raf)
   }, [state, duration, stop])
 
-  return { state, position, duration, rate, beat, play, pause, stop, seek }
+  return { state, position, duration, rate, beat, play, pause, stop, seek, loop, setLoop }
 }

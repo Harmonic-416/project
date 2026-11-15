@@ -32,7 +32,7 @@ describe('summarizeTake', () => {
     const centsByNote = new Map([[4, -30], [5, -35], [6, -25], [7, 80]]) // bars 3–4, mostly flat
     const take = summarizeTake({ line, hits: allBut([4, 5, 6, 7]), centsByNote, bars })
     expect(take.spots).toHaveLength(1)
-    expect(take.spots[0]).toMatchObject({ label: 'Bars 3–4', direction: 'flat', glyph: '↑', time: 4 })
+    expect(take.spots[0]).toMatchObject({ label: 'Bars 3–4', direction: 'flat', glyph: '↑', time: 4, endTime: 8 })
     expect(take.spots[0].words).toBe('flat (about 30¢ low)')
   })
 
@@ -64,5 +64,12 @@ describe('howFar', () => {
     expect(howFar(110)).toBe('about a half step')
     expect(howFar(170)).toBe('about a whole step')
     expect(howFar(400)).toBe('more than a whole step')
+  })
+})
+
+describe('a spot at the last bar', () => {
+  it('loops to the end of the song (no next bar)', () => {
+    const take = summarizeTake({ line, hits: allBut([15]), centsByNote: new Map(), bars })
+    expect(take.spots[0]).toMatchObject({ label: 'Bar 8', endTime: null })
   })
 })

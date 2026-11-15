@@ -595,6 +595,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const handleModeChange = useCallback(
     (mode) => {
       playback.stop()
+      playback.setLoop(null) // a loop belongs to Listen's transport; the other modes run their own
       setPracticeMode(mode)
     },
     [playback],
@@ -990,6 +991,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               <div className="v-dock">
                 {/* RecordPanel portals its Sing / Stop button here: the one primary action, next to Play. */}
                 {practiceMode === 'listen' && !viewingShared && <div className="v-dock__action" ref={setActionSlot} />}
+                {playback.loop && (
+                  <button
+                    type="button"
+                    className="v-dock__loop"
+                    onClick={() => playback.setLoop(null)}
+                    title="Stop looping"
+                  >
+                    🔁 {playback.loop.label} <span aria-hidden="true">✕</span>
+                  </button>
+                )}
                 <PlaybackControls
                   state={playback.state}
                   position={playback.position}

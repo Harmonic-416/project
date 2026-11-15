@@ -121,6 +121,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     clearNoteMarks()
     overlay.clear()
     liveJudgeRef.current = { tracker: createTroubleTracker(judgedLine), cents: new Map() }
+    playback.setLoop(null) // a take is judged front to back, once
     playback.stop()
     await mic.start()
     await playback.play()
@@ -268,9 +269,9 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
           accuracy={result.accuracy}
           octaveAccuracy={result.octaveAgnosticAccuracy ?? null}
           dynamicsLine={dynamicsLine}
-          onHear={(time) => {
+          onLoop={(spot) => {
             playback.stop()
-            playback.seek(time)
+            playback.setLoop({ start: spot.time, end: spot.endTime ?? playback.duration, label: spot.label })
             playback.play()
           }}
         >
