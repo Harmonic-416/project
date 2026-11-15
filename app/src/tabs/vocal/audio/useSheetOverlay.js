@@ -138,9 +138,42 @@ export function useSheetOverlay(sheetMusicRef, scoreModel) {
     geometry.svg.appendChild(circle)
   }, [])
 
+  /**
+   * A grade badge above a note that has gone by (pitchReading.gradeNote):
+   * a coloured disc with ✓ / ↑ / ↓, so the verdict reads by shape as well as colour.
+   */
+  const addBadge = useCallback((note, grade) => {
+    const geometry = geometryRef.current
+    if (!geometry) return
+    const position = positionFor(geometry.steps, note.time)
+    if (!position) return
+    const y = pitchToY(note.midi, position.top, geometry.staffPx, position.bottom) - geometry.staffPx * 0.45
+    const group = document.createElementNS(SVG_NS, 'g')
+    group.setAttribute('class', `pitch-badge pitch-badge--${grade.tier}`)
+    group.setAttribute('transform', `translate(${position.x.toFixed(1)} ${y.toFixed(1)})`)
+    const title = document.createElementNS(SVG_NS, 'title')
+    title.textContent = grade.label
+    const disc = document.createElementNS(SVG_NS, 'circle')
+    disc.setAttribute('r', '7')
+    const text = document.createElementNS(SVG_NS, 'text')
+    text.setAttribute('text-anchor', 'middle')
+    text.setAttribute('dominant-baseline', 'central')
+    text.textContent = grade.glyph
+    // Position on the outer group, animation on the inner one: a CSS transform would replace the translate.
+    const pop = document.createElementNS(SVG_NS, 'g')
+    pop.setAttribute('class', 'pitch-badge__pop')
+    pop.append(title, disc, text)
+    group.append(pop)
+    geometry.svg.appendChild(group)
+  }, [])
+
+  const clearBadges = useCallback(() => {
+    geometryRef.current?.svg.querySelectorAll('.pitch-badge').forEach((badge) => badge.remove())
+  }, [])
+
   const clear = useCallback(() => {
     geometryRef.current?.svg.replaceChildren()
   }, [])
 
-  return { addSample, clear }
+  return { addSample, addBadge, clearBadges, clear }
 }

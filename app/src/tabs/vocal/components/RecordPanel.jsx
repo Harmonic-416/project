@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as Tone from 'tone'
 import './RecordPanel.css'
@@ -12,6 +12,8 @@ import ShareAttempt from './ShareAttempt.jsx'
 import SessionAttempts from './SessionAttempts.jsx'
 import DynamicsMeter from './DynamicsMeter.jsx'
 import PitchMeter from './PitchMeter.jsx'
+import { gradeNote, median } from './pitchReading.js'
+import { createTroubleTracker, melodyLine, noteDistanceCents } from '../practice/practiceLogic.js'
 import { describeDynamics, summarizeDynamics } from '../audio/dynamics.js'
 import { sfx } from '../feedback/sfx.js'
 import { recordActivity } from '../feedback/progress.js'
@@ -39,6 +41,12 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
  * singer is already looking. The Sing / Stop button is portalled into
  * `actionSlot` (the player dock), so starting an attempt is the screen's
  * primary action rather than a button below the transport.
+ *
+ * Each note is graded on the staff as soon as it has gone by — a ✓ or an
+ * arrow badge, and the note head turns green or red — by the same Trouble
+ * spots tracker judgeNotes runs at the end, so the live marks and the final
+ * result always agree. Singers learn more from a graded staff after the
+ * phrase than from watching a meter during it (docs/vocal-community-research.md).
  */
 function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null, meterSlot = null, actionSlot = null }) {
   const melody = useMemo(
@@ -54,6 +62,9 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   const [recording, setRecording] = useState(null)
   const [notes, setNotes] = useState(null) // { hit, missed, total }
   const [samples, setSamples] = useState([])
+  // The line judged note by note while singing (entries keep `index` into scoreModel.notes).
+  const judgedLine = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
+  const liveJudgeRef = useRef(null) // { tracker, cents: Map<lineIndex, number[]> } during an attempt
 
   const clearNoteMarks = useCallback(() => {
     sheetMusicRef.current?.clearMarks(SUNG_CLASS)
@@ -63,12 +74,37 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   // Leaving (another part, another mode, another song) takes the marks along.
   useEffect(() => clearNoteMarks, [clearNoteMarks])
 
+  const gradeOnStaff = useCallback(
+    (note, hit) => {
+      const lineIndex = judgedLine.indexOf(note)
+      const sung = liveJudgeRef.current?.cents.get(lineIndex) ?? []
+      sheetMusicRef.current?.markNote(note.index, hit ? SUNG_CLASS : MISSED_CLASS)
+      overlay.addBadge(note, gradeNote({ hit, cents: median(sung) }))
+    },
+    [judgedLine, overlay, sheetMusicRef],
+  )
+
   const handleSample = useCallback(
     (sample) => {
       const target = findActiveNote(melody, sample.time)
       overlay.addSample(sample, target ? classifyCents(centsOff(sample.midi, target.midi)) : 'rest')
+      const judge = liveJudgeRef.current
+      if (!judge) return
+      // Which way a note was off: what was sung during its body, after the attack.
+      const lineIndex = judgedLine.findIndex(
+        (note) => sample.time >= note.time + Math.min(0.1, note.duration / 2) && sample.time < note.time + note.duration,
+      )
+      if (lineIndex >= 0) {
+        const list = judge.cents.get(lineIndex) ?? []
+        list.push(noteDistanceCents(sample.midi, judgedLine[lineIndex].midi))
+        judge.cents.set(lineIndex, list)
+      }
+      judge.tracker.addSample(sample)
+      const { hit, missed } = judge.tracker.collect(sample.time)
+      hit.forEach((note) => gradeOnStaff(note, true))
+      missed.forEach((note) => gradeOnStaff(note, false))
     },
-    [melody, overlay],
+    [melody, overlay, judgedLine, gradeOnStaff],
   )
 
   const mic = useMicPitch({ getTime: getTransportSeconds, onSample: handleSample })
@@ -79,11 +115,12 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     setNotes(null)
     clearNoteMarks()
     overlay.clear()
+    liveJudgeRef.current = { tracker: createTroubleTracker(judgedLine), cents: new Map() }
     playback.stop()
     await mic.start()
     await playback.play()
     setArmed(true)
-  }, [clearNoteMarks, mic, overlay, playback])
+  }, [clearNoteMarks, mic, overlay, playback, judgedLine])
 
   const finishAttempt = useCallback(async () => {
     setArmed(false)
@@ -91,13 +128,19 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     if (playback.state === 'counting' || playback.state === 'playing' || playback.state === 'paused') playback.stop()
     const sung = [...mic.getSamples()]
     const judged = judgeNotes(sung, scoreModel.notes)
-    judged.hit.forEach((note) => sheetMusicRef.current?.markNote(note.index, SUNG_CLASS))
-    judged.missed.forEach((note) => sheetMusicRef.current?.markNote(note.index, MISSED_CLASS))
+    // The final word: re-grade every note (the live pass hasn't closed the last ones yet).
+    overlay.clearBadges()
+    const hits = new Set(judged.hit.map((note) => note.index))
+    const misses = new Set(judged.missed.map((note) => note.index))
+    judgedLine.forEach((note) => {
+      if (hits.has(note.index) || misses.has(note.index)) gradeOnStaff(note, hits.has(note.index))
+    })
+    liveJudgeRef.current = null
     setRecording(blob)
     setSamples(sung)
     setNotes(judged)
     setResult(scoreAttempt(sung, melody))
-  }, [melody, mic, playback, scoreModel, sheetMusicRef])
+  }, [melody, mic, playback, scoreModel, overlay, judgedLine, gradeOnStaff])
 
   // Playback reaching the end (or Stop) ends the attempt. Deferred a tick so
   // the state updates in finishAttempt don't cascade inside this effect.

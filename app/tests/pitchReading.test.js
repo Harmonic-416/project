@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { classifyCents } from '../src/tabs/vocal/audio/pitchDetector.js'
-import { foldOctave, METER_RANGE_CENTS, readPitch } from '../src/tabs/vocal/components/pitchReading.js'
+import { foldOctave, gradeNote, median, METER_RANGE_CENTS, readPitch } from '../src/tabs/vocal/components/pitchReading.js'
 
 const read = (cents) => readPitch({ sung: true, hasTarget: true, cents, verdict: classifyCents(cents) })
 
@@ -36,5 +36,25 @@ describe('readPitch — what the live meter says', () => {
     expect(r.state).toBe('octave')
     expect(r.offset).toBeCloseTo(10 / METER_RANGE_CENTS)
     expect(foldOctave(-1190)).toBeCloseTo(10)
+  })
+})
+
+describe('gradeNote — the badge a note gets once it has gone by', () => {
+  it('ticks a hit whatever the cents said', () => {
+    expect(gradeNote({ hit: true, cents: 80 })).toMatchObject({ tier: 'hit', glyph: '✓' })
+  })
+
+  it('points a missed note the way to go, graded by classifyCents', () => {
+    expect(gradeNote({ hit: false, cents: -70 })).toMatchObject({ tier: 'close', glyph: '↑', label: 'a little flat' })
+    expect(gradeNote({ hit: false, cents: 240 })).toMatchObject({ tier: 'off', glyph: '↓', label: 'off sharp' })
+  })
+
+  it('says a silent note was not heard rather than wrong', () => {
+    expect(gradeNote({ hit: false, cents: null })).toMatchObject({ tier: 'silent', label: 'not heard' })
+  })
+
+  it('takes the median so a scoop into the note does not decide its direction', () => {
+    expect(median([-300, 10, 12, 15])).toBe(11)
+    expect(median([])).toBeNull()
   })
 })

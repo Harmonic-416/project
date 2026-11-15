@@ -6,6 +6,8 @@
  * singer can act on mid-phrase ("a bit higher") and a position on the lane.
  */
 
+import { classifyCents } from '../audio/pitchDetector.js'
+
 /** Cents shown above and below the target on the lane; further off pins to the edge. */
 export const METER_RANGE_CENTS = 200
 
@@ -35,4 +37,28 @@ export function readPitch({ sung, hasTarget, cents, verdict }) {
     return { state: 'close', words: sharp ? 'A bit lower' : 'A bit higher', arrow: sharp ? '↓' : '↑', offset }
   }
   return { state: 'wrong', words: sharp ? 'Go lower' : 'Go higher', arrow: sharp ? '⇊' : '⇈', offset }
+}
+
+/** Middle value of a list of numbers (null when empty). */
+export function median(values) {
+  if (!values.length) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
+
+/**
+ * The mark a note gets on the staff once it has gone by. Whether it was hit
+ * is the judge's call (the Trouble spots tracker, the same one that scores
+ * the take); `cents` is the median of what was sung during the note, folded
+ * to the nearest octave, and only says which way a missed note was off —
+ * by classifyCents, so "close" means what it means everywhere else.
+ * @returns {{ tier: 'hit'|'close'|'off'|'silent', glyph: string, label: string }}
+ */
+export function gradeNote({ hit, cents }) {
+  if (hit) return { tier: 'hit', glyph: '✓', label: 'on pitch' }
+  if (cents === null || cents === undefined) return { tier: 'silent', glyph: '·', label: 'not heard' }
+  const up = cents < 0
+  const tier = classifyCents(cents) === 'wrong' ? 'off' : 'close'
+  return { tier, glyph: up ? '↑' : '↓', label: `${tier === 'off' ? 'off' : 'a little'} ${up ? 'flat' : 'sharp'}` }
 }

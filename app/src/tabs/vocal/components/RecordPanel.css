@@ -138,3 +138,14 @@
   font-weight: 800;
   color: var(--v-bad);
 }
+
+/* Per-note grades over the score (useSheetOverlay.addBadge): disc + glyph, colour and shape together. */
+.pitch-badge circle { stroke: var(--v-card); stroke-width: 1.5; }
+.pitch-badge text { fill: var(--v-on-accent); font-size: 10px; font-weight: 800; }
+.pitch-badge--hit circle { fill: var(--v-good); }
+.pitch-badge--close circle { fill: var(--v-gold-dark); }
+.pitch-badge--off circle { fill: var(--v-bad); }
+.pitch-badge--silent circle { fill: var(--v-border-strong); }
+.pitch-badge--silent text { fill: var(--v-text); }
+.pitch-badge__pop { animation: v-pop var(--v-med) var(--v-ease-bounce) both; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) { .pitch-badge__pop { animation: none; } }
