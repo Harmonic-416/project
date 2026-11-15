@@ -47,3 +47,13 @@ transposition with proper respelling + treble-8 clef switch; voice ranges + "Mea
 Settings sheet under "Key"; Export uses the transposed `exportable`; summary shows "Key −3". 97 related tests pass.
 Open questions from the agent (shared attempts don't store the shift — needs a migration; per-key run history;
 fit weights by ear) left for Eddie.
+
+## 2026-11-15 · V12 · per-note grades on the staff
+Live `createTroubleTracker(melodyLine(notes))` (judgeNotes' own judge and defaults) runs inside RecordPanel; each
+resolved note is marked (green/red head) and badged via `useSheetOverlay.addBadge` — ✓ / ↑ / ↓ / · in a disc
+(colour + shape). Direction = median folded cents during the note body (after a 0.1 s attack) → `gradeNote`
+(classifyCents: close → amber, wrong → red). finishAttempt re-grades the whole line from judgeNotes. Badge pop
+animation sits on an inner <g> (a CSS transform would override the outer translate). Verified with a fake mic
+alternating 0 / ±170 / −60 ¢: badges appear as notes pass; after the take all notes carry badges.
+**Spotted for V3:** the result card says "45% in tune" (frames ≤50¢) next to "29 of 32 notes sung" (judge, 100¢)
+on a green card — two inconsistent numbers and jargon. Tests: +4 gradeNote/median. Lint clean.
