@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as Tone from 'tone'
 import './RecordPanel.css'
 import { useMicPitch } from '../audio/useMicPitch.js'
@@ -10,6 +11,7 @@ import { getScoreSeconds } from '../playback/scoreClock.js'
 import ShareAttempt from './ShareAttempt.jsx'
 import SessionAttempts from './SessionAttempts.jsx'
 import DynamicsMeter from './DynamicsMeter.jsx'
+import PitchMeter from './PitchMeter.jsx'
 import { describeDynamics, summarizeDynamics } from '../audio/dynamics.js'
 import { sfx } from '../feedback/sfx.js'
 import { recordActivity } from '../feedback/progress.js'
@@ -32,9 +34,11 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
  * compressed recording can be downloaded, and the attempt shared as a link
  * (see ShareAttempt; `shareSong` describes the song without uploading it).
  * `session` (usePracticeSession, from VocalTab) collects the attempts of
- * this sitting under the panel ("This session").
+ * this sitting under the panel ("This session"). While listening, the live
+ * PitchMeter is portalled into `meterSlot`: beside the score, where the
+ * singer is already looking.
  */
-function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null }) {
+function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null, meterSlot = null }) {
   const melody = useMemo(
     () =>
       scoreModel
@@ -146,7 +150,19 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
             {mic.status === 'requesting' ? 'Starting microphone…' : '● Record attempt'}
           </button>
         )}
-        {listening && (
+        {listening &&
+          meterSlot &&
+          createPortal(
+            <PitchMeter
+              hasTarget={Boolean(liveTarget)}
+              targetName={liveTarget ? midiToNoteName(liveTarget.midi) : null}
+              sungName={live?.noteName ?? null}
+              cents={liveCents}
+              verdict={liveVerdict}
+            />,
+            meterSlot,
+          )}
+        {listening && !meterSlot && (
           <span className={`record-panel__live record-panel__live--${liveVerdict}`} aria-live="polite">
             {live
               ? `${live.noteName}${liveTarget ? ` · target ${midiToNoteName(liveTarget.midi)} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : ' · rest'}`

@@ -14,6 +14,7 @@ import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
+import './components/PitchMeter.css'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
 import WarmUp from './warmup/WarmUp.jsx'
@@ -96,6 +97,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
   const [arrangement, setArrangement] = useState(null) // what the arranger did, for the song it just wrote (arrange/pipeline.js)
   const sheetMusicRef = useRef(null)
+  // Element the live pitch meter portals into, beside the score (state so the portal re-renders when it mounts).
+  const [meterSlot, setMeterSlot] = useState(null)
   const [sfxMuted, setSfxMuted] = useSfxMuted()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const progress = useVocalProgress()
@@ -849,13 +852,17 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               </button>
               <span className="v-settings-bar__summary">{settingsSummary}</span>
             </div>
-            <SheetMusicViewer
-              ref={sheetMusicRef}
-              content={viewerContent}
-              onReady={handleSheetReady}
-              onError={handleSheetError}
-              tempoFactor={tempo / 100}
-            />
+            <div className="v-score-row">
+              <SheetMusicViewer
+                ref={sheetMusicRef}
+                content={viewerContent}
+                onReady={handleSheetReady}
+                onError={handleSheetError}
+                tempoFactor={tempo / 100}
+              />
+              {/* The live pitch meter is portalled here while someone sings (RecordPanel). */}
+              <div className="v-score-row__meter" ref={setMeterSlot} />
+            </div>
             <Sheet open={settingsOpen} title="Song settings" onClose={closeSettings}>
               {multiPart && (
                 <div className="v-setting">
@@ -948,6 +955,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 supabase={supabase}
                 shareSong={shareSong}
                 session={auth.user && supabase ? practiceSession : null}
+                meterSlot={meterSlot}
               />
             )}
           </>

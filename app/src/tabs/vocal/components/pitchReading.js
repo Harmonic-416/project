@@ -1,0 +1,38 @@
+/**
+ * What the live pitch meter says, as a pure function of the verdict that
+ * pitchDetector.classifyCents already gave. Nothing here judges: the
+ * tolerance and the verdict come from the detector, so the meter can never
+ * disagree with the score at the end. It only turns cents into words a
+ * singer can act on mid-phrase ("a bit higher") and a position on the lane.
+ */
+
+/** Cents shown above and below the target on the lane; further off pins to the edge. */
+export const METER_RANGE_CENTS = 200
+
+/** The detector's in-tune tolerance (classifyCents' default), drawn as the lane's band. */
+export const IN_TUNE_CENTS = 50
+
+/** Fold a distance into the nearest octave, for "right note, other octave". */
+export function foldOctave(cents) {
+  return ((((cents / 100) % 12) + 18) % 12 - 6) * 100
+}
+
+/**
+ * @param {{ sung: boolean, hasTarget: boolean, cents: number|null, verdict: string }} input
+ * @returns {{ state: string, words: string, arrow: string, offset: number }}
+ *   state: idle | rest | in-tune | close | wrong | octave (a CSS modifier);
+ *   offset: −1 (bottom of the lane, flat) … 1 (top, sharp).
+ */
+export function readPitch({ sung, hasTarget, cents, verdict }) {
+  if (!hasTarget) return { state: 'rest', words: 'Rest — breathe', arrow: '', offset: 0 }
+  if (!sung || cents === null) return { state: 'idle', words: 'Sing this note', arrow: '', offset: 0 }
+  const shown = verdict === 'octave' ? foldOctave(cents) : cents
+  const offset = Math.max(-1, Math.min(1, shown / METER_RANGE_CENTS))
+  if (verdict === 'in-tune') return { state: 'in-tune', words: 'On pitch', arrow: '✓', offset }
+  if (verdict === 'octave') return { state: 'octave', words: 'Right note, other octave', arrow: '↕', offset }
+  const sharp = shown > 0
+  if (verdict === 'close') {
+    return { state: 'close', words: sharp ? 'A bit lower' : 'A bit higher', arrow: sharp ? '↓' : '↑', offset }
+  }
+  return { state: 'wrong', words: sharp ? 'Go lower' : 'Go higher', arrow: sharp ? '⇊' : '⇈', offset }
+}
