@@ -51,7 +51,7 @@ import { VOICINGS } from './arrange/arrange.js'
 import { readPartNotes, songKey, transposeMusicXml } from './transpose/transposeXml.js'
 import { useSongTranspose } from './transpose/useSongTranspose.js'
 
-const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
+const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL', musescore: 'MuseScore' }
 const NO_SCHEDULE = []
 const NO_TIMESTAMPS = []
 const NO_BEATS = []
@@ -632,7 +632,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             </span>
             <div>
               <h1 className="vocal-hero__title">What do you want to sing today?</h1>
-              <p className="vocal-hero__subtitle">Pick a song, or bring your own MIDI or MusicXML file.</p>
+              <p className="vocal-hero__subtitle">Pick a song, or bring your own MIDI, MusicXML or MuseScore file.</p>
             </div>
           </header>
 
@@ -806,7 +806,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     const shareSong = notation && {
       songId: notation.catalogSongId,
       title: notation.title,
-      format: notation.format,
+      // Shared attempts record the format as MIDI / MusicXML / MXL; a MuseScore file opens as MusicXML.
+      format: notation.format === 'musescore' ? 'musicxml' : notation.format,
       fingerprint: notation.fingerprint,
       builtin: notation.builtin,
       partId: selectedPart?.id ?? null,
