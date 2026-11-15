@@ -3,6 +3,7 @@ import './theme/vocalTheme.css'
 import './theme/motion.css'
 import './VocalTab.css'
 import SongLibrary from './components/SongLibrary.jsx'
+import SongCardMeta from './components/SongCardMeta.jsx'
 import OnlineSongs from './components/OnlineSongs.jsx'
 import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
@@ -78,6 +79,8 @@ const SECTIONS = [
 // `sessionsToOpen` ({ songId, songFingerprint, songTitle }, from Home's
 // "Working on") opens the Practice sessions view for that song;
 // `onSessionsOpened` tells App it has.
+const renderSongMeta = (song) => <SongCardMeta song={song} />
+
 function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
   const [section, setSection] = useState('songs') // songs | learn | exercises | compose | warmup (the capsule bar)
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
@@ -671,7 +674,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           </div>
 
           <h2 className="vocal-tab__section-title">Built-in songs</h2>
-          <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
+          <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} renderMeta={renderSongMeta} />
           <div className="vocal-upload">
             <span className="vocal-upload__plus" aria-hidden="true">
               ＋

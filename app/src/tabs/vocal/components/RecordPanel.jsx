@@ -179,8 +179,9 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
 
   const dynamicsLine = useMemo(() => (result ? describeDynamics(summarizeDynamics(samples)) : null), [result, samples])
 
-  // A scored take: the finish sound ("perfect" only for every note) and its stars, best kept per song.
-  const songKey = shareSong?.fingerprint ?? title
+  // A scored take: the finish sound ("perfect" only for every note) and its stars, best kept per
+  // song title — the key the song cards read (SongCardMeta) before a file is opened.
+  const songKey = title
   useEffect(() => {
     if (!take) return
     if (take.ratio >= 1) sfx.perfect()

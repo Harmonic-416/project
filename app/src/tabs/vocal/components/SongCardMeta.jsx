@@ -1,0 +1,55 @@
+import { useEffect, useState } from 'react'
+import { fetchSongInfo, lengthLabel } from '../songs/songInfo.js'
+import { bestStars } from '../feedback/progress.js'
+import { useVocalProgress } from '../feedback/useProgress.js'
+
+/**
+ * The facts on a built-in song card: solo or how many parts, length, the
+ * tune's range and who can sing it as written, and the best stars sung so
+ * far on this device. Read from the file once (songs/songInfo.js); until
+ * then — or for a file it can't read — just the stars, if any.
+ */
+function SongCardMeta({ song }) {
+  const [info, setInfo] = useState(null)
+  const progress = useVocalProgress()
+  const stars = bestStars(`song:${song.title}`, progress)
+
+  useEffect(() => {
+    let live = true
+    fetchSongInfo(song).then((next) => {
+      if (live) setInfo(next)
+    })
+    return () => {
+      live = false
+    }
+  }, [song])
+
+  const length = info && lengthLabel(info)
+  return (
+    <span className="song-meta">
+      {info && (
+        <span className="song-meta__facts">
+          <span>{info.partCount > 1 ? `👥 ${info.partCount} parts` : '🎤 Solo'}</span>
+          {length && <span>{length}</span>}
+        </span>
+      )}
+      {info?.range && (
+        <span className="song-meta__range" title={`The tune goes from ${info.range.label}`}>
+          {info.range.label}
+          {info.fits.length > 0 ? ` · ${info.fits.join(', ')}` : ' · wide range'}
+        </span>
+      )}
+      {stars !== null && (
+        <span className="song-meta__stars" aria-label={`Best: ${stars} of 3 stars`}>
+          {[0, 1, 2].map((i) => (
+            <span key={i} className={i < stars ? 'song-meta__star--on' : undefined} aria-hidden="true">
+              ★
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  )
+}
+
+export default SongCardMeta
