@@ -86,3 +86,12 @@ this guards future ones and keeps app sounds out of recordings). Test `sfxMicLiv
 ACCOMPANIMENTS (a Listen-only rung reads as "With all parts" there). `withOthers = accompaniment !== 'solo'`, so
 runs / shared attempts keep solo|all. Settings label "What plays" in Listen. Tests: `partMix.test.js` (4);
 practiceLogic / practiceScoring / songFollow 48 pass. Not verified by ear (headless) — velocity path unit-tested.
+
+## 2026-11-15 · V16 · loop a trouble spot (d8b71b0)
+`useMidiPlayback` gains `loop` / `setLoop({start,end,label})` on Tone.Transport.loop (ticks via scoreTicks), a
+'loop' listener that moves the cursor back (`cursorTo`, split out of `seek`), Play starting inside the loop, and a
+clear on score change. Take summary spots: 🔁 Loop it (end = next bar's start, `endTime`, null → song end). Dock
+chip "🔁 Bars 3–4 ✕". Cleared on Sing and on mode change. Tests: takeSummary endTime (+1).
+**NOT verified in a browser:** the Mac's audio clock stalled mid-session (AudioContext 'running' but currentTime
+frozen, in headless and the MCP Chrome alike; reproduced with the V16 change stashed) — coreaudiod needs a restart
+(`sudo killall coreaudiod`), which is Eddie's call. Re-verify looping by ear once audio is back.
