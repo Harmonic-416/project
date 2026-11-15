@@ -118,3 +118,11 @@ has several parts, re-applied in the render override; `RenderPartNames/Abbreviat
 Verified: SATB .mscz "Everyone" → Soprano black, Alto dimmed; Amazing Grace on phone without "Voice" label.
 Not done (bigger change): page/line layout instead of the sideways strip, current-syllable highlight, dimming the
 other parts' lyrics (OSMD exposes no per-staff lyric element).
+
+## 2026-11-15 · V8 + V10 · phone / dark pass, tab bar
+Shot Learn, Practice, Warm Up, Compose at 390×844 and 1280×800, light + dark. Dark mode holds on all four (tokens);
+nothing overflowed at phone width. The one inconsistency: Practice and Warm Up opened with a plain sentence while the
+others have a `vocal-hero` → both now have one ("Test your ear and voice", "Warm up your voice"). V10: the phone tab
+bar hides labels by design (five tabs + streak + sound + account don't fit 390 px); labels stay in the DOM for screen
+readers, streak and sound buttons already carry aria-labels, and every section now names itself in its hero — no
+further change. Warm-up tests 10/10, lint clean.
