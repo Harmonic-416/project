@@ -39,3 +39,11 @@ staff's bottom-line diatonic index from OSMD's `InitiallyActiveClef` (G4/F3/C4 r
 octave offset; percussion/tab/missing → treble). Verified on "Ive Got A Dream A Cappella" → Bass 2 with the fake
 mic: the trail runs through the note heads. Tests: +4 in `pitchDetector.test.js` (treble, bass, treble-8, alto,
 tenor, fallback, bass y-positions). Lint clean.
+
+## 2026-11-15 · V6 · merged feat/auto-transpose
+Side agent's 4 commits (keyFit.js scorer over −12..+12 with tessitura / out-of-range / move costs; MusicXML
+transposition with proper respelling + treble-8 clef switch; voice ranges + "Measure my range"; arranger
+`ensembleShift`). Conflicts in VocalTab.jsx resolved toward the polished layout: TransposeControl lives in the
+Settings sheet under "Key"; Export uses the transposed `exportable`; summary shows "Key −3". 97 related tests pass.
+Open questions from the agent (shared attempts don't store the shift — needs a migration; per-key run history;
+fit weights by ear) left for Eddie.

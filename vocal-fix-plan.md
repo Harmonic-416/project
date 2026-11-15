@@ -27,7 +27,7 @@ Re-ranked 2026-11-15 after `docs/vocal-community-research.md` (R-refs = its reco
 | V13 | TODO | **Kind octaves**: meter says "An octave below — that counts" (direction-aware, calm colour); the result headline uses the octave-agnostic number already computed when that is what the singer did. (R-P2) |
 | V14 | TODO | **Starting note + quiet mic**: one tap plays the first note (and its chord) before Sing; sound effects are muted while the mic is live and celebrate after. (R-7, R-6) |
 | V15 | TODO | **Part-mix ladder** replaces "By myself / With all parts": My part only → My part louder → Others only → Everyone. (R-S2) |
-| V6 | TODO | **Auto-transpose** — merge `feat/auto-transpose`; show "Key −2 (recommended for Tenor)" with override. (R-S3, R-9) |
+| V6 | DONE | **Auto-transpose** — merge `feat/auto-transpose`; show "Key −2 (recommended for Tenor)" with override. (R-S3, R-9) |
 | V5 | TODO | **MuseScore import** — merge `feat/mscz-import`; uploader copy "MIDI, MusicXML or MuseScore". |
 | V16 | TODO | **Loop a passage**: drag across bars / "Loop this" on a trouble spot. (R-S3) |
 | V9 | TODO | **Wait for me / Trouble spots**: same meter; Wait plays the note once when it stops and offers Skip. (R-12) |
