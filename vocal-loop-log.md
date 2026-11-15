@@ -145,3 +145,17 @@ coreaudiod recovered on its own (AudioContext clock advancing again ~16:42).
 - **V9:** Wait for me at −70¢ → meter "A bit higher" with the 35¢ band, "Hear note" + "Skip note ›"; Trouble spots on
   phone → tuner strip agrees with the tally ("2 a half step off").
 - Fix: a spot starting in the pickup is labelled "Pickup–bar 5" instead of "Bars 0–5" (`spotLabel`, +1 test).
+
+## 2026-11-15 · arranger experiment — verdict
+Research + bench (`exp/arranger-bench`, docs/arranger-research.md) → three branches: `exp/arranger-A-separation`
+(RMVPE melody on the htdemucs vocal stem, chords from band + bass stems), `exp/arranger-B-texture` (bass-first
+Viterbi + Sharon-style textures + voice-leading costs), `exp/arranger-C-llm-plan` (Claude plans textures, Viterbi
+realizer). Fable judge (416-arr-bench/docs/arranger-verdict.md): **adopt A + B**, merged B first then A, after fixing
+the `<harmony>` `<offset>` bug. Replayed A+B (solo_ttbb): tune RPA 0.701→0.807, note F1 0.603→0.739, symbols
+0.780→0.836, sung root 0.903→0.925, parallels 49.1→0.60/100, backing 3.7 notes/bar; cost: harsh 0.071→0.083 from
+A's held chromatic tune notes. C: most musical plans but tacet top voice 47% of bars, missing thirds, ±0.10 run-to-run,
+~$0.19/song + API key → port its ideas into B's pattern library instead. Not merged anywhere yet (needs Eddie's OK:
+the worker VM runs this code against production).
+
+## 2026-11-15 · loop stopped
+Every backlog item DONE except V18 (BLOCKED, thresholds = Eddie's call). Branch not pushed.
