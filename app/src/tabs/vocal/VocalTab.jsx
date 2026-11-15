@@ -36,7 +36,7 @@ import SharedAttemptGate from './components/SharedAttemptGate.jsx'
 import SharedAttemptPanel from './components/SharedAttemptPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
-import { melodyLine, scheduleFor } from './practice/practiceLogic.js'
+import { LISTEN_MIXES, melodyLine, mixSchedule, scheduleFor } from './practice/practiceLogic.js'
 import { fromRemote, runsKey } from './practice/sessionRuns.js'
 import { listPracticeRuns, savePracticeRun } from '@backend/practiceRuns'
 import { extractPart, listParts, partOnTop } from './notation/partFilter.js'
@@ -97,7 +97,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const [shared, setShared] = useState(null)
   const [practiceMode, setPracticeMode] = useState('listen') // listen | wait | trouble (see practice/practiceLogic.js)
   const [practicePart, setPracticePart] = useState(undefined) // part id; undefined = the first part
-  const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
+  const [accompaniment, setAccompaniment] = useState('solo') // solo | lead | others | all (LISTEN_MIXES; Wait / Trouble read solo vs the rest)
   const [arrangement, setArrangement] = useState(null) // what the arranger did, for the song it just wrote (arrange/pipeline.js)
   const sheetMusicRef = useRef(null)
   // Element the live pitch meter portals into, beside the score (state so the portal re-renders when it mounts).
@@ -389,7 +389,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const parts = useMemo(() => (notation ? listParts(notation.content) : []), [notation])
   const multiPart = parts.length > 1
   const selectedPart = multiPart ? (parts.find((p) => p.id === practicePart) ?? parts[0]) : null
-  const withOthers = multiPart && accompaniment === 'all'
+  const withOthers = multiPart && accompaniment !== 'solo'
   // The key (transpose/): the whole score moves, before a part is picked out
   // of it, so the viewer, playback, the cursor and pitch scoring — all read
   // off the rendered score — move together. Remembered per song. A shared
@@ -447,14 +447,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     [withOthers, scoreModel],
   )
 
-  // What Play sounds like: every part on screen, except in Trouble spots
-  // with all parts, where your part is left for you to sing. (Wait for me
-  // doesn't use playback; it holds the other parts' chords itself.)
+  // What Play sounds like. Listen follows the part-mix ladder (yours only,
+  // yours louder, the others only, everyone). Trouble spots with other
+  // parts leaves yours for you to sing. (Wait for me doesn't use playback;
+  // it holds the other parts' chords itself.)
   const playbackSchedule = useMemo(() => {
     if (!scoreModel) return NO_SCHEDULE
     if (otherPartNotes && practiceMode === 'trouble') return scheduleFor(otherPartNotes)
+    if (withOthers && practiceMode === 'listen') return mixSchedule(scoreModel.notes, accompaniment)
     return scoreModel.playbackSchedule
-  }, [scoreModel, otherPartNotes, practiceMode])
+  }, [scoreModel, otherPartNotes, practiceMode, withOthers, accompaniment])
 
   const [metronome, setMetronome] = useMetronomeSettings()
   // Per song (by file fingerprint), remembered in this browser.
@@ -562,7 +564,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     (value) => {
       if (value === accompaniment) return
       playback.stop()
-      if (multiPart) setScoreModel(null) // the viewer re-renders with or without the other parts
+      // The viewer re-renders only when the other parts appear or disappear; moving between rungs that show them is just a remix.
+      if (multiPart && (value === 'solo') !== (accompaniment === 'solo')) setScoreModel(null)
       setAccompaniment(value)
     },
     [accompaniment, multiPart, playback],
@@ -813,7 +816,13 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     // What the settings sheet is set to, in one line under the mode cards.
     const settingsSummary = [
       multiPart && selectedPart?.name,
-      multiPart && !viewingShared && (withOthers ? 'With all parts' : 'By myself'),
+      multiPart &&
+        !viewingShared &&
+        (practiceMode === 'listen'
+          ? LISTEN_MIXES.find((m) => m.id === accompaniment)?.label
+          : withOthers
+            ? 'With all parts'
+            : 'By myself'),
       solfegeOn ? 'Solfège' : 'Lyrics',
       shift !== 0 && `Key ${shift > 0 ? '+' : '−'}${Math.abs(shift)}`,
       scoreModel && practiceMode !== 'wait' && `${tempo}% tempo`,
@@ -917,10 +926,11 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               )}
               {multiPart && !viewingShared && (
                 <div className="v-setting">
-                  <h3 className="v-setting__label">Practise with</h3>
+                  <h3 className="v-setting__label">{practiceMode === 'listen' ? 'What plays' : 'Practise with'}</h3>
                   <AccompanimentToggle
                     value={accompaniment}
                     mode={practiceMode}
+                    options={practiceMode === 'listen' ? LISTEN_MIXES : undefined}
                     onChange={handleAccompanimentChange}
                     disabled={!scoreModel}
                   />

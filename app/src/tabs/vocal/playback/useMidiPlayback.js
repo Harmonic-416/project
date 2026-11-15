@@ -97,8 +97,8 @@ export function useMidiPlayback({
 
     // Durations are score seconds; the synth wants wall-clock seconds at the current tempo.
     const part = new Tone.Part((time, event) => {
-      synth.triggerAttackRelease(event.pitches, event.duration / rateRef.current, time)
-    }, playbackSchedule.map((n) => ({ time: scoreTicks(n.time), pitches: n.pitches, duration: n.duration })))
+      synth.triggerAttackRelease(event.pitches, event.duration / rateRef.current, time, event.velocity)
+    }, playbackSchedule.map((n) => ({ time: scoreTicks(n.time), pitches: n.pitches, duration: n.duration, velocity: n.velocity ?? 1 })))
     part.start(0)
     partRef.current = part
 
