@@ -25,7 +25,7 @@ Re-ranked 2026-11-15 after `docs/vocal-community-research.md` (R-refs = its reco
 | V12 | DONE | **Grade each note on the staff as it ends**: ✓ green / amber ↑↓ / red ↑↓ (shape + colour), from the existing judge — no new thresholds; smooth the live trail and lift it in silence instead of dropping it. (R-P1, R-P3 presentation part, R-13) |
 | V3 | DONE | **Take summary card**: plain sentences ("Flat in bars 9–12, about −30¢") with Loop / Hear the note actions; stars tied to the shown accuracy; drop "frames within 50¢" jargon. (R-5, R-6) |
 | V13 | DONE | **Kind octaves**: meter says "An octave below — that counts" (direction-aware, calm colour); the result headline uses the octave-agnostic number already computed when that is what the singer did. (R-P2) |
-| V14 | TODO | **Starting note + quiet mic**: one tap plays the first note (and its chord) before Sing; sound effects are muted while the mic is live and celebrate after. (R-7, R-6) |
+| V14 | DONE | **Starting note + quiet mic**: one tap plays the first note (and its chord) before Sing; sound effects are muted while the mic is live and celebrate after. (R-7, R-6) |
 | V15 | TODO | **Part-mix ladder** replaces "By myself / With all parts": My part only → My part louder → Others only → Everyone. (R-S2) |
 | V6 | DONE | **Auto-transpose** — merge `feat/auto-transpose`; show "Key −2 (recommended for Tenor)" with override. (R-S3, R-9) |
 | V5 | TODO | **MuseScore import** — merge `feat/mscz-import`; uploader copy "MIDI, MusicXML or MuseScore". |

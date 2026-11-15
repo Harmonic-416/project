@@ -74,3 +74,8 @@ Meter: verdict `octave` → "Octave below/above — that counts", ✓, sky colou
 Take card: pitch line shows the octave-folded accuracy (already computed by scoreAttempt) when it is higher, with
 "(an octave away counts)". Verified with the fake mic one octave below: meter calm blue; take = 32/32, 93%.
 Tests updated (pitchReading). Lint clean.
+
+## 2026-11-15 · V14 · starting note + quiet mic
+Dock: 🎵 <first note> next to 🎤 Sing (Learn's `tapNote`, now with a length; 1.2 s). sfx: `setMicLive` set by
+useMicPitch on listening/stop; chime + wrong-thud skip while live (no current call sites fire during listening —
+this guards future ones and keeps app sounds out of recordings). Test `sfxMicLive.test.js` mocks Tone.
