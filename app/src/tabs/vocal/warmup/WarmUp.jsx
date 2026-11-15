@@ -270,7 +270,15 @@ export default function WarmUp({ show = 'warmups' }) {
   if (show === 'tests') {
     return (
       <div className="warm-up">
-        <p className="warm-up__hint">These listen through your microphone. Headphones help.</p>
+        <header className="vocal-hero">
+          <span className="vocal-hero__badge" aria-hidden="true">
+            🎯
+          </span>
+          <div>
+            <h1 className="vocal-hero__title">Test your ear and voice</h1>
+            <p className="vocal-hero__subtitle">These listen through your microphone. Headphones help.</p>
+          </div>
+        </header>
         {voicePicker}
         <h2 className="vocal-tab__section-title">Tests</h2>
         {harmonyError && <p className="warm-up__error">{harmonyError}</p>}
@@ -317,10 +325,17 @@ export default function WarmUp({ show = 'warmups' }) {
 
   return (
     <div className="warm-up">
-      <p className="warm-up__hint">
-        The piano plays a short exercise over and over, a half step further each time. Just sing along; it won’t
-        listen.
-      </p>
+      <header className="vocal-hero">
+        <span className="vocal-hero__badge" aria-hidden="true">
+          🔥
+        </span>
+        <div>
+          <h1 className="vocal-hero__title">Warm up your voice</h1>
+          <p className="vocal-hero__subtitle">
+            The piano plays a short exercise, a half step further each time. Just sing along; it won’t listen.
+          </p>
+        </div>
+      </header>
       <Instructions />
 
       {voicePicker}
