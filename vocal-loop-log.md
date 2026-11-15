@@ -17,3 +17,18 @@ Verified with a fake mic that follows the meter's target at +5 / −80 / +220 ¢
 songFollow / waitListening) — all 42 pass when re-run alone. Lint clean.
 Screenshots: a private headless browser script (`scratchpad/shots-tool/shots.mjs`) — the shared Playwright MCP
 browser is also driven by the side agents and got navigated away mid-shot.
+
+## 2026-11-15 · V2 · song screen hierarchy (7271c2f)
+**Before:** title row → 3 tall mode cards → hint line → Settings row → score → transport dock → a separate card with
+"● Record attempt". **After:** modes are one compact row (icon, name, short blurb; hint on hover); Settings sits in
+the header with its summary underneath (icon-only on phones); the dock holds 🎤 Sing (biggest, full-width on phones)
+next to Play/Stop; during an attempt the dock shows only its ■ Stop + progress (the transport's own Stop competed);
+the record card renders only with content. Guitar's song screen (transport by the score, modes compact) was the
+reference. Format chip hidden on phones so the title fits.
+**Tests:** lint clean; full suite 740 passed, 4 guitar timeouts under load (3 pass alone; songFollow's 5 s timeout
+also failed on the untouched base).
+
+## 2026-11-15 · V7 · community research landed (bf88c48)
+`docs/vocal-community-research.md` (r/singing, r/Choir, HN OnKey, App Store, EarMaster/Smule/MuseScore forums,
+Wilson 2008, Lin 2014). Backlog re-ranked: clef bug first (V11), per-note graded marks (V12), take summary (V3),
+kind octaves (V13), starting note (V14), part-mix ladder (V15). Strictness levels BLOCKED (thresholds = human call).
