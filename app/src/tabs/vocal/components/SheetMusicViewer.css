@@ -12,3 +12,6 @@
   border-radius: var(--v-radius-lg, 8px);
   padding: 12px 0;
 }
+
+/* The other parts' notes step back so the singer's own line (on top) is the one the eye follows. */
+.sheet-note--other-part { opacity: 0.4; }
