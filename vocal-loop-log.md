@@ -111,3 +111,10 @@ range · voices, best stars (`song:<title>`). SongLibrary's `renderMeta` is opt-
 the "Continue" row (needs a last-song store) — folded into V8's pass if cheap. Tests: songInfo (4).
 Full suite after V5: 16 failures all from load (avg ~15, arranger experiments running models); arrange +
 midiToMusicXml pass alone (50/50).
+
+## 2026-11-15 · V17 · easier score
+SheetMusicViewer: `LyricsHeight` 2.5; notes of parts ≠ 0 get `sheet-note--other-part` (opacity .4) when the score
+has several parts, re-applied in the render override; `RenderPartNames/Abbreviations` only with several parts.
+Verified: SATB .mscz "Everyone" → Soprano black, Alto dimmed; Amazing Grace on phone without "Voice" label.
+Not done (bigger change): page/line layout instead of the sideways strip, current-syllable highlight, dimming the
+other parts' lyrics (OSMD exposes no per-staff lyric element).

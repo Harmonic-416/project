@@ -32,7 +32,7 @@ Re-ranked 2026-11-15 after `docs/vocal-community-research.md` (R-refs = its reco
 | V16 | DONE | **Loop a passage**: drag across bars / "Loop this" on a trouble spot. (R-S3) |
 | V9 | TODO | **Wait for me / Trouble spots**: same meter; Wait plays the note once when it stops and offers Skip. (R-12) |
 | V4 | DONE | **Songs home cards** with useful info (parts, key, range, best stars) and a Continue row. |
-| V17 | TODO | **Steadier score**: lyrics larger and higher-contrast, own staff highlighted in multi-part scores. (R-S1, partial — page layout is a bigger change) |
+| V17 | DONE | **Steadier score**: lyrics larger and higher-contrast, own staff highlighted in multi-part scores. (R-S1, partial — page layout is a bigger change) |
 | V8 | TODO | Phone (390×844) + dark-mode pass on every Vocal screen. |
 | V10 | TODO | Top tab bar: consistent icons; streak / sound buttons labelled. |
 | V18 | BLOCKED | **Strictness levels** (Relaxed ±50¢ / Standard ≤25¢ / Choir ≤15¢, R-P3) and median-after-onset judging — these change verdict thresholds (CLAUDE.md invariant 5): needs Eddie's / the team's decision. |
