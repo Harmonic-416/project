@@ -8,6 +8,7 @@ import {
   pitchToMidi,
   readKey,
   readPartNotes,
+  songKey,
   spellMidi,
   spellPitchClass,
   transposeMusicXml,
@@ -49,6 +50,8 @@ describe('spelling', () => {
     expect(spellPitchClass(11, -1)).toEqual({ step: 'B', alter: 0 }) // B natural in F, not Cb
     expect(spellPitchClass(5, 1)).toEqual({ step: 'F', alter: 0 }) // F natural in G, not E#
     expect(spellPitchClass(11, -6)).toEqual({ step: 'C', alter: -1 }) // Cb belongs to Gb major
+    expect(spellPitchClass(10, 0)).toEqual({ step: 'B', alter: -1 }) // C major borrows Bb…
+    expect(spellPitchClass(6, 0)).toEqual({ step: 'F', alter: 1 }) // …and raises to F#
   })
 
   it('round-trips MIDI numbers, octave included', () => {
@@ -198,6 +201,20 @@ describe('readPartNotes / readKey', () => {
   it('reads the second part by id', () => {
     const duet = score({ body: note('E', 5), second: note('C', 4) })
     expect(readPartNotes(duet, 'P2')).toEqual([{ midi: 60, duration: 1 }])
+  })
+
+  it('names a MIDI file by its notes when its key signature is wrong', () => {
+    // E major notes under a written Eb signature, as a MIDI file can have them.
+    const body = [['E', 4], ['F', 4, 1], ['G', 4, 1], ['A', 4], ['B', 4], ['C', 5, 1], ['D', 5, 1], ['E', 5], ['B', 4], ['E', 4]]
+      .map(([step, octave, alter = 0]) => note(step, octave, { alter }))
+      .join('')
+    const xml = score({ fifths: -3, body })
+    expect(songKey(xml)).toEqual({ fifths: -3, mode: 'major' }) // spelling trusted: as written
+    expect(songKey(xml, { trustSpelling: false })).toEqual({ fifths: 4, mode: 'major' })
+    // Transposed from the key the notes are in: E down 3 is C# … spelled as Db (fewest accidentals).
+    const down3 = transposeMusicXml(xml, -3, { respell: true, keyFifths: 4 })
+    expect(fifthsOf(down3)).toEqual([-5])
+    expect(pitches(down3).slice(0, 3)).toEqual(['Db4', 'Eb4', 'F4'])
   })
 
   it('defaults to C major', () => {

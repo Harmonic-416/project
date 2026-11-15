@@ -47,6 +47,9 @@ describe('names', () => {
     expect(keyName(0, 'minor')).toBe('A minor')
     expect(pitchName(70, -2)).toBe('Bb')
     expect(pitchName(70, 2)).toBe('A#')
+    expect(pitchName(70, 0)).toBe('Bb') // C major borrows Bb
+    expect(pitchName(71, -6)).toBe('Cb')
+    expect(noteLabel(71, -6)).toBe('Cb5')
     expect(noteLabel(67)).toBe('G4')
     expect(noteLabel(60)).toBe('C4')
   })

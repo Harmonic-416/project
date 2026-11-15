@@ -20,11 +20,11 @@
  * Plain string handling, like notation/partFilter.js, so it runs in Node
  * tests too. Pure; unit-tested in app/tests/transposeXml.test.js.
  */
-import { transposeFifths } from './keyFit.js'
+import { STEPS, STEP_PC, spellPitchClass, transposeFifths } from './keyFit.js'
+import { findDo } from '../notation/solfege.js'
 
-const STEPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-const STEP_PC = [0, 2, 4, 5, 7, 9, 11]
-const SHARP_ORDER = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
+export { spellPitchClass }
+
 const ACCIDENTAL_TEXT = { '-2': 'flat-flat', '-1': 'flat', 0: 'natural', 1: 'sharp', 2: 'double-sharp' }
 
 const PART_RE = /(<part\s[^>]*>)([\s\S]*?)(<\/part>)/g
@@ -32,39 +32,6 @@ const PART_RE = /(<part\s[^>]*>)([\s\S]*?)(<\/part>)/g
 const TOKEN_RE = /<key\b[^>]*>[\s\S]*?<\/key>|<note\b[^>]*>[\s\S]*?<\/note>|<harmony\b[^>]*>[\s\S]*?<\/harmony>/g
 
 const mod = (n, m) => ((n % m) + m) % m
-
-/** The alteration `fifths`' key signature gives letter `step` (index into STEPS). */
-function keyAlter(step, fifths) {
-  const letter = STEPS[step]
-  const order = SHARP_ORDER.indexOf(letter)
-  if (fifths > 0) return order < fifths ? 1 : 0
-  if (fifths < 0) return 6 - order < -fifths ? -1 : 0
-  return 0
-}
-
-/**
- * How pitch class `pc` is spelled in the key of `fifths`: its scale note if
- * it has one, otherwise the nearest letter raised (sharp keys) or lowered
- * (flat keys), avoiding E#/B#/Cb/Fb and double accidentals. { step, alter }.
- */
-export function spellPitchClass(pc, fifths = 0) {
-  let best = null
-  for (let step = 0; step < 7; step += 1) {
-    for (let alter = -2; alter <= 2; alter += 1) {
-      if (mod(STEP_PC[step] + alter, 12) !== pc) continue
-      const change = alter - keyAlter(step, fifths)
-      let cost
-      if (change === 0) cost = 0
-      else if (Math.abs(change) === 1) cost = (change > 0) === (fifths >= 0) ? 1 : 1.5
-      else cost = 5
-      if (Math.abs(alter) === 2) cost += 5
-      // E#, B#, Cb, Fb read as typos outside keys that need them.
-      if (change !== 0 && ((alter === 1 && (step === 2 || step === 6)) || (alter === -1 && (step === 0 || step === 3)))) cost += 1
-      if (!best || cost < best.cost) best = { step, alter, cost }
-    }
-  }
-  return { step: STEPS[best.step], alter: best.alter }
-}
 
 /** MIDI note → { step, alter, octave } spelled in the key of `fifths`. */
 export function spellMidi(midi, fifths = 0) {
@@ -166,15 +133,17 @@ function fitClef(body) {
 /**
  * The score moved `semitones` (any integer; 0 returns it unchanged).
  * `respell`: spell every note afresh in the new key (for MIDI-born scores).
+ * `keyFifths`: the key the notes are really in, when the written signature
+ * can't be trusted (songKey) — every key signature becomes that key moved.
  */
-export function transposeMusicXml(xml, semitones, { respell = false } = {}) {
+export function transposeMusicXml(xml, semitones, { respell = false, keyFifths = null } = {}) {
   if (!semitones || !xml) return xml
   return xml.replace(PART_RE, (whole, open, body, close) => {
     let fifths = 0
     let interval = keyInterval(0, semitones)
     const moved = body.replace(TOKEN_RE, (token) => {
       if (token.startsWith('<key')) {
-        const written = Number(tag(token, 'fifths'))
+        const written = keyFifths ?? Number(tag(token, 'fifths'))
         if (!Number.isFinite(written)) return token // a non-traditional key: left as written
         fifths = written
         interval = keyInterval(fifths, semitones)
@@ -234,4 +203,18 @@ export function readPartNotes(xml, partId = null) {
     notes.push({ midi, duration: /<grace\b/.test(token) ? 0 : Number(tag(token, 'duration') ?? 0) / divisions })
   }
   return notes
+}
+
+/**
+ * The key a song is in, for naming it and fitting it: { fifths, mode }.
+ * Its written key, unless the spelling can't be trusted (a MIDI file's key
+ * signature is often missing or wrong) and the notes say otherwise — then
+ * the key they fit best, as solfège finds do (notation/solfege.js).
+ */
+export function songKey(xml, { trustSpelling = true } = {}) {
+  const written = readKey(xml)
+  if (trustSpelling || !xml) return written
+  const found = findDo(xml)
+  if (!found || found.written) return written
+  return { fifths: found.fifths, mode: found.minor ? 'minor' : 'major' }
 }

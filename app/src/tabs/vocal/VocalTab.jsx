@@ -40,7 +40,7 @@ import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
 import { VOICINGS } from './arrange/arrange.js'
-import { readKey, readPartNotes, transposeMusicXml } from './transpose/transposeXml.js'
+import { readPartNotes, songKey, transposeMusicXml } from './transpose/transposeXml.js'
 import { useSongTranspose } from './transpose/useSongTranspose.js'
 
 const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
@@ -378,16 +378,22 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   // attempt was sung in the written key, so it is shown in that one.
   const [savedShift, setSavedShift] = useSongTranspose(notation?.fingerprint)
   const shift = shared?.phase === 'open' ? 0 : savedShift
+  // MIDI files spell every black key as a sharp and often carry a wrong key
+  // signature, so they are respelled in the key their notes are in.
+  const keyInfo = useMemo(
+    () => songKey(notation?.content, { trustSpelling: notation?.format !== 'midi' }),
+    [notation],
+  )
   const transposed = useMemo(() => {
     if (!notation) return null
     try {
-      return transposeMusicXml(notation.content, shift, { respell: notation.format === 'midi' })
+      const midi = notation.format === 'midi'
+      return transposeMusicXml(notation.content, shift, { respell: midi, keyFifths: midi ? keyInfo.fifths : null })
     } catch (err) {
       console.error(err)
       return notation.content
     }
-  }, [notation, shift])
-  const keyInfo = useMemo(() => readKey(notation?.content), [notation])
+  }, [notation, shift, keyInfo])
   const fitPartId = (selectedPart ?? parts[0])?.id ?? null
   const fitNotes = useMemo(() => readPartNotes(notation?.content, fitPartId), [notation, fitPartId])
   // What Export writes: what's on screen, in its key.

@@ -35,9 +35,10 @@ const SWEET_SPOT = 0.2 // the band this far in from each end of the range is the
 export const MIN_SHIFT = -12
 export const MAX_SHIFT = 12
 
+export const STEPS = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+export const STEP_PC = [0, 2, 4, 5, 7, 9, 11]
+const SHARP_ORDER = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
 const MAJOR_NAMES = { '-7': 'Cb', '-6': 'Gb', '-5': 'Db', '-4': 'Ab', '-3': 'Eb', '-2': 'Bb', '-1': 'F', 0: 'C', 1: 'G', 2: 'D', 3: 'A', 4: 'E', 5: 'B', 6: 'F#', 7: 'C#' }
-const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 
 const distanceOutside = (midi, low, high) => (midi < low ? low - midi : midi > high ? midi - high : 0)
 const soft = (d) => (d <= MARGIN ? STRETCH * d : STRETCH * MARGIN + (d - MARGIN))
@@ -74,14 +75,51 @@ export function transposeLabel(shift, { fifths = 0, mode = 'major' } = {}) {
   return `Transposed ${signed(shift)} (to ${keyName(transposeFifths(fifths, shift), mode)})`
 }
 
-/** 'G' for 67; sharps or flats as the key signature `fifths` spells them. Octave left off. */
-export function pitchName(midi, fifths = 0) {
-  return (fifths < 0 ? FLAT_NAMES : SHARP_NAMES)[mod12(midi)]
+/** The alteration `fifths`' key signature gives letter `step` (index into STEPS). */
+function keyAlter(step, fifths) {
+  const letter = STEPS[step]
+  const order = SHARP_ORDER.indexOf(letter)
+  if (fifths > 0) return order < fifths ? 1 : 0
+  if (fifths < 0) return 6 - order < -fifths ? -1 : 0
+  return 0
 }
 
-/** 'G4' for 67. */
+/**
+ * How pitch class `pc` is spelled in the key of `fifths`: its scale note if
+ * it has one, otherwise the nearest letter raised (sharp keys) or lowered
+ * (flat keys), avoiding E#/B#/Cb/Fb and double accidentals. { step, alter }.
+ */
+export function spellPitchClass(pc, fifths = 0) {
+  // C major has no side; it borrows Eb, Ab and Bb, and raises to C#, F# and G#… as music usually does.
+  const sharpSide = fifths > 0 || (fifths === 0 && ![3, 8, 10].includes(pc))
+  let best = null
+  for (let step = 0; step < 7; step += 1) {
+    for (let alter = -2; alter <= 2; alter += 1) {
+      if (mod12(STEP_PC[step] + alter) !== pc) continue
+      const change = alter - keyAlter(step, fifths)
+      let cost
+      if (change === 0) cost = 0
+      else if (Math.abs(change) === 1) cost = (change > 0) === sharpSide ? 1 : 1.5
+      else cost = 5
+      if (Math.abs(alter) === 2) cost += 5
+      // E#, B#, Cb, Fb read as typos outside keys that need them.
+      if (change !== 0 && ((alter === 1 && (step === 2 || step === 6)) || (alter === -1 && (step === 0 || step === 3)))) cost += 1
+      if (!best || cost < best.cost) best = { step, alter, cost }
+    }
+  }
+  return { step: STEPS[best.step], alter: best.alter }
+}
+
+/** 'G' for 67, spelled as the key of `fifths` spells it ('Bb' in F, 'A#' in B). Octave left off. */
+export function pitchName(midi, fifths = 0) {
+  const { step, alter } = spellPitchClass(mod12(midi), fifths)
+  return `${step}${alter > 0 ? '#'.repeat(alter) : 'b'.repeat(-alter)}`
+}
+
+/** 'G4' for 67 (the octave of the written note: Cb5 sounds as B4). */
 export function noteLabel(midi, fifths = 0) {
-  return `${pitchName(midi, fifths)}${Math.floor(midi / 12) - 1}`
+  const { step, alter } = spellPitchClass(mod12(midi), fifths)
+  return `${pitchName(midi, fifths)}${Math.round((midi - STEP_PC[STEPS.indexOf(step)] - alter) / 12) - 1}`
 }
 
 /**
