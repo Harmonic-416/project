@@ -36,9 +36,11 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
  * `session` (usePracticeSession, from VocalTab) collects the attempts of
  * this sitting under the panel ("This session"). While listening, the live
  * PitchMeter is portalled into `meterSlot`: beside the score, where the
- * singer is already looking.
+ * singer is already looking. The Sing / Stop button is portalled into
+ * `actionSlot` (the player dock), so starting an attempt is the screen's
+ * primary action rather than a button below the transport.
  */
-function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null, meterSlot = null }) {
+function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null, meterSlot = null, actionSlot = null }) {
   const melody = useMemo(
     () =>
       scoreModel
@@ -133,45 +135,54 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   const liveVerdict = liveCents === null ? 'rest' : classifyCents(liveCents)
   const listening = mic.status === 'listening'
 
+  const actionButton = listening ? (
+    <button type="button" className="record-panel__button record-panel__button--stop" onClick={finishAttempt}>
+      ■ Stop
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="record-panel__button"
+      disabled={!scoreModel || mic.status === 'requesting'}
+      onClick={startAttempt}
+      title="Plays the song and listens: you get a score at the end"
+    >
+      {mic.status === 'requesting' ? 'Starting mic…' : '🎤 Sing'}
+    </button>
+  )
+  const showRow = !actionSlot || listening || mic.status === 'error'
+  const empty = !showRow && !result && !(session && supabase)
+
   return (
-    <section className="record-panel">
-      <div className="record-panel__row">
-        {listening ? (
-          <button type="button" className="record-panel__button record-panel__button--stop" onClick={finishAttempt}>
-            ■ Stop attempt
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="record-panel__button"
-            disabled={!scoreModel || mic.status === 'requesting'}
-            onClick={startAttempt}
-          >
-            {mic.status === 'requesting' ? 'Starting microphone…' : '● Record attempt'}
-          </button>
-        )}
-        {listening &&
-          meterSlot &&
-          createPortal(
-            <PitchMeter
-              hasTarget={Boolean(liveTarget)}
-              targetName={liveTarget ? midiToNoteName(liveTarget.midi) : null}
-              sungName={live?.noteName ?? null}
-              cents={liveCents}
-              verdict={liveVerdict}
-            />,
-            meterSlot,
+    <section className={`record-panel${empty ? ' record-panel--empty' : ''}`}>
+      {actionSlot && createPortal(actionButton, actionSlot)}
+      {showRow && (
+        <div className="record-panel__row">
+          {!actionSlot && actionButton}
+          {listening &&
+            meterSlot &&
+            createPortal(
+              <PitchMeter
+                hasTarget={Boolean(liveTarget)}
+                targetName={liveTarget ? midiToNoteName(liveTarget.midi) : null}
+                sungName={live?.noteName ?? null}
+                cents={liveCents}
+                verdict={liveVerdict}
+              />,
+              meterSlot,
+            )}
+          {listening && !meterSlot && (
+            <span className={`record-panel__live record-panel__live--${liveVerdict}`} aria-live="polite">
+              {live
+                ? `${live.noteName}${liveTarget ? ` · target ${midiToNoteName(liveTarget.midi)} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : ' · rest'}`
+                : 'listening…'}
+            </span>
           )}
-        {listening && !meterSlot && (
-          <span className={`record-panel__live record-panel__live--${liveVerdict}`} aria-live="polite">
-            {live
-              ? `${live.noteName}${liveTarget ? ` · target ${midiToNoteName(liveTarget.midi)} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : ' · rest'}`
-              : 'listening…'}
-          </span>
-        )}
-        {listening && <DynamicsMeter dynamics={mic.dynamics} />}
-        {mic.status === 'error' && <span className="record-panel__error">{mic.error}</span>}
-      </div>
+          {listening && <span className="record-panel__listening">Listening — sing along</span>}
+          {listening && <DynamicsMeter dynamics={mic.dynamics} />}
+          {mic.status === 'error' && <span className="record-panel__error">{mic.error}</span>}
+        </div>
+      )}
 
       {result && (
         <div className="record-panel__result">

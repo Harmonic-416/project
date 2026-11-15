@@ -99,6 +99,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const sheetMusicRef = useRef(null)
   // Element the live pitch meter portals into, beside the score (state so the portal re-renders when it mounts).
   const [meterSlot, setMeterSlot] = useState(null)
+  const [actionSlot, setActionSlot] = useState(null) // the dock's spot for RecordPanel's Sing button
   const [sfxMuted, setSfxMuted] = useSfxMuted()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const progress = useVocalProgress()
@@ -788,6 +789,18 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
           {notation && (
             <div className="vocal-tab__actions">
+              <button
+                type="button"
+                className="v-btn v-btn--secondary v-btn--sm vocal-tab__settings"
+                onClick={() => setSettingsOpen(true)}
+                aria-haspopup="dialog"
+                title={settingsSummary}
+              >
+                <span aria-hidden="true">⚙️</span>
+                <span className="vocal-tab__settings-text">
+                  Settings<small>{settingsSummary}</small>
+                </span>
+              </button>
               <Menu label="More song actions">
                 {!viewingShared && auth.user && supabase && (
                   <button
@@ -841,17 +854,6 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         {notation && (
           <>
             {!viewingShared && <ModeCards mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />}
-            <div className="v-settings-bar">
-              <button
-                type="button"
-                className="v-btn v-btn--secondary v-btn--sm"
-                onClick={() => setSettingsOpen(true)}
-                aria-haspopup="dialog"
-              >
-                ⚙️ Settings
-              </button>
-              <span className="v-settings-bar__summary">{settingsSummary}</span>
-            </div>
             <div className="v-score-row">
               <SheetMusicViewer
                 ref={sheetMusicRef}
@@ -921,6 +923,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               />
             ) : (
               <div className="v-dock">
+                {/* RecordPanel portals its Sing / Stop button here: the one primary action, next to Play. */}
+                {practiceMode === 'listen' && !viewingShared && <div className="v-dock__action" ref={setActionSlot} />}
                 <PlaybackControls
                   state={playback.state}
                   position={playback.position}
@@ -956,6 +960,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 shareSong={shareSong}
                 session={auth.user && supabase ? practiceSession : null}
                 meterSlot={meterSlot}
+                actionSlot={actionSlot}
               />
             )}
           </>

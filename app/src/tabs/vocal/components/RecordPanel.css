@@ -129,3 +129,12 @@
   font-weight: 800;
   color: var(--v-good-dark);
 }
+
+/* Nothing to show yet (the Sing button lives in the dock): no empty card. */
+.record-panel--empty { display: none; }
+
+.record-panel__listening {
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  color: var(--v-bad);
+}
