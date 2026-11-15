@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { sfx } from '../feedback/sfx.js'
+import { recordStars } from '../feedback/progress.js'
 import { BARS_PER_PHASE, METERS, eighthSeconds, phaseHint, rhythmPlan, rhythmPosition } from './learnLogic.js'
 
 const C4 = 60
@@ -50,6 +52,20 @@ export default function RhythmLearn({ playback }) {
     })
 
   const position = playing && elapsed >= 0 ? elapsed / eighth : null
+
+  // Clapping all the way through finishes the lesson (a Stop part-way doesn't).
+  const furthestRef = useRef(0)
+  useEffect(() => {
+    if (position !== null) {
+      furthestRef.current = Math.max(furthestRef.current, position)
+      return
+    }
+    if (furthestRef.current >= plan.total - 1) {
+      sfx.complete()
+      recordStars('rhythm', 3)
+    }
+    furthestRef.current = 0
+  }, [position, plan.total])
   const where = position === null ? null : rhythmPosition(plan, position)
   const phase = where && where.phaseIndex >= 0 ? plan.phases[where.phaseIndex] : null
   const phaseLength = plan.bar * BARS_PER_PHASE

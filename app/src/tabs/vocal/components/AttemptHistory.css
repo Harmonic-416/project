@@ -24,7 +24,7 @@
 
 .attempt-history__error {
   margin: 0;
-  color: #d9534f;
+  color: var(--v-bad, #d9534f);
   font-size: 0.9rem;
 }
 
@@ -45,11 +45,11 @@
 }
 
 .attempt-history__change--up {
-  color: #3c9a5f;
+  color: var(--v-good, #3c9a5f);
 }
 
 .attempt-history__change--down {
-  color: #d9534f;
+  color: var(--v-bad, #d9534f);
 }
 
 .attempt-history__change--same {
@@ -70,6 +70,6 @@
 }
 
 .attempt-row--current {
-  outline: 2px solid #3a8a87;
+  outline: 2px solid var(--v-primary-dark, #3a8a87);
   outline-offset: -2px;
 }

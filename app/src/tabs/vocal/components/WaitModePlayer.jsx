@@ -3,6 +3,8 @@ import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
 import PracticeSummary from './PracticeSummary.jsx'
+import { sfx } from '../feedback/sfx.js'
+import { recordActivity } from '../feedback/progress.js'
 import DynamicsMeter from './DynamicsMeter.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { frequencyToMidi, midiToNoteName } from '../audio/pitchDetector.js'
@@ -121,6 +123,9 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     }
     if (charted) addRun(result.score, { total: result.notes, right: result.notes - result.slowNotes, half: result.slowNotes, missed: 0 })
     setSummary({ ...result, charted })
+    if (result.score >= 90) sfx.perfect()
+    else sfx.complete()
+    recordActivity()
   }, [addRun, melody.length, sheetMusicRef])
 
   const handleSample = useCallback(

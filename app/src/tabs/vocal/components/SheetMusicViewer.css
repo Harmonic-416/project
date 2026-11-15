@@ -7,8 +7,8 @@
   max-height: 45dvh;
   overscroll-behavior-x: contain; /* a swipe at either end doesn't trigger browser back/forward */
   -webkit-overflow-scrolling: touch;
-  background: #ffffff;
-  border: 1px solid #e2dfd8;
-  border-radius: 8px;
-  padding: 8px 0;
+  background: #ffffff; /* stays white in dark mode: the engraved notes are black */
+  border: 2px solid var(--v-border, #e2dfd8);
+  border-radius: var(--v-radius-lg, 8px);
+  padding: 12px 0;
 }

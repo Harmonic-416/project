@@ -1,0 +1,251 @@
+/*
+ * The Vocal tab's design tokens. Every vocal stylesheet reads these, so the
+ * whole tab shares one palette, shape and motion. Scoped to .vocal-frame so
+ * the rest of the app (Guitar, Home, Social) is untouched.
+ */
+.vocal-frame {
+  /* Brand */
+  --v-primary: #12999b;
+  --v-primary-dark: #0b7577; /* the 3D button "lip" */
+  --v-primary-soft: #e2f5f5;
+  --v-on-accent: #ffffff;
+
+  /* Feedback */
+  --v-good: #46a302;
+  --v-good-dark: #357a02;
+  --v-good-soft: #e5f7d6;
+  --v-bad: #e5484d;
+  --v-bad-dark: #b8363a;
+  --v-bad-soft: #fde8e8;
+  --v-gold: #ffb800;
+  --v-gold-dark: #cc9200;
+  --v-gold-soft: #fff4d1;
+  --v-sky: #1c9ce6;
+  --v-sky-soft: #e1f2fc;
+
+  /* Section accents */
+  --v-songs: var(--v-primary);
+  --v-learn: #8b5cf6;
+  --v-practice: #1c9ce6;
+  --v-compose: #f97316;
+  --v-warmup: #ec4899;
+
+  /* Surfaces & text */
+  --v-bg: #f7f7f5;
+  --v-card: #ffffff;
+  --v-card-raised: #ffffff;
+  --v-subtle: #f1f0ec;
+  --v-border: #e5e3dd;
+  --v-border-strong: #d3d0c8;
+  --v-text: #24242c;
+  --v-muted: #6c6a72;
+
+  /* Shape */
+  --v-radius-sm: 8px;
+  --v-radius: 12px;
+  --v-radius-lg: 16px;
+  --v-radius-pill: 999px;
+  --v-lip: 4px;
+
+  /* Spacing */
+  --v-s1: 4px;
+  --v-s2: 8px;
+  --v-s3: 12px;
+  --v-s4: 16px;
+  --v-s5: 24px;
+  --v-s6: 32px;
+
+  /* Type */
+  --v-font-display: ui-rounded, 'SF Pro Rounded', 'Nunito', -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Motion */
+  --v-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --v-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --v-fast: 120ms;
+  --v-med: 220ms;
+  --v-slow: 400ms;
+
+  /* Lets nested accents (section, card) override one variable. */
+  --v-accent: var(--v-primary);
+  --v-accent-dark: var(--v-primary-dark);
+
+  background: var(--v-bg);
+  color: var(--v-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .vocal-frame {
+    --v-primary: #3fb6b8;
+    --v-primary-dark: #227f81;
+    --v-primary-soft: #16383a;
+    --v-on-accent: #0f1a1b;
+
+    --v-good: #6bcf2a;
+    --v-good-dark: #4a9a14;
+    --v-good-soft: #1f3314;
+    --v-bad: #ff6b6f;
+    --v-bad-dark: #c24448;
+    --v-bad-soft: #3a1c1e;
+    --v-gold: #ffc933;
+    --v-gold-dark: #b58b10;
+    --v-gold-soft: #3a3015;
+    --v-sky: #4cb6f2;
+    --v-sky-soft: #15303f;
+
+    --v-learn: #a78bfa;
+    --v-practice: #4cb6f2;
+    --v-compose: #fb923c;
+    --v-warmup: #f472b6;
+
+    --v-bg: #16161b;
+    --v-card: #1e1e24;
+    --v-card-raised: #26262e;
+    --v-subtle: #26262e;
+    --v-border: #33333b;
+    --v-border-strong: #4a4a54;
+    --v-text: #f2f1ee;
+    --v-muted: #a6a4ad;
+  }
+}
+
+/* ── Shared building blocks ─────────────────────────────────────────── */
+
+.vocal-frame h1,
+.vocal-frame h2,
+.vocal-frame h3 {
+  font-family: var(--v-font-display);
+  letter-spacing: -0.01em;
+}
+
+/* The Duolingo-style pressable button: a solid face over a darker lip. */
+.v-btn {
+  --btn-face: var(--v-accent);
+  --btn-lip: var(--v-accent-dark);
+  --btn-text: var(--v-on-accent);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v-s2);
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 2px solid transparent;
+  border-radius: var(--v-radius);
+  background: var(--btn-face);
+  color: var(--btn-text);
+  box-shadow: 0 var(--v-lip) 0 var(--btn-lip);
+  font: inherit;
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--v-fast) var(--v-ease-out),
+    box-shadow var(--v-fast) var(--v-ease-out),
+    filter var(--v-fast);
+}
+
+.v-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.v-btn:active:not(:disabled) {
+  transform: translateY(var(--v-lip));
+  box-shadow: 0 0 0 var(--btn-lip);
+}
+
+.v-btn:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--v-accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.v-btn:disabled {
+  --btn-face: var(--v-subtle);
+  --btn-lip: var(--v-border);
+  --btn-text: var(--v-muted);
+  cursor: not-allowed;
+}
+
+.v-btn--secondary {
+  --btn-face: var(--v-card);
+  --btn-lip: var(--v-border);
+  --btn-text: var(--v-accent);
+  border-color: var(--v-border);
+}
+
+.v-btn--ghost {
+  --btn-face: transparent;
+  --btn-lip: transparent;
+  --btn-text: var(--v-accent);
+  box-shadow: none;
+}
+
+.v-btn--good {
+  --btn-face: var(--v-good);
+  --btn-lip: var(--v-good-dark);
+}
+
+.v-btn--danger {
+  --btn-face: var(--v-bad);
+  --btn-lip: var(--v-bad-dark);
+}
+
+.v-btn--block {
+  width: 100%;
+}
+
+.v-btn--sm {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  --v-lip: 3px;
+}
+
+.v-btn--lg {
+  min-height: 52px;
+  padding: 12px 28px;
+  font-size: 1.05rem;
+}
+
+/* Cards */
+.v-card {
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-lg);
+  background: var(--v-card);
+  padding: var(--v-s4);
+}
+
+.v-card--pressable {
+  box-shadow: 0 var(--v-lip) 0 var(--v-border);
+  cursor: pointer;
+  transition:
+    transform var(--v-fast) var(--v-ease-out),
+    box-shadow var(--v-fast) var(--v-ease-out),
+    border-color var(--v-fast);
+}
+
+.v-card--pressable:hover {
+  border-color: var(--v-accent);
+}
+
+.v-card--pressable:active {
+  transform: translateY(var(--v-lip));
+  box-shadow: 0 0 0 var(--v-border);
+}
+
+/* Small rounded label */
+.v-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-subtle);
+  color: var(--v-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

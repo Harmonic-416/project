@@ -6,6 +6,9 @@ import { parseMidiFile } from '../midi/parseMidi.js'
 import { VOICE_PARTS, WARMUP_URL, noteName, splitWarmup, voicePart, warmupShifts } from './warmupLogic.js'
 import { HARMONY_URL, TEST_NOTES, splitHarmony } from './pitchTestLogic.js'
 import HarmonyTest from './HarmonyTest.jsx'
+import Celebration from '../ui/Celebration.jsx'
+import ProgressBar from '../ui/ProgressBar.jsx'
+import BestStars from '../ui/BestStars.jsx'
 import PitchTest from './PitchTest.jsx'
 import './WarmUp.css'
 
@@ -39,14 +42,17 @@ function saveVoice(id) {
 
 function Instructions() {
   return (
-    <ul className="warm-up__how">
+    <details className="v-howto">
+      <summary>How it works</summary>
+      <ul className="warm-up__how">
       <li>Sing on any vowel: “ah”, “oh”, “oo”, whatever feels comfortable.</li>
       <li>
         Sing while it says <strong>Sing</strong>. The last two notes of each round aren’t sung: they’re the piano
         moving a half step and giving you the next starting note, so just <strong>Listen</strong>.
       </li>
       <li>Stop whenever you reach your limit.</li>
-    </ul>
+      </ul>
+    </details>
   )
 }
 
@@ -193,12 +199,10 @@ export default function WarmUp({ show = 'warmups' }) {
             {title} · {part.name}
           </span>
           {run.done ? (
-            <>
-              <strong className="warm-up__now-note">Done</strong>
-              <span className="warm-up__now-detail">
-                That’s the {run.direction === 'upper' ? 'top' : 'bottom'} of a typical {part.name.toLowerCase()} range.
-              </span>
-            </>
+            <Celebration
+              headline="Warm-up complete! 🔥"
+              detail={`${run.shifts.length} rounds, ${startNote(0)} to ${startNote(run.shifts.length - 1)}. That’s the ${run.direction === 'upper' ? 'top' : 'bottom'} of a typical ${part.name.toLowerCase()} range.`}
+            />
           ) : (
             <>
               <span className={`warm-up__cue warm-up__cue--${run.phase}`} aria-live="polite">
@@ -207,6 +211,7 @@ export default function WarmUp({ show = 'warmups' }) {
               <strong className="warm-up__now-note">
                 {arrow} {singing || lastRound ? startNote(run.rep) : startNote(run.rep + 1)}
               </strong>
+              <ProgressBar value={run.rep + 1} max={run.shifts.length} label="Rounds" />
               <span className="warm-up__now-detail">
                 {singing
                   ? `Starting note · ${run.rep + 1} of ${run.shifts.length}`
@@ -279,7 +284,9 @@ export default function WarmUp({ show = 'warmups' }) {
             🎶
           </span>
           <span>
-            <strong>Harmony test</strong>
+            <strong>
+              Harmony test <BestStars id="harmony-test" />
+            </strong>
             <small>
               {!part
                 ? 'Choose your voice part first'
@@ -294,7 +301,9 @@ export default function WarmUp({ show = 'warmups' }) {
             👂
           </span>
           <span>
-            <strong>Pitch test</strong>
+            <strong>
+              Pitch test <BestStars id="pitch-test" />
+            </strong>
             <small>
               {part
                 ? `Sing back random notes from ${noteName(TEST_NOTES[part.id].low)}–${noteName(TEST_NOTES[part.id].low + 12)}`

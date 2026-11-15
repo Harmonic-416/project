@@ -11,6 +11,8 @@ import ShareAttempt from './ShareAttempt.jsx'
 import SessionAttempts from './SessionAttempts.jsx'
 import DynamicsMeter from './DynamicsMeter.jsx'
 import { describeDynamics, summarizeDynamics } from '../audio/dynamics.js'
+import { sfx } from '../feedback/sfx.js'
+import { recordActivity } from '../feedback/progress.js'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -111,6 +113,15 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   }, [result, recording])
 
   const dynamicsLine = useMemo(() => (result ? describeDynamics(summarizeDynamics(samples)) : null), [result, samples])
+
+  // A scored attempt: the finish sound, and it counts towards the day's streak.
+  const accuracy = result?.accuracy ?? null
+  useEffect(() => {
+    if (accuracy === null) return
+    if (accuracy >= 90) sfx.perfect()
+    else sfx.complete()
+    recordActivity()
+  }, [accuracy])
 
   const live = mic.current
   const liveTarget = live ? findActiveNote(melody, live.time) : null
