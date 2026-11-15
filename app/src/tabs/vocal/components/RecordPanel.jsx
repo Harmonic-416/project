@@ -16,7 +16,9 @@ import { gradeNote, median } from './pitchReading.js'
 import { createTroubleTracker, melodyLine, noteDistanceCents } from '../practice/practiceLogic.js'
 import { describeDynamics, summarizeDynamics } from '../audio/dynamics.js'
 import { sfx } from '../feedback/sfx.js'
-import { recordActivity } from '../feedback/progress.js'
+import { recordStars } from '../feedback/progress.js'
+import TakeSummary from './TakeSummary.jsx'
+import { summarizeTake } from '../practice/takeSummary.js'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -62,6 +64,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   const [recording, setRecording] = useState(null)
   const [notes, setNotes] = useState(null) // { hit, missed, total }
   const [samples, setSamples] = useState([])
+  const [take, setTake] = useState(null) // summarizeTake(...) for the last finished attempt
   // The line judged note by note while singing (entries keep `index` into scoreModel.notes).
   const judgedLine = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
   const liveJudgeRef = useRef(null) // { tracker, cents: Map<lineIndex, number[]> } during an attempt
@@ -113,6 +116,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     setResult(null)
     setRecording(null)
     setNotes(null)
+    setTake(null)
     clearNoteMarks()
     overlay.clear()
     liveJudgeRef.current = { tracker: createTroubleTracker(judgedLine), cents: new Map() }
@@ -135,6 +139,16 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     judgedLine.forEach((note) => {
       if (hits.has(note.index) || misses.has(note.index)) gradeOnStaff(note, hits.has(note.index))
     })
+    const centsByNote = new Map()
+    for (const [lineIndex, list] of liveJudgeRef.current?.cents ?? []) centsByNote.set(lineIndex, median(list))
+    setTake(
+      summarizeTake({
+        line: judgedLine,
+        hits: new Set(judgedLine.flatMap((note, i) => (hits.has(note.index) ? [i] : []))),
+        centsByNote,
+        bars: scoreModel.bars ?? [],
+      }),
+    )
     liveJudgeRef.current = null
     setRecording(blob)
     setSamples(sung)
@@ -163,14 +177,14 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
 
   const dynamicsLine = useMemo(() => (result ? describeDynamics(summarizeDynamics(samples)) : null), [result, samples])
 
-  // A scored attempt: the finish sound, and it counts towards the day's streak.
-  const accuracy = result?.accuracy ?? null
+  // A scored take: the finish sound ("perfect" only for every note) and its stars, best kept per song.
+  const songKey = shareSong?.fingerprint ?? title
   useEffect(() => {
-    if (accuracy === null) return
-    if (accuracy >= 90) sfx.perfect()
+    if (!take) return
+    if (take.ratio >= 1) sfx.perfect()
     else sfx.complete()
-    recordActivity()
-  }, [accuracy])
+    recordStars(`song:${songKey}`, take.stars)
+  }, [take, songKey])
 
   const live = mic.current
   const liveTarget = live ? findActiveNote(melody, live.time) : null
@@ -227,22 +241,18 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
         </div>
       )}
 
-      {result && (
-        <div className="record-panel__result">
-          <strong>{Math.round(result.accuracy)}% in tune</strong>
-          {notes && notes.total > 0 && (
-            <span>
-              {notes.hit.length} of {notes.total} notes sung
-              {notes.missed.length ? ` · ${notes.missed.length} missed (red)` : ''}
-            </span>
-          )}
-          {dynamicsLine && <span>{dynamicsLine}</span>}
-          <span>
-            {result.inTune} of {result.scoredFrames} frames within 50¢
-            {result.octaveAgnosticAccuracy > result.accuracy + 0.5
-              ? ` · ${Math.round(result.octaveAgnosticAccuracy)}% ignoring octave`
-              : ''}
-          </span>
+      {result && take && (
+        <TakeSummary
+          summary={take}
+          accuracy={result.accuracy}
+          octaveAccuracy={result.octaveAgnosticAccuracy ?? null}
+          dynamicsLine={dynamicsLine}
+          onHear={(time) => {
+            playback.stop()
+            playback.seek(time)
+            playback.play()
+          }}
+        >
           {recording && (
             <button
               type="button"
@@ -260,9 +270,10 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
               clearNoteMarks()
               setResult(null)
               setNotes(null)
+              setTake(null)
             }}
           >
-            Clear trace
+            Clear marks
           </button>
           <ShareAttempt
             auth={auth}
@@ -274,7 +285,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
             verdicts={notes?.verdicts ?? null}
             session={session}
           />
-        </div>
+        </TakeSummary>
       )}
       {session && supabase && <SessionAttempts supabase={supabase} session={session} />}
     </section>
