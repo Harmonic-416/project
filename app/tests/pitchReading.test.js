@@ -34,6 +34,8 @@ describe('readPitch — what the live meter says', () => {
   it('reads an octave slip as the right note, drawn near the centre', () => {
     const r = read(1210)
     expect(r.state).toBe('octave')
+    expect(r.words).toBe('Octave above — that counts')
+    expect(read(-1195).words).toBe('Octave below — that counts')
     expect(r.offset).toBeCloseTo(10 / METER_RANGE_CENTS)
     expect(foldOctave(-1190)).toBeCloseTo(10)
   })

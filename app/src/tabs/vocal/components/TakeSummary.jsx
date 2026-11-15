@@ -4,7 +4,9 @@ import './TakeSummary.css'
  * The card after a take (practice/takeSummary.js): stars and a headline from
  * the share of notes that landed — the same verdicts the staff shows — then
  * the few spots worth going back to, in words, each with a button that plays
- * the song from that bar. Pitch accuracy and loudness are secondary lines.
+ * the song from that bar. Pitch accuracy and loudness are secondary lines;
+ * accuracy counts a note sung an octave away as in tune, the way the notes
+ * are judged, so a bass singing a treble line isn't told they're 0% in tune.
  * `children` holds the take's actions (download, clear, share).
  */
 function TakeSummary({ summary, accuracy, octaveAccuracy, dynamicsLine, onHear, children }) {
@@ -26,8 +28,8 @@ function TakeSummary({ summary, accuracy, octaveAccuracy, dynamicsLine, onHear, 
             <b>
               {summary.hit} of {summary.total} notes
             </b>{' '}
-            · in tune {Math.round(accuracy)}% of the time
-            {octaveHelps && ` (${Math.round(octaveAccuracy)}% counting other octaves)`}
+            · in tune {Math.round(octaveHelps ? octaveAccuracy : accuracy)}% of the time
+            {octaveHelps && ' (an octave away counts)'}
           </p>
         </div>
       </div>

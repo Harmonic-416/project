@@ -31,7 +31,11 @@ export function readPitch({ sung, hasTarget, cents, verdict }) {
   const shown = verdict === 'octave' ? foldOctave(cents) : cents
   const offset = Math.max(-1, Math.min(1, shown / METER_RANGE_CENTS))
   if (verdict === 'in-tune') return { state: 'in-tune', words: 'On pitch', arrow: '✓', offset }
-  if (verdict === 'octave') return { state: 'octave', words: 'Right note, other octave', arrow: '↕', offset }
+  // An octave away is the right note in another voice's range: say so calmly, never as a miss.
+  if (verdict === 'octave') {
+    const below = cents < 0
+    return { state: 'octave', words: `Octave ${below ? 'below' : 'above'} — that counts`, arrow: '✓', offset }
+  }
   const sharp = shown > 0
   if (verdict === 'close') {
     return { state: 'close', words: sharp ? 'A bit lower' : 'A bit higher', arrow: sharp ? '↓' : '↑', offset }
