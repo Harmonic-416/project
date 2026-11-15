@@ -95,3 +95,10 @@ chip "🔁 Bars 3–4 ✕". Cleared on Sing and on mode change. Tests: takeSumma
 **NOT verified in a browser:** the Mac's audio clock stalled mid-session (AudioContext 'running' but currentTime
 frozen, in headless and the MCP Chrome alike; reproduced with the V16 change stashed) — coreaudiod needs a restart
 (`sudo killall coreaudiod`), which is Eddie's call. Re-verify looping by ear once audio is back.
+
+## 2026-11-15 · V5 · merged feat/mscz-import
+Side agent's converter (`notation/musescore/`, JSZip already in the app; 15 tests vs MuseScore 4's own export on 4
+fixtures). One conflict (hero subtitle) → Jamie's hero kept, now "MIDI, MusicXML or MuseScore". Verified:
+`satb-features.mscz` renders with the MuseScore chip, key, pickup, repeat, two verses, p + hairpin; part tabs
+S/A/T/B/Piano. Not supported yet (agent): MuseScore ≤2, chord symbols, tremolos, ottavas, transposing instruments
+at concert pitch. PR #57's loadNotation test expects .mscz to be rejected — reconcile whichever merges second.
