@@ -21,7 +21,7 @@ Re-ranked 2026-11-15 after `docs/vocal-community-research.md` (R-refs = its reco
 | V1 | DONE | Live pitch meter beside the score (tuner lane, words, phone strip). |
 | V2 | DONE | Song screen hierarchy: compact modes, Settings in the header, 🎤 Sing in the dock. |
 | V7 | DONE | Re-rank from community research (this table). |
-| V11 | TODO | **Bug: pitch trail assumes a treble clef** (`useSheetOverlay.js`) — bass / treble-8 parts (every TTBB arrangement) draw at the wrong height. Read the staff's clef from OSMD. (R-P1) |
+| V11 | DONE | **Bug: pitch trail assumes a treble clef** (`useSheetOverlay.js`) — bass / treble-8 parts (every TTBB arrangement) draw at the wrong height. Read the staff's clef from OSMD. (R-P1) |
 | V12 | TODO | **Grade each note on the staff as it ends**: ✓ green / amber ↑↓ / red ↑↓ (shape + colour), from the existing judge — no new thresholds; smooth the live trail and lift it in silence instead of dropping it. (R-P1, R-P3 presentation part, R-13) |
 | V3 | TODO | **Take summary card**: plain sentences ("Flat in bars 9–12, about −30¢") with Loop / Hear the note actions; stars tied to the shown accuracy; drop "frames within 50¢" jargon. (R-5, R-6) |
 | V13 | TODO | **Kind octaves**: meter says "An octave below — that counts" (direction-aware, calm colour); the result headline uses the octave-agnostic number already computed when that is what the singer did. (R-P2) |

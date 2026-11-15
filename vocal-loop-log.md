@@ -32,3 +32,10 @@ also failed on the untouched base).
 `docs/vocal-community-research.md` (r/singing, r/Choir, HN OnKey, App Store, EarMaster/Smule/MuseScore forums,
 Wilson 2008, Lin 2014). Backlog re-ranked: clef bug first (V11), per-note graded marks (V12), take summary (V3),
 kind octaves (V13), starting note (V14), part-mix ladder (V15). Strictness levels BLOCKED (thresholds = human call).
+
+## 2026-11-15 · V11 · clef-aware pitch trail
+`useSheetOverlay.js` hard-coded a treble staff (bottom line E4). Each cursor stop now carries `bottom` = the top
+staff's bottom-line diatonic index from OSMD's `InitiallyActiveClef` (G4/F3/C4 reference on its line, ±7 per
+octave offset; percussion/tab/missing → treble). Verified on "Ive Got A Dream A Cappella" → Bass 2 with the fake
+mic: the trail runs through the note heads. Tests: +4 in `pitchDetector.test.js` (treble, bass, treble-8, alto,
+tenor, fallback, bass y-positions). Lint clean.
