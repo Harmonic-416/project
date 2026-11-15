@@ -14,15 +14,25 @@ Rules (from CLAUDE.md, adapted — Eddie asked for this vocal cycle on 2026-11-1
 
 Status: `TODO`, `DOING`, `DONE`, `BLOCKED`.
 
+Re-ranked 2026-11-15 after `docs/vocal-community-research.md` (R-refs = its recommendations).
+
 | ID | Status | Item |
 |---|---|---|
-| V1 | DONE | **Live pitch feedback, glanceable.** Replace the tiny text pill ("A4 · target G4 (+23¢)") with a pitch meter beside the score while singing: target note name big, your pitch as a marker on a vertical lane with an in-tune band, colour state (in tune / close / off / octave), and plain-words direction ("a bit higher ↑"). Continuous trail line on the staff instead of loose dots; the current target note glows. |
-| V2 | TODO | **Song screen hierarchy.** One sticky bottom action bar: primary "Sing" (record attempt) + secondary Play/Stop + progress; mode cards compact (segmented control); drop helper-text noise. |
-| V3 | TODO | **Attempt result card.** Duolingo-style summary (stars, % in tune, notes hit, "trouble bars" chips that jump to the bar) instead of rows of jargon ("frames within 50¢"). |
-| V4 | TODO | **Songs home.** Song cards show useful info (voice parts, key, range, best stars, length) instead of identical gradient + 🎵; "Continue" row for the last song. |
-| V5 | TODO | **MuseScore import** — merge `feat/mscz-import` (side agent) and polish the upload UI copy ("MIDI, MusicXML or MuseScore"). |
-| V6 | TODO | **Auto-transpose** — merge `feat/auto-transpose` (side agent) into the song screen settings. |
-| V7 | TODO | Apply community research (`docs/vocal-community-research.md`) — re-rank this list when it lands. |
-| V8 | TODO | Phone (390×844) and dark-mode pass on every Vocal screen. |
-| V9 | TODO | Wait-for-me and Trouble-spots screens get the same pitch meter as V1. |
-| V10 | TODO | Top tab bar: consistent icons, active state matches guitar; streak/sound buttons labelled. |
+| V1 | DONE | Live pitch meter beside the score (tuner lane, words, phone strip). |
+| V2 | DONE | Song screen hierarchy: compact modes, Settings in the header, 🎤 Sing in the dock. |
+| V7 | DONE | Re-rank from community research (this table). |
+| V11 | TODO | **Bug: pitch trail assumes a treble clef** (`useSheetOverlay.js`) — bass / treble-8 parts (every TTBB arrangement) draw at the wrong height. Read the staff's clef from OSMD. (R-P1) |
+| V12 | TODO | **Grade each note on the staff as it ends**: ✓ green / amber ↑↓ / red ↑↓ (shape + colour), from the existing judge — no new thresholds; smooth the live trail and lift it in silence instead of dropping it. (R-P1, R-P3 presentation part, R-13) |
+| V3 | TODO | **Take summary card**: plain sentences ("Flat in bars 9–12, about −30¢") with Loop / Hear the note actions; stars tied to the shown accuracy; drop "frames within 50¢" jargon. (R-5, R-6) |
+| V13 | TODO | **Kind octaves**: meter says "An octave below — that counts" (direction-aware, calm colour); the result headline uses the octave-agnostic number already computed when that is what the singer did. (R-P2) |
+| V14 | TODO | **Starting note + quiet mic**: one tap plays the first note (and its chord) before Sing; sound effects are muted while the mic is live and celebrate after. (R-7, R-6) |
+| V15 | TODO | **Part-mix ladder** replaces "By myself / With all parts": My part only → My part louder → Others only → Everyone. (R-S2) |
+| V6 | TODO | **Auto-transpose** — merge `feat/auto-transpose`; show "Key −2 (recommended for Tenor)" with override. (R-S3, R-9) |
+| V5 | TODO | **MuseScore import** — merge `feat/mscz-import`; uploader copy "MIDI, MusicXML or MuseScore". |
+| V16 | TODO | **Loop a passage**: drag across bars / "Loop this" on a trouble spot. (R-S3) |
+| V9 | TODO | **Wait for me / Trouble spots**: same meter; Wait plays the note once when it stops and offers Skip. (R-12) |
+| V4 | TODO | **Songs home cards** with useful info (parts, key, range, best stars) and a Continue row. |
+| V17 | TODO | **Steadier score**: lyrics larger and higher-contrast, own staff highlighted in multi-part scores. (R-S1, partial — page layout is a bigger change) |
+| V8 | TODO | Phone (390×844) + dark-mode pass on every Vocal screen. |
+| V10 | TODO | Top tab bar: consistent icons; streak / sound buttons labelled. |
+| V18 | BLOCKED | **Strictness levels** (Relaxed ±50¢ / Standard ≤25¢ / Choir ≤15¢, R-P3) and median-after-onset judging — these change verdict thresholds (CLAUDE.md invariant 5): needs Eddie's / the team's decision. |
