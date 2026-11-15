@@ -68,3 +68,9 @@ border). sfx.perfect only at 100%; `recordStars('song:<fingerprint>')` for V4's 
 **Note for V18:** the judge counts a note after 3 on-pitch frames within 100¢ — a take alternating ±170¢ still
 scores 28–29/32. That leniency is the threshold question already parked for Eddie.
 Tests: +7 (`takeSummary.test.js`). Lint clean. Screenshots light/dark, desktop/phone.
+
+## 2026-11-15 · V13 · kind octaves
+Meter: verdict `octave` → "Octave below/above — that counts", ✓, sky colour (was "Right note, other octave").
+Take card: pitch line shows the octave-folded accuracy (already computed by scoreAttempt) when it is higher, with
+"(an octave away counts)". Verified with the fake mic one octave below: meter calm blue; take = 32/32, 93%.
+Tests updated (pitchReading). Lint clean.
