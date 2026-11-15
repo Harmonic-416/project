@@ -126,3 +126,14 @@ others have a `vocal-hero` → both now have one ("Test your ear and voice", "Wa
 bar hides labels by design (five tabs + streak + sound + account don't fit 390 px); labels stay in the DOM for screen
 readers, streak and sound buttons already carry aria-labels, and every section now names itself in its hero — no
 further change. Warm-up tests 10/10, lint clean.
+
+## 2026-11-15 · V9 · meter in Wait for me / Trouble spots, Skip note
+Both players accept `meterSlot` and portal `PitchMeter` (verdict = their own `liveVerdict(cents, STRICT_*)`, band =
+`toleranceCents` prop, new on PitchMeter). Wait: "Skip note ›" (seek to the next note: scored, not charted). Not
+done: auto-playing each note when Wait stops (would deafen the mic ~1.1 s per note and change the mode); "Hear
+note" already exists. Practice tests 54/54, lint clean. **Browser check pending audio** (same coreaudiod stall).
+
+## 2026-11-15 · backlog status
+All items DONE except V18 (BLOCKED: strictness levels change thresholds — Eddie's call). Two DONE items still need a
+by-ear check once audio works: V16 (looping) and V9 (meter in Wait / Trouble). The loop keeps running only to drive
+the arranger experiment (3 strategy branches → Fable judge).
