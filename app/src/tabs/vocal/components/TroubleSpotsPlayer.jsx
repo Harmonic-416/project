@@ -7,6 +7,8 @@ import { sfx } from '../feedback/sfx.js'
 import { recordActivity } from '../feedback/progress.js'
 import DynamicsMeter from './DynamicsMeter.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
+import { createPortal } from 'react-dom'
+import PitchMeter from './PitchMeter.jsx'
 import { findActiveNote, midiToNoteName } from '../audio/pitchDetector.js'
 import { createTroubleTracker, noteDistanceCents } from '../practice/practiceLogic.js'
 import { liveVerdict, STRICT_TROUBLE, summarizeTroubleRun } from '../practice/scoring.js'
@@ -33,7 +35,7 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
  * counted live; reaching the end shows the score, and a run from the start
  * joins the saved tries for `runsKey` (practice/sessionRuns.js; on the account too with `runsRemote`).
  */
-function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey, runsRemote = null }) {
+function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey, runsRemote = null, meterSlot = null }) {
   const [missed, setMissed] = useState([])
   const missedRef = useRef([])
   const [run, setRun] = useState(null) // { right, close, missed, finished, from }
@@ -195,7 +197,23 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey
         disabled={disabled || mic.status === 'requesting'}
       />
       <div className="practice-status" aria-live="polite">
-        {listening && playing ? (
+        {listening &&
+          playing &&
+          meterSlot &&
+          createPortal(
+            <PitchMeter
+              hasTarget={Boolean(liveTarget)}
+              targetName={liveTarget ? midiToNoteName(liveTarget.midi) : null}
+              sungName={live?.noteName ?? null}
+              cents={liveCents}
+              verdict={liveTone}
+              toleranceCents={STRICT_TROUBLE.toleranceCents}
+            />,
+            meterSlot,
+          )}
+        {listening && playing && meterSlot ? (
+          <span>Listening — sing along</span>
+        ) : listening && playing ? (
           <span className={`practice-status__live practice-status__live--${liveTone}`}>
             {live
               ? `you: ${live.noteName}${liveTarget ? ` · note ${midiToNoteName(liveTarget.midi)}` : ' · rest'}`

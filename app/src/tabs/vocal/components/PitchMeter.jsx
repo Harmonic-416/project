@@ -2,7 +2,6 @@ import './PitchMeter.css'
 import { IN_TUNE_CENTS, METER_RANGE_CENTS, readPitch } from './pitchReading.js'
 
 const BALL_TRAVEL_PCT = 40 // the ball stops short of the lane's ends so it never spills out
-const BAND_PCT = (IN_TUNE_CENTS / METER_RANGE_CENTS) * BALL_TRAVEL_PCT // half the band, on the same scale
 
 /**
  * The live "am I on it?" meter that sits beside the score while someone
@@ -13,8 +12,10 @@ const BAND_PCT = (IN_TUNE_CENTS / METER_RANGE_CENTS) * BALL_TRAVEL_PCT // half t
  * the vertical lane; on a phone the meter lies under the score as a tuner
  * strip (flat left, sharp right) so the score keeps its width.
  */
-function PitchMeter({ targetName, sungName, cents, verdict, hasTarget }) {
+function PitchMeter({ targetName, sungName, cents, verdict, hasTarget, toleranceCents = IN_TUNE_CENTS }) {
   const reading = readPitch({ sung: Boolean(sungName), hasTarget, cents, verdict })
+  // The band is the in-tune tolerance of whichever mode is judging (Wait for me holds 35¢, the others 50¢).
+  const bandPct = (toleranceCents / METER_RANGE_CENTS) * BALL_TRAVEL_PCT
   return (
     <div className={`pitch-meter pitch-meter--${reading.state}`}>
       <div className="pitch-meter__target">
@@ -23,7 +24,7 @@ function PitchMeter({ targetName, sungName, cents, verdict, hasTarget }) {
       </div>
       <div className="pitch-meter__lane" aria-hidden="true">
         <span className="pitch-meter__edge pitch-meter__edge--top">sharp</span>
-        <span className="pitch-meter__band" style={{ '--pm-band': BAND_PCT }} />
+        <span className="pitch-meter__band" style={{ '--pm-band': bandPct }} />
         <span className="pitch-meter__centre" />
         {sungName && hasTarget && (
           <span className="pitch-meter__ball" style={{ '--pm-pos': reading.offset * BALL_TRAVEL_PCT }}>

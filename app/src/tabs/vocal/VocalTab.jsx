@@ -981,6 +981,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 backingNotes={withOthers ? otherPartNotes : null}
                 runsKey={runsKey({ ...runsSetting, mode: 'wait' })}
                 runsRemote={runsRemotes.wait}
+                meterSlot={meterSlot}
               />
             ) : scoreModel && practiceMode === 'trouble' ? (
               <TroubleSpotsPlayer
@@ -990,6 +991,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 sheetMusicRef={sheetMusicRef}
                 runsKey={runsKey({ ...runsSetting, mode: 'trouble' })}
                 runsRemote={runsRemotes.trouble}
+                meterSlot={meterSlot}
               />
             ) : (
               <div className="v-dock">
