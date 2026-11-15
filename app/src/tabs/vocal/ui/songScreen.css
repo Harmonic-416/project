@@ -366,6 +366,7 @@
 }
 
 .v-dock > .playback-controls { flex: 1; min-width: 0; }
+.v-dock__action { display: flex; gap: var(--v-s2); }
 .v-dock__action:empty { display: none; }
 
 /* Sing: the screen's primary action, so it is the biggest thing in the dock. */

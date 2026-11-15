@@ -57,15 +57,15 @@ function createSession() {
 
 let tapSynth = null
 
-/** Play one note now (a tapped solfège box). Call from a tap. */
-export async function tapNote(midi) {
+/** Play one note now (a tapped solfège box, a starting pitch). Call from a tap. */
+export async function tapNote(midi, seconds = 0.45) {
   await Tone.start()
   tapSynth ??= new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: 'triangle' },
     envelope: { attack: 0.01, decay: 0.25, sustain: 0.3, release: 0.4 },
     volume: VOLUME_DB,
   }).toDestination()
-  tapSynth.triggerAttackRelease(midiToHz(midi), 0.45)
+  tapSynth.triggerAttackRelease(midiToHz(midi), seconds)
 }
 
 /**

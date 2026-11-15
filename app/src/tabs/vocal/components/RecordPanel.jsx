@@ -18,6 +18,7 @@ import { describeDynamics, summarizeDynamics } from '../audio/dynamics.js'
 import { sfx } from '../feedback/sfx.js'
 import { recordStars } from '../feedback/progress.js'
 import TakeSummary from './TakeSummary.jsx'
+import { tapNote } from '../learn/usePlayback.js'
 import { summarizeTake } from '../practice/takeSummary.js'
 
 const SUNG_CLASS = 'practice-note--sung'
@@ -207,15 +208,35 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
       {mic.status === 'requesting' ? 'Starting mic…' : '🎤 Sing'}
     </button>
   )
+  // The pitch to start on, before singing: the first note of the part, held long enough to find.
+  const firstNote = judgedLine[0] ?? null
+  const startingNote = !listening && firstNote && (
+    <button
+      type="button"
+      className="record-panel__first-note"
+      onClick={() => tapNote(firstNote.midi, 1.2)}
+      title={`Play your first note (${midiToNoteName(firstNote.midi)})`}
+    >
+      🎵 <span className="record-panel__first-note-name">{midiToNoteName(firstNote.midi)}</span>
+    </button>
+  )
   const showRow = !actionSlot || listening || mic.status === 'error'
   const empty = !showRow && !result && !(session && supabase)
 
   return (
     <section className={`record-panel${empty ? ' record-panel--empty' : ''}`}>
-      {actionSlot && createPortal(actionButton, actionSlot)}
+      {actionSlot &&
+        createPortal(
+          <>
+            {actionButton}
+            {startingNote}
+          </>,
+          actionSlot,
+        )}
       {showRow && (
         <div className="record-panel__row">
           {!actionSlot && actionButton}
+          {!actionSlot && startingNote}
           {listening &&
             meterSlot &&
             createPortal(

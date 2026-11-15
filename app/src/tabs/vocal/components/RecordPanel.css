@@ -149,3 +149,19 @@
 .pitch-badge--silent text { fill: var(--v-text); }
 .pitch-badge__pop { animation: v-pop var(--v-med) var(--v-ease-bounce) both; transform-box: fill-box; transform-origin: center; }
 @media (prefers-reduced-motion: reduce) { .pitch-badge__pop { animation: none; } }
+
+/* Starting pitch (🎵 G4): a quiet companion to Sing. */
+.record-panel__first-note {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+  color: var(--v-text);
+  font: inherit;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.record-panel__first-note:hover { border-color: var(--v-primary); }
+.record-panel__first-note-name { font-variant-numeric: tabular-nums; }
