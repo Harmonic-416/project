@@ -40,7 +40,7 @@ import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
 import { VOICINGS } from './arrange/arrange.js'
 
-const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
+const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL', musescore: 'MuseScore' }
 const NO_SCHEDULE = []
 const NO_TIMESTAMPS = []
 const NO_BEATS = []
@@ -563,7 +563,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       return (
         <div className="vocal-tab">
           <header className="vocal-tab__header">
-            <p>Choose a song, or upload your own MIDI or MusicXML file.</p>
+            <p>Choose a song, or upload your own MIDI, MusicXML or MuseScore file.</p>
           </header>
 
           <button type="button" className="vocal-tab__search-songs" onClick={() => setView('search')}>
@@ -720,7 +720,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     const shareSong = notation && {
       songId: notation.catalogSongId,
       title: notation.title,
-      format: notation.format,
+      // Shared attempts record the format as MIDI / MusicXML / MXL; a MuseScore file opens as MusicXML.
+      format: notation.format === 'musescore' ? 'musicxml' : notation.format,
       fingerprint: notation.fingerprint,
       builtin: notation.builtin,
       partId: selectedPart?.id ?? null,
