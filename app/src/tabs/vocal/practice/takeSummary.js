@@ -21,6 +21,13 @@ export function barAt(bars, time) {
   return found
 }
 
+/** "Bar 9", "Bars 9–12"; a pickup is bar 0 on the score but reads as "Pickup" in words. */
+export function spotLabel(fromBar, toBar) {
+  if (fromBar === null) return 'Start'
+  if (fromBar === 0) return toBar === 0 ? 'Pickup' : `Pickup–bar ${toBar}`
+  return fromBar === toBar ? `Bar ${fromBar}` : `Bars ${fromBar}–${toBar}`
+}
+
 function headline(ratio) {
   if (ratio >= 1) return 'Every note!'
   if (ratio >= 0.9) return 'Great take'
@@ -82,7 +89,7 @@ export function summarizeTake({ line, hits, centsByNote, bars }) {
     .sort((a, b) => a.time - b.time)
     .map(({ cents: _cents, ...spot }) => ({
       ...spot,
-      label: spot.fromBar === null ? 'Start' : spot.fromBar === spot.toBar ? `Bar ${spot.fromBar}` : `Bars ${spot.fromBar}–${spot.toBar}`,
+      label: spotLabel(spot.fromBar, spot.toBar),
       // Where the passage ends (the next bar's start), for looping it; null = the end of the song.
       endTime: bars.find((bar) => spot.toBar !== null && bar.number === spot.toBar + 1)?.time ?? null,
     }))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barAt, howFar, summarizeTake } from '../src/tabs/vocal/practice/takeSummary.js'
+import { barAt, howFar, spotLabel, summarizeTake } from '../src/tabs/vocal/practice/takeSummary.js'
 import { barNumbers } from '../src/tabs/vocal/notation/scoreModel.js'
 
 // Eight bars of 2 s, numbered 1–8; one note per second.
@@ -71,5 +71,14 @@ describe('a spot at the last bar', () => {
   it('loops to the end of the song (no next bar)', () => {
     const take = summarizeTake({ line, hits: allBut([15]), centsByNote: new Map(), bars })
     expect(take.spots[0]).toMatchObject({ label: 'Bar 8', endTime: null })
+  })
+})
+
+describe('spotLabel', () => {
+  it('names a pickup in words instead of "bar 0"', () => {
+    expect(spotLabel(0, 0)).toBe('Pickup')
+    expect(spotLabel(0, 5)).toBe('Pickup–bar 5')
+    expect(spotLabel(9, 9)).toBe('Bar 9')
+    expect(spotLabel(9, 12)).toBe('Bars 9–12')
   })
 })
