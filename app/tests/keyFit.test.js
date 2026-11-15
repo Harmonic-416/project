@@ -8,7 +8,9 @@ import {
   noteLabel,
   pitchName,
   scoreShift,
+  signed,
   transposeFifths,
+  transposeLabel,
 } from '../src/tabs/vocal/transpose/keyFit.js'
 
 const notes = (pairs) => pairs.map(([midi, duration = 1]) => ({ midi, duration }))
@@ -47,6 +49,15 @@ describe('names', () => {
     expect(pitchName(70, 2)).toBe('A#')
     expect(noteLabel(67)).toBe('G4')
     expect(noteLabel(60)).toBe('C4')
+  })
+
+  it('labels the transposition', () => {
+    expect(signed(-3)).toBe('−3')
+    expect(signed(2)).toBe('+2')
+    expect(transposeLabel(0, { fifths: 0 })).toBe('Original key (C)')
+    expect(transposeLabel(-3, { fifths: 1 })).toBe('Transposed −3 (to E)')
+    expect(transposeLabel(-2, { fifths: 0 })).toBe('Transposed −2 (to Bb)')
+    expect(transposeLabel(2, { fifths: -2, mode: 'minor' })).toBe('Transposed +2 (to A minor)')
   })
 })
 

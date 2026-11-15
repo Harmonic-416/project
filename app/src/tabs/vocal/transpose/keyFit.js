@@ -63,6 +63,17 @@ export function keyName(fifths, mode = 'major') {
   return MAJOR_NAMES[fifths] ?? '?'
 }
 
+/** "−3", "+2", "0" — with a real minus sign. */
+export function signed(n) {
+  return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0'
+}
+
+/** "Transposed −3 (to A)", or "Original key (C)" without a move; `fifths`/`mode` are the written key. */
+export function transposeLabel(shift, { fifths = 0, mode = 'major' } = {}) {
+  if (!shift) return `Original key (${keyName(fifths, mode)})`
+  return `Transposed ${signed(shift)} (to ${keyName(transposeFifths(fifths, shift), mode)})`
+}
+
 /** 'G' for 67; sharps or flats as the key signature `fifths` spells them. Octave left off. */
 export function pitchName(midi, fifths = 0) {
   return (fifths < 0 ? FLAT_NAMES : SHARP_NAMES)[mod12(midi)]

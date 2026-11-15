@@ -12,6 +12,7 @@ import SolfegeToggle from './components/SolfegeToggle.jsx'
 import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
+import TransposeControl from './components/TransposeControl.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
@@ -39,6 +40,8 @@ import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
 import { VOICINGS } from './arrange/arrange.js'
+import { readKey, readPartNotes, transposeMusicXml } from './transpose/transposeXml.js'
+import { useSongTranspose } from './transpose/useSongTranspose.js'
 
 const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
 const NO_SCHEDULE = []
@@ -369,15 +372,38 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const multiPart = parts.length > 1
   const selectedPart = multiPart ? (parts.find((p) => p.id === practicePart) ?? parts[0]) : null
   const withOthers = multiPart && accompaniment === 'all'
-  const partContent = useMemo(() => {
-    if (!notation || !selectedPart) return notation?.content
+  // The key (transpose/): the whole score moves, before a part is picked out
+  // of it, so the viewer, playback, the cursor and pitch scoring — all read
+  // off the rendered score — move together. Remembered per song. A shared
+  // attempt was sung in the written key, so it is shown in that one.
+  const [savedShift, setSavedShift] = useSongTranspose(notation?.fingerprint)
+  const shift = shared?.phase === 'open' ? 0 : savedShift
+  const transposed = useMemo(() => {
+    if (!notation) return null
     try {
-      return withOthers ? partOnTop(notation.content, selectedPart.id) : extractPart(notation.content, selectedPart.id)
+      return transposeMusicXml(notation.content, shift, { respell: notation.format === 'midi' })
     } catch (err) {
       console.error(err)
       return notation.content
     }
-  }, [notation, selectedPart, withOthers])
+  }, [notation, shift])
+  const keyInfo = useMemo(() => readKey(notation?.content), [notation])
+  const fitPartId = (selectedPart ?? parts[0])?.id ?? null
+  const fitNotes = useMemo(() => readPartNotes(notation?.content, fitPartId), [notation, fitPartId])
+  // What Export writes: what's on screen, in its key.
+  const exportable = useMemo(
+    () => (notation && shift ? { ...notation, format: 'musicxml', content: transposed } : notation),
+    [notation, shift, transposed],
+  )
+  const partContent = useMemo(() => {
+    if (!notation || !selectedPart) return transposed ?? undefined
+    try {
+      return withOthers ? partOnTop(transposed, selectedPart.id) : extractPart(transposed, selectedPart.id)
+    } catch (err) {
+      console.error(err)
+      return transposed
+    }
+  }, [notation, transposed, selectedPart, withOthers])
   // Solfège: the same score with do re mi in place of its lyrics. MIDI files
   // spell every black key as a sharp, so their chromatic notes go by pitch.
   const [solfegeOn, setSolfegeOn] = useState(loadSolfegeOn)
@@ -516,6 +542,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       setAccompaniment(value)
     },
     [accompaniment, multiPart, playback],
+  )
+
+  const handleTransposeChange = useCallback(
+    (next) => {
+      if (next === shift) return
+      playback.stop()
+      setScoreModel(null) // the notes move: the panels wait for the viewer's new score model
+      setSavedShift(next)
+    },
+    [shift, playback, setSavedShift],
   )
 
   // The notes don't change, so the panels keep the score model until the viewer hands over the new one.
@@ -752,7 +788,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                   Sessions
                 </button>
               )}
-              <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
+              <ExportButtons notation={exportable} scoreModel={scoreModel} disabled={!scoreModel} />
             </div>
           )}
         </div>
@@ -809,6 +845,15 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               onChange={handleSolfegeChange}
               disabled={!scoreModel}
             />
+            {!viewingShared && (
+              <TransposeControl
+                shift={shift}
+                onChange={handleTransposeChange}
+                notes={fitNotes}
+                keyInfo={keyInfo}
+                disabled={!scoreModel}
+              />
+            )}
             {/* Wait for me has no transport to click along with or slow down. */}
             {scoreModel && practiceMode !== 'wait' && (
               <>
