@@ -26,7 +26,7 @@ Re-ranked 2026-11-15 after `docs/vocal-community-research.md` (R-refs = its reco
 | V3 | DONE | **Take summary card**: plain sentences ("Flat in bars 9–12, about −30¢") with Loop / Hear the note actions; stars tied to the shown accuracy; drop "frames within 50¢" jargon. (R-5, R-6) |
 | V13 | DONE | **Kind octaves**: meter says "An octave below — that counts" (direction-aware, calm colour); the result headline uses the octave-agnostic number already computed when that is what the singer did. (R-P2) |
 | V14 | DONE | **Starting note + quiet mic**: one tap plays the first note (and its chord) before Sing; sound effects are muted while the mic is live and celebrate after. (R-7, R-6) |
-| V15 | TODO | **Part-mix ladder** replaces "By myself / With all parts": My part only → My part louder → Others only → Everyone. (R-S2) |
+| V15 | DONE | **Part-mix ladder** replaces "By myself / With all parts": My part only → My part louder → Others only → Everyone. (R-S2) |
 | V6 | DONE | **Auto-transpose** — merge `feat/auto-transpose`; show "Key −2 (recommended for Tenor)" with override. (R-S3, R-9) |
 | V5 | TODO | **MuseScore import** — merge `feat/mscz-import`; uploader copy "MIDI, MusicXML or MuseScore". |
 | V16 | TODO | **Loop a passage**: drag across bars / "Loop this" on a trouble spot. (R-S3) |

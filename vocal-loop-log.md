@@ -79,3 +79,10 @@ Tests updated (pitchReading). Lint clean.
 Dock: 🎵 <first note> next to 🎤 Sing (Learn's `tapNote`, now with a length; 1.2 s). sfx: `setMicLive` set by
 useMicPitch on listening/stop; chime + wrong-thud skip while live (no current call sites fire during listening —
 this guards future ones and keeps app sounds out of recordings). Test `sfxMicLive.test.js` mocks Tone.
+
+## 2026-11-15 · V15 · part-mix ladder
+`LISTEN_MIXES` (solo / lead / others / all) + `mixSchedule(notes, mix)` with per-event `velocity`
+(useMidiPlayback passes it to `triggerAttackRelease`; default 1). Listen → ladder; Wait / Trouble → existing
+ACCOMPANIMENTS (a Listen-only rung reads as "With all parts" there). `withOthers = accompaniment !== 'solo'`, so
+runs / shared attempts keep solo|all. Settings label "What plays" in Listen. Tests: `partMix.test.js` (4);
+practiceLogic / practiceScoring / songFollow 48 pass. Not verified by ear (headless) — velocity path unit-tested.
