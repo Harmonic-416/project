@@ -322,3 +322,37 @@
 /* The whole recording: a full-width player with its length and a scrubber. */
 .vocal-frame .attempt-row__audio { flex-wrap: wrap; }
 .vocal-frame .attempt-row__player { flex: 1 1 320px; max-width: none; width: 100%; }
+
+/* The take's summary on a saved attempt: the card after a take, a size down. */
+.attempt-row__feedback { display: flex; flex-direction: column; gap: 6px; }
+.attempt-row__headline { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--v-font-display); }
+.attempt-row__stars { color: var(--v-border-strong); letter-spacing: 1px; }
+.attempt-row__stars .is-on { color: var(--v-gold); }
+.attempt-row__spots { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.attempt-row__spot { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; }
+.attempt-row__glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--v-bad);
+  color: var(--v-on-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.attempt-row__spot--silent .attempt-row__glyph { background: var(--v-border-strong); color: var(--v-text); }
+.attempt-row__more--button {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--v-radius-pill);
+  background: none;
+  color: var(--v-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.attempt-row__more--button:hover { background: var(--v-subtle); }

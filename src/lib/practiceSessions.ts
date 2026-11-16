@@ -302,6 +302,13 @@ export async function listSessionAttempts(supabase: SupabaseClient, sessionId: s
 }
 
 /** Short-lived URL for one of your attempts' recording, or null when it has none. */
+/** The pitch trace ([[seconds, midi], …]) of one of your attempts; the session lists leave it out because it is big. */
+export async function getAttemptSamples(supabase: SupabaseClient, attemptId: string): Promise<[number, number][]> {
+  const { data, error } = await supabase.from('shared_attempt').select('samples').eq('id', attemptId).maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data?.samples as [number, number][] | null) ?? []
+}
+
 export async function getRecordingUrl(
   supabase: SupabaseClient,
   attempt: Pick<SessionAttempt, 'recording_path'>,

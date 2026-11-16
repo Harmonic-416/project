@@ -1,9 +1,9 @@
-import { loadSongBars, missedBars } from '../practice/songBars.js'
+import { loadSongBars, loadSongLine, missedBars, takeFeedback } from '../practice/songBars.js'
 import { Trash2 } from 'lucide-react'
 import AttemptShare from './AttemptShare.jsx'
 import { useEffect, useRef, useState } from 'react'
 import './SessionAttempts.css'
-import { deleteAttemptRecording, getRecordingUrl, saveAttemptFeedback } from '@backend/practiceSessions'
+import { deleteAttemptRecording, getAttemptSamples, getRecordingUrl, saveAttemptFeedback } from '@backend/practiceSessions'
 import { RUN_MODE_LABEL, attemptNotesLine, attemptTime, budgetOf, debounce, formatBytes } from '../practice/practiceSession.js'
 
 const AUTOSAVE_MS = 600
@@ -100,6 +100,9 @@ export function RecordingBudget({ storage }) {
  * `actions` go at the end of the row's first line; `showAudio` false leaves
  * the recording to the caller (an opened attempt already has a player).
  */
+// Spots listed on a row before "+N more" opens the rest.
+const SPOTS_SHOWN = 3
+
 export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDeleted, actions = null, showAudio = true, share = true, className = '' }) {
   const [note, setNote] = useState(attempt.self_note ?? '')
   const [noteState, setNoteState] = useState('idle') // idle | saving | saved | error
@@ -181,8 +184,25 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
     }
   }
 
+  // The summary the card showed after this take, rebuilt from what was saved: needs the song's line
+  // (remembered on this device once the song has been opened) and the attempt's pitch trace.
+  const [feedback, setFeedback] = useState(null)
+  const [allSpots, setAllSpots] = useState(false)
+  useEffect(() => {
+    if (!Array.isArray(attempt.verdicts) || attempt.mode === 'wait') return undefined
+    const song = loadSongLine(attempt, attempt.verdicts.length)
+    if (!song) return undefined
+    let live = true
+    getAttemptSamples(supabase, attempt.id)
+      .then((trace) => live && setFeedback(takeFeedback({ verdicts: attempt.verdicts, trace, song })))
+      .catch((err) => console.error(err))
+    return () => {
+      live = false
+    }
+  }, [attempt.id, attempt.verdicts, attempt.mode, attempt, supabase])
+
   const missed = Array.isArray(attempt.verdicts)
-    ? missedBars(attempt.verdicts, loadSongBars(attempt, attempt.verdicts.length))
+    ? missedBars(attempt.verdicts, loadSongBars(attempt, attempt.verdicts.length), allSpots ? Infinity : undefined)
     : null
 
   const noteHint =
@@ -219,7 +239,40 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
       {attemptNotesLine(attempt.verdicts, attempt.mode) && (
         <p className="attempt-row__notes">{attemptNotesLine(attempt.verdicts, attempt.mode)}</p>
       )}
-      {missed?.labels.length > 0 && (
+      {feedback && (
+        <div className="attempt-row__feedback">
+          <p className="attempt-row__headline">
+            <span className="attempt-row__stars" aria-label={`${feedback.stars} of 3 stars`}>
+              {[0, 1, 2].map((i) => (
+                <span key={i} className={i < feedback.stars ? 'is-on' : undefined} aria-hidden="true">
+                  ★
+                </span>
+              ))}
+            </span>
+            <strong>{feedback.title}</strong>
+          </p>
+          {feedback.spots.length > 0 && (
+            <ul className="attempt-row__spots">
+              {(allSpots ? feedback.spots : feedback.spots.slice(0, SPOTS_SHOWN)).map((spot) => (
+                <li key={`${spot.time}-${spot.label}`} className={`attempt-row__spot attempt-row__spot--${spot.direction}`}>
+                  <span className="attempt-row__glyph" aria-hidden="true">
+                    {spot.glyph}
+                  </span>
+                  <span>
+                    <b>{spot.label}</b> · {spot.words}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {feedback.spots.length > SPOTS_SHOWN && (
+            <button type="button" className="attempt-row__more attempt-row__more--button" aria-expanded={allSpots} onClick={() => setAllSpots((open) => !open)}>
+              {allSpots ? 'Show fewer' : `+${feedback.spots.length - SPOTS_SHOWN} more`}
+            </button>
+          )}
+        </div>
+      )}
+      {!feedback && missed?.labels.length > 0 && (
         <p className="attempt-row__missed">
           <span className="attempt-row__missed-label">Go back to</span>
           {missed.labels.map((label) => (
@@ -227,7 +280,11 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
               {label}
             </span>
           ))}
-          {missed.more > 0 && <span className="attempt-row__more">+{missed.more} more</span>}
+          {(missed.more > 0 || allSpots) && (
+            <button type="button" className="attempt-row__more attempt-row__more--button" aria-expanded={allSpots} onClick={() => setAllSpots((open) => !open)}>
+              {allSpots ? 'Show fewer' : `+${missed.more} more`}
+            </button>
+          )}
         </p>
       )}
 

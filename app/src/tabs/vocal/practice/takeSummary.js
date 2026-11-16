@@ -62,7 +62,7 @@ function describe(centsList) {
  * @param {{ line: Array<{time:number}>, hits: Set<number>, centsByNote: Map<number, number|null>, bars: Array<{time:number, number:number}> }} input
  *   line: the judged melody; hits / centsByNote are keyed by position in `line`.
  */
-export function summarizeTake({ line, hits, centsByNote, bars }) {
+export function summarizeTake({ line, hits, centsByNote, bars, max = MAX_SPOTS }) {
   const total = line.length
   const hit = line.filter((_, i) => hits.has(i)).length
   const ratio = total ? hit / total : 0
@@ -85,7 +85,7 @@ export function summarizeTake({ line, hits, centsByNote, bars }) {
   const spots = runs
     .map((run) => ({ ...run, ...describe(run.cents) }))
     .sort((a, b) => b.count - a.count || a.time - b.time)
-    .slice(0, MAX_SPOTS)
+    .slice(0, max)
     .sort((a, b) => a.time - b.time)
     .map(({ cents: _cents, ...spot }) => ({
       ...spot,

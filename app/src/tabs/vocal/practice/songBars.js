@@ -1,4 +1,6 @@
-import { spotLabel } from './takeSummary.js'
+import { spotLabel, summarizeTake } from './takeSummary.js'
+import { noteDistanceCents } from './practiceLogic.js'
+import { median } from '../components/pitchReading.js'
 
 /**
  * Which bars an attempt missed, for places that list attempts without the
@@ -64,4 +66,69 @@ export function missedBars(verdicts, barNumbers, max = MAX_SPOTS) {
     else runs.push({ from: bar, to: bar })
   })
   return { labels: runs.slice(0, max).map((r) => spotLabel(r.from, r.to)), more: Math.max(0, runs.length - max) }
+}
+
+/**
+ * The whole judged line of a song's part — each note's time, length and pitch,
+ * and where the bars start — remembered like the bar numbers above, so a past
+ * attempt's saved pitch trace can be read against it without the score open:
+ * which stretches were flat, sharp or not sung (takeFeedback below).
+ */
+const LINE_PREFIX = 'harmonic.songLine.'
+
+export function rememberSongLine(song, line, bars) {
+  if (!songKey(song) || !line?.length || !bars?.length) return
+  try {
+    const value = JSON.stringify({
+      line: line.map((n) => [Math.round(n.time * 1000) / 1000, Math.round(n.duration * 1000) / 1000, n.midi]),
+      bars: bars.map((b) => [Math.round(b.time * 1000) / 1000, b.number]),
+    })
+    store()?.setItem(`${LINE_PREFIX}${songKey(song)}|${partOf(song)}`, value)
+    store()?.setItem(`${LINE_PREFIX}${songKey(song)}|`, value)
+  } catch {
+    // Full or blocked storage: lists fall back to the bars alone.
+  }
+}
+
+export function loadSongLine(song, length) {
+  for (const key of [`${LINE_PREFIX}${songKey(song)}|${partOf(song)}`, `${LINE_PREFIX}${songKey(song)}|`]) {
+    try {
+      const saved = JSON.parse(store()?.getItem(key) ?? 'null')
+      if (saved?.line?.length === length && saved.bars?.length) {
+        return {
+          line: saved.line.map(([time, duration, midi]) => ({ time, duration, midi })),
+          bars: saved.bars.map(([time, number]) => ({ time, number })),
+        }
+      }
+    } catch {
+      // unreadable entry: try the next
+    }
+  }
+  return null
+}
+
+/**
+ * The take summary (stars, headline, "Bars 9–12 · flat (about a half step
+ * low)") for a saved attempt: its verdicts say which notes landed, its pitch
+ * trace says which way the others were off. The same summarizeTake the card
+ * after a take uses, so the two read the same. `trace`: [[seconds, midi], …].
+ */
+export function takeFeedback({ verdicts, trace, song }) {
+  if (!Array.isArray(verdicts) || !song || song.line.length !== verdicts.length) return null
+  const { line, bars } = song
+  const heard = new Map()
+  let from = 0
+  for (const [time, midi] of trace ?? []) {
+    // Notes are in time order and so is the trace: walk forward, never back.
+    while (from < line.length && time >= line[from].time + line[from].duration) from += 1
+    const note = line[from]
+    if (!note || time < note.time + Math.min(0.1, note.duration / 2)) continue
+    const list = heard.get(from) ?? []
+    list.push(noteDistanceCents(midi, note.midi))
+    heard.set(from, list)
+  }
+  const centsByNote = new Map([...heard].map(([i, list]) => [i, median(list)]))
+  const hits = new Set(verdicts.flatMap((v, i) => (v === 'hit' ? [i] : [])))
+  // Every spot, in score order: the row shows a few and opens the rest on request.
+  return summarizeTake({ line, hits, centsByNote, bars, max: Infinity })
 }

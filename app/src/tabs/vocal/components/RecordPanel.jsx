@@ -1,4 +1,4 @@
-import { rememberSongBars } from '../practice/songBars.js'
+import { rememberSongBars, rememberSongLine } from '../practice/songBars.js'
 import { barAt } from '../practice/takeSummary.js'
 import { Download, Eraser } from 'lucide-react'
 import { Mic, Music } from 'lucide-react'
@@ -76,6 +76,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   useEffect(() => {
     if (!scoreModel?.bars?.length || !judgedLine.length || !shareSong) return
     rememberSongBars(shareSong, judgedLine.map((note) => barAt(scoreModel.bars, note.time)?.number ?? 0))
+    rememberSongLine(shareSong, judgedLine, scoreModel.bars)
   }, [scoreModel, judgedLine, shareSong])
   const liveJudgeRef = useRef(null) // { tracker, cents: Map<lineIndex, number[]> } during an attempt
 
