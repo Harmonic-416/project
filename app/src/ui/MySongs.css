@@ -1,7 +1,7 @@
 /*
  * "My songs" (MySongs.jsx): SongLibrary's cover cards, each with a Remove
  * chip on its cover, the same in Vocal and Guitar. Colours and spacing are
- * the shared tokens (styles/tokens.css).
+ * the shared tokens (styles/design.css).
  */
 .my-songs__row {
   position: relative;
