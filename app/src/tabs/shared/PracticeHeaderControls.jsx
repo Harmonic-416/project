@@ -1,8 +1,10 @@
+import { Flame, Volume2, VolumeX } from 'lucide-react'
 import { useSfxMuted } from '../vocal/feedback/useSfx.js'
 import './PracticeHeaderControls.css'
 
 export default function PracticeHeaderControls({ streak, practisedToday, startHint }) {
   const [muted, setMuted] = useSfxMuted()
+  const SoundIcon = muted ? VolumeX : Volume2
   const streakTitle = streak === 0
     ? startHint
     : `${streak}-day streak${practisedToday ? '' : ': practise today to keep it'}`
@@ -15,7 +17,7 @@ export default function PracticeHeaderControls({ streak, practisedToday, startHi
         role="status"
         aria-label={`${streak}-day practice streak`}
       >
-        <span aria-hidden="true">🔥</span>
+        <span aria-hidden="true"><Flame size="1.1em" /></span>
         {streak}
       </span>
       <button
@@ -26,7 +28,7 @@ export default function PracticeHeaderControls({ streak, practisedToday, startHi
         title={muted ? 'Sound effects off' : 'Sound effects on'}
         onClick={() => setMuted(!muted)}
       >
-        {muted ? '🔇' : '🔊'}
+        <SoundIcon size="1.1em" aria-hidden="true" />
       </button>
     </>
   )

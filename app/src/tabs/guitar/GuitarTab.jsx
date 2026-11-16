@@ -42,6 +42,7 @@ function GuitarTab({
   sessionsToOpen,
   onSessionsOpened,
   learnProgressVersion,
+  myFilesVersion,
 }) {
   const progress = useSyncExternalStore(guitarProgress.subscribe, guitarProgress.loadProgress, guitarProgress.loadProgress)
   const [view, setView] = useState('song')
@@ -133,6 +134,7 @@ function GuitarTab({
                 onFileOpened={onFileOpened}
                 sessionsToOpen={sessionsToOpen}
                 onSessionsOpened={onSessionsOpened}
+                myFilesVersion={myFilesVersion}
               />
             </Suspense>
           )}

@@ -1,8 +1,9 @@
+import { Headphones, Pause, Target } from 'lucide-react'
 import { PRACTICE_MODES } from '../practice/practiceLogic.js'
 import { sfx } from '../feedback/sfx.js'
 import './songScreen.css'
 
-const ICONS = { listen: '🎧', wait: '⏸️', trouble: '🎯' }
+const ICONS = { listen: Headphones, wait: Pause, trouble: Target }
 const BLURBS = { listen: 'Sing along, get a score', wait: 'Waits for each note', trouble: 'Marks the notes you miss' }
 
 /**
@@ -28,7 +29,10 @@ export default function ModeCards({ mode, onChange, disabled }) {
             }}
           >
             <span className="v-modes__icon" aria-hidden="true">
-              {ICONS[m.id]}
+              {(() => {
+                const ModeIcon = ICONS[m.id]
+                return <ModeIcon size="1.1em" aria-hidden="true" />
+              })()}
             </span>
             <span className="v-modes__text">
               <strong>{m.label}</strong>

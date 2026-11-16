@@ -284,3 +284,41 @@
   font-size: 0.9rem;
   opacity: 0.8;
 }
+
+/* ── Tidied (2026-11): an attempt is a soft panel, its actions quiet ── */
+.vocal-frame .attempt-row {
+  border: 0;
+  border-radius: var(--v-radius);
+  background: var(--v-subtle);
+  padding: var(--v-s3) var(--v-s4);
+}
+.vocal-frame .attempt-row__score { font-family: var(--v-font-display); font-weight: 800; }
+.vocal-frame .attempt-row__star { font-size: 1.05rem; color: var(--v-border-strong); }
+.vocal-frame .attempt-row__star.is-on { color: var(--v-gold); }
+.vocal-frame .attempt-row__player { height: 36px; max-width: 360px; }
+.vocal-frame .attempt-row__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--v-radius-sm);
+  color: var(--v-muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+.vocal-frame .attempt-row__link:hover { background: var(--v-bad-soft); color: var(--v-bad); }
+.vocal-frame .attempt-row textarea {
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+  min-height: 44px;
+}
+
+/* Bars to go back to, as in the take summary. */
+.attempt-row__missed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font-size: 0.82rem; }
+.attempt-row__missed-label { color: var(--v-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; }
+.attempt-row__bar { padding: 2px 8px; border-radius: var(--v-radius-pill); background: var(--v-bad-soft); color: var(--v-bad-dark); font-weight: 700; }
+.attempt-row__more { color: var(--v-muted); }
+/* The whole recording: a full-width player with its length and a scrubber. */
+.vocal-frame .attempt-row__audio { flex-wrap: wrap; }
+.vocal-frame .attempt-row__player { flex: 1 1 320px; max-width: none; width: 100%; }

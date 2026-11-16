@@ -6,6 +6,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * private `my-files` bucket at `<user id>/<fingerprint>`, owner-only. The
  * device keeps its own copies too (app/src/tabs/home/myFiles.js); Home lists
  * both as one, and a file only on the account is fetched when opened.
+ *
+ * One exception to owner-only (migration 0020): the friends a take was sent
+ * to may read the sender's file for that take's song (getSharedAttemptSong).
  */
 
 export type FileInstrument = 'voice' | 'guitar'
@@ -178,4 +181,45 @@ export async function deleteMyFileRecord(supabase: SupabaseClient, fingerprint: 
   if (removeError) throw removeError
   const { error } = await supabase.from('my_file').delete().eq('fingerprint', fingerprint)
   if (error) throw error
+}
+
+// ── a sent take brings its song (0020) ───────────────────────────────────
+
+/** The file's SHA-256 as hex: how a file is named everywhere (the app's fingerprintBytes). */
+export async function fingerprintOf(bytes: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** The song of a take someone sent you, from their account. */
+export interface SharedAttemptSong {
+  name: string
+  instrument: FileInstrument
+  fingerprint: string
+  bytes: ArrayBuffer
+}
+
+/**
+ * The song file of an attempt that was sent to the caller (or is the
+ * caller's own), from its owner's account: null when the caller may not
+ * view the attempt, when it is a catalog song, or when the owner doesn't
+ * keep the file online (signed out when they opened it, account full,
+ * removed since). Someone who only has the attempt's link gets null too.
+ *
+ * The bucket doesn't check what was uploaded under a fingerprint, so the
+ * bytes are checked here: a file that isn't the one the attempt names
+ * throws rather than open as if it were.
+ */
+export async function getSharedAttemptSong(supabase: SupabaseClient, attemptId: string): Promise<SharedAttemptSong | null> {
+  const { data: row, error } = await supabase.rpc('shared_attempt_song', { attempt: attemptId }).maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!row) return null
+  const found = row as { path: string; fingerprint: string; name: string; instrument: FileInstrument }
+  const { data, error: downloadError } = await supabase.storage.from(BUCKET).download(found.path)
+  if (downloadError) throw downloadError
+  const bytes = await data.arrayBuffer()
+  if ((await fingerprintOf(bytes)) !== found.fingerprint) {
+    throw new Error('The song stored with this attempt isn’t the file it was sung from.')
+  }
+  return { name: found.name, instrument: found.instrument, fingerprint: found.fingerprint, bytes }
 }

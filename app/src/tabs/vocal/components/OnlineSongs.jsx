@@ -1,3 +1,4 @@
+import { Cloud } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import './SongLibrary.css'
 import './OnlineSongs.css'
@@ -91,7 +92,7 @@ function OnlineSongs({ configured, supabase, onSelectSong, instrument = 'voice' 
               {query.trim() ? 'No catalog songs match that search.' : 'The catalog is empty.'}
             </p>
           ) : (
-            <SongList items={catalog} onSelectSong={onSelectSong} icon="☁️" />
+            <SongList items={catalog} onSelectSong={onSelectSong} icon={<Cloud size="1.1em" aria-hidden="true" />} />
           )}
         </>
       )}

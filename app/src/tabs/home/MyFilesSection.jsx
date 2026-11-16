@@ -1,56 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
-import { deleteMyFileRecord, fetchMyFile, listMyFileRecords, mergeMyFiles, myFileStorageUsed } from '@backend/myFiles'
+import { useRef, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient.js'
 import { GUITAR_NOTATION_ACCEPT } from '../guitar/notation/formats.js'
 import { NOTATION_ACCEPT } from '../vocal/notation/loadNotation.js'
 import { fingerprintBytes } from '../vocal/share/sharedAttempt.js'
-import { deleteMyFile, fileKind, formatSize, listMyFiles, myFilesAvailable, rememberMyFile } from './myFiles.js'
+import { fileKind, formatSize, myFilesAvailable, rememberMyFile } from './myFiles.js'
+import { fetchAccountFile, removalScope, removeListedFile, useMyFiles } from './useMyFiles.js'
 import { timeAgo } from './homeFormat.js'
 import { FileIcon, NoteIcon } from './homeIcons.jsx'
 import { GuitarIcon } from '../../nav/TabIcons.jsx'
 
 const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
 const ACCEPT = { guitar: GUITAR_NOTATION_ACCEPT, voice: NOTATION_ACCEPT }
-
-/**
- * The files on this device (myFiles.js) and, signed in, the ones kept on the
- * account (src/lib/myFiles.ts) as one list, newest opened first, with how
- * much room the account has left. `version` (useMyFilesSync) goes up when
- * either list changed elsewhere, so they are read again.
- */
-function useMyFiles(userId, version) {
-  const [state, setState] = useState({ files: null, error: null, usage: null })
-  const [reloads, setReloads] = useState(0)
-
-  useEffect(() => {
-    let live = true
-    // The account's list is extra: if it can't be read, the device's files still show.
-    const remote =
-      userId && supabase
-        ? listMyFileRecords(supabase).catch((err) => {
-            console.error(err)
-            return []
-          })
-        : Promise.resolve(null)
-    const usage = userId && supabase ? myFileStorageUsed(supabase).catch(() => null) : Promise.resolve(null)
-    Promise.all([listMyFiles(), remote, usage]).then(
-      ([local, records, used]) => live && setState({ files: mergeMyFiles(local, records), error: null, usage: used }),
-      (err) => {
-        console.error(err)
-        if (live) setState({ files: null, error: 'Could not read the files saved on this device.', usage: null })
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [userId, version, reloads])
-
-  return {
-    ...state,
-    reload: () => setReloads((n) => n + 1),
-    update: (change) => setState((s) => ({ ...s, files: s.files ? change(s.files) : s.files })),
-  }
-}
 
 /**
  * Song files you opened in Guitar or Vocal: open one again, or remove it.
@@ -80,12 +40,9 @@ function MyFilesSection({ onOpenFile, userId = null, version = 0 }) {
   }
 
   const remove = async (file) => {
-    const where = file.local ? (signedIn ? 'this device and your account' : 'this device') : 'your account'
-    if (!window.confirm(`Remove “${file.name}” from ${where}?`)) return
+    if (!window.confirm(`Remove “${file.name}” from ${removalScope(file, signedIn)}?`)) return
     try {
-      // A device file's removal reaches the account through useMyFilesSync.
-      if (file.local) await deleteMyFile(file.id)
-      else await deleteMyFileRecord(supabase, file.id)
+      await removeListedFile(file)
       update((list) => list.filter((f) => f.id !== file.id))
     } catch (err) {
       console.error(err)
@@ -98,9 +55,7 @@ function MyFilesSection({ onOpenFile, userId = null, version = 0 }) {
     setNotice(null)
     setFetching(file.id)
     try {
-      const bytes = await fetchMyFile(supabase, file.id)
-      if ((await fingerprintBytes(bytes)) !== file.id) throw new Error('The kept file does not match its fingerprint')
-      await rememberMyFile({ id: file.id, name: file.name, instrument: file.instrument, bytes })
+      await fetchAccountFile(file)
       onOpenFile({ id: file.id, instrument: file.instrument })
     } catch (err) {
       console.error(err)

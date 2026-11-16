@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import './PracticeSessions.css'
 import { listPracticeSessions, listSessionAttempts, recordingStorageUsed } from '@backend/practiceSessions'
@@ -129,7 +130,7 @@ function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted, onPractise
           {summary.attempts === 1 ? 'attempt' : 'attempts'} · best <strong>{summary.best}%</strong> · last {timeAgo(summary.lastPractised)}
         </span>
         <span className="practice-session__chevron" aria-hidden="true">
-          {open ? '▴' : '▾'}
+          <ChevronDown size={18} className={open ? 'is-open' : undefined} />
         </span>
       </button>
       {onPractise && (
@@ -205,7 +206,7 @@ function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted }) {
           )}
         </span>
         <span className="practice-session__chevron" aria-hidden="true">
-          {open ? '▴' : '▾'}
+          <ChevronDown size={18} className={open ? 'is-open' : undefined} />
         </span>
       </button>
       {open && (

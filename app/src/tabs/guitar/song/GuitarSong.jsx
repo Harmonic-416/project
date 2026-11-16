@@ -2,7 +2,7 @@ import { useLatestSongRequest } from './useLatestSongRequest.js'
 import { useDraftLibrary } from './useDraftLibrary.js'
 import SongHeading from './SongHeading.jsx'
 import SongSectionPicker from './SongSectionPicker.jsx'
-import { BUILT_IN_SONGS, findSongFile } from './songSources.js'
+import { BUILT_IN_SONGS, findAttemptSongFile, findSongFile } from './songSources.js'
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AccompanimentToggle from '../../vocal/components/AccompanimentToggle.jsx'
@@ -84,7 +84,7 @@ import './follow/GuitarFollow.css'
  * songTitle }) lists the sittings and their runs; `onSessionsOpened` tells
  * App it has.
  */
-function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
+function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened, myFilesVersion = 0 }) {
   const [browse, setBrowse] = useState('library') // library | search | transcribe
   const [notation, setNotation] = useState(null) // loadGuitarNotation's result + { fingerprint, catalogSongId, builtin, draft }
   const requests = useLatestSongRequest()
@@ -326,8 +326,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         if (cancelled) return
         if (!attempt) throw new Error('This shared attempt doesn’t exist anymore.')
         if (attempt.instrument !== 'guitar') throw new Error('This attempt was sung — open it from the Vocal tab.')
-        // The catalog song, a built-in song both people have, or a file of yours on this device.
-        const found = await findSongFile({ songId: attempt.song_id, fingerprint: attempt.song_fingerprint })
+        // The catalog song, a built-in song both people have, a file of yours on this device, or the sender's own copy.
+        const found = await findAttemptSongFile(attempt)
         if (cancelled) return
         if (found) await openShared(attempt, found.bytes, found.filename, found.options)
         else setShared({ phase: 'need-file', attempt })
@@ -679,7 +679,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           </section>
         )}
         <div className="guitar-song__saved">
-          <LocalSongs onOpen={open} onBeginOpen={requests.begin} />
+          <LocalSongs onOpen={open} onBeginOpen={requests.begin} userId={userId} version={myFilesVersion} />
           <MyTranscriptions phase={draftLibrary.phase} error={draftLibrary.error} deleting={draftLibrary.deleting} onRetry={draftLibrary.retry} onCreate={() => setBrowse('transcribe')} drafts={drafts} onOpen={openDraft} onDelete={removeDraft} />
         </div>
       </div>

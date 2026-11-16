@@ -1,3 +1,7 @@
+import { rememberSongBars } from '../practice/songBars.js'
+import { barAt } from '../practice/takeSummary.js'
+import { Download, Eraser } from 'lucide-react'
+import { Mic, Music } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as Tone from 'tone'
@@ -68,6 +72,11 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   const [take, setTake] = useState(null) // summarizeTake(...) for the last finished attempt
   // The line judged note by note while singing (entries keep `index` into scoreModel.notes).
   const judgedLine = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
+  // So lists of attempts can name the bars each one missed without the score open (practice/songBars.js).
+  useEffect(() => {
+    if (!scoreModel?.bars?.length || !judgedLine.length || !shareSong) return
+    rememberSongBars(shareSong, judgedLine.map((note) => barAt(scoreModel.bars, note.time)?.number ?? 0))
+  }, [scoreModel, judgedLine, shareSong])
   const liveJudgeRef = useRef(null) // { tracker, cents: Map<lineIndex, number[]> } during an attempt
 
   const clearNoteMarks = useCallback(() => {
@@ -207,7 +216,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
       onClick={startAttempt}
       title="Plays the song and listens: you get a score at the end"
     >
-      {mic.status === 'requesting' ? 'Starting mic…' : '🎤 Sing'}
+      {mic.status === 'requesting' ? 'Starting mic…' : <><Mic size="1.1em" aria-hidden="true" /> Sing</>}
     </button>
   )
   // The pitch to start on, before singing: the first note of the part, held long enough to find.
@@ -219,7 +228,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
       onClick={() => tapNote(firstNote.midi, 1.2)}
       title={`Play your first note (${midiToNoteName(firstNote.midi)})`}
     >
-      🎵 <span className="record-panel__first-note-name">{midiToNoteName(firstNote.midi)}</span>
+      <Music size="1.1em" aria-hidden="true" /> <span className="record-panel__first-note-name">{midiToNoteName(firstNote.midi)}</span>
     </button>
   )
   const showRow = !actionSlot || listening || mic.status === 'error'
@@ -282,7 +291,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
               className="record-panel__link"
               onClick={() => downloadBlob(recording, `${safeFilename(title || 'attempt')}-attempt.webm`)}
             >
-              Download recording ({Math.round(recording.size / 1024)} KB)
+              <Download size="1.1em" aria-hidden="true" /> Recording
             </button>
           )}
           <button
@@ -296,7 +305,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
               setTake(null)
             }}
           >
-            Clear marks
+            <Eraser size="1.1em" aria-hidden="true" /> Clear marks
           </button>
           <ShareAttempt
             auth={auth}

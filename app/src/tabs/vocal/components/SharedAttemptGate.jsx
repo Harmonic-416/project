@@ -5,7 +5,8 @@ const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL', 'guitar-p
 
 /**
  * What a shared-attempt link shows before the score can open: sign in first,
- * then (for a song that isn't in the catalog) open your own copy of the file.
+ * then, for a song that isn't in the catalog and that its sender doesn't keep
+ * online for you (home/songSharing.js), open your own copy of the file.
  * `shared` is VocalTab's (or GuitarSong's) shared-attempt state; the Guitar
  * tab passes `verb="played"` and its own `accept` / `uploadLabel`.
  */
@@ -40,8 +41,8 @@ function SharedAttemptGate({
       {(phase === 'need-file' || phase === 'mismatch') && (
         <>
           <p>
-            <strong>{attempt.sharer_name || 'Someone'}</strong> {verb} {song}. The song isn’t stored online, so open
-            your own copy of the same file to see their attempt on it.
+            <strong>{attempt.sharer_name || 'Someone'}</strong> {verb} {song}. Their copy of this song isn’t stored
+            online for you, so open your own copy of the same file to see their attempt on it.
           </p>
           {phase === 'mismatch' && (
             <p className="shared-gate__warning">

@@ -1,3 +1,4 @@
+import { Repeat } from 'lucide-react'
 import './TakeSummary.css'
 
 /**
@@ -47,7 +48,7 @@ function TakeSummary({ summary, accuracy, octaveAccuracy, dynamicsLine, onLoop, 
                   <b>{spot.label}</b> · {spot.words}
                 </span>
                 <button type="button" className="take-summary__hear" onClick={() => onLoop(spot)}>
-                  🔁 Loop it
+                  <Repeat size="1.1em" aria-hidden="true" /> Loop it
                 </button>
               </li>
             ))}

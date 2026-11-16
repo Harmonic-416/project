@@ -1,3 +1,4 @@
+import { Ear, Music2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import TempoControl from '../../../audio/tempo/TempoControl.jsx'
@@ -202,7 +203,7 @@ export default function WarmUp({ show = 'warmups', only = null }) {
           </span>
           {run.done ? (
             <Celebration
-              headline="Warm-up complete! 🔥"
+              headline="Warm-up complete!"
               detail={`${run.shifts.length} rounds, ${startNote(0)} to ${startNote(run.shifts.length - 1)}. That’s the ${run.direction === 'upper' ? 'top' : 'bottom'} of a typical ${part.name.toLowerCase()} range.`}
             />
           ) : (
@@ -284,7 +285,7 @@ export default function WarmUp({ show = 'warmups', only = null }) {
             onClick={() => setTest('harmony')}
           >
             <span className="vocal-tab__search-icon" aria-hidden="true">
-              🎶
+              <Music2 size="1.1em" aria-hidden="true" />
             </span>
             <span>
               <strong>
@@ -303,7 +304,7 @@ export default function WarmUp({ show = 'warmups', only = null }) {
         {only !== 'harmony' && (
           <button type="button" className="vocal-tab__search-songs" disabled={!part} onClick={() => setTest('pitch')}>
             <span className="vocal-tab__search-icon" aria-hidden="true">
-              👂
+              <Ear size="1.1em" aria-hidden="true" />
             </span>
             <span>
               <strong>

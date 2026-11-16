@@ -1,3 +1,4 @@
+import { Ear, Eye, Flame, Hand, ListMusic, Music2, Target } from 'lucide-react'
 /**
  * Vocal → Learn, as a course built around songs. Every level is one main
  * song, sung on the song screen (Listen, Wait for me, Trouble spots); the
@@ -12,13 +13,13 @@
 
 /** The supporting activities a level can point at, keyed by the id their best stars are kept under. */
 export const ACTIVITIES = {
-  warmup: { kind: 'warmup', title: 'Warm up', blurb: 'Loosen your range first', icon: '🔥', starsId: null },
+  warmup: { kind: 'warmup', title: 'Warm up', blurb: 'Loosen your range first', icon: Flame, starsId: null },
   'solfege-scale': {
     kind: 'lesson',
     lesson: 'scale',
     title: 'The scale',
     blurb: 'Meet do re mi on the staff',
-    icon: '🎼',
+    icon: ListMusic,
     starsId: 'solfege-scale',
   },
   'solfege-read': {
@@ -26,7 +27,7 @@ export const ACTIVITIES = {
     lesson: 'read',
     title: 'Read it',
     blurb: 'Name the notes you see',
-    icon: '👀',
+    icon: Eye,
     starsId: 'solfege-read',
   },
   'solfege-ear': {
@@ -34,7 +35,7 @@ export const ACTIVITIES = {
     lesson: 'ear',
     title: 'Hear it',
     blurb: 'Name the notes you hear',
-    icon: '👂',
+    icon: Ear,
     starsId: 'solfege-ear',
   },
   rhythm: {
@@ -42,7 +43,7 @@ export const ACTIVITIES = {
     lesson: 'rhythm',
     title: 'Clap along',
     blurb: 'Quarter, half, whole and eighth notes',
-    icon: '👏',
+    icon: Hand,
     starsId: 'rhythm',
   },
   'pitch-test': {
@@ -50,7 +51,7 @@ export const ACTIVITIES = {
     test: 'pitch',
     title: 'Pitch test',
     blurb: 'Sing back the notes you hear',
-    icon: '🎯',
+    icon: Target,
     starsId: 'pitch-test',
   },
   'harmony-test': {
@@ -58,7 +59,7 @@ export const ACTIVITIES = {
     test: 'harmony',
     title: 'Harmony test',
     blurb: 'Hold your note inside a chord',
-    icon: '🎶',
+    icon: Music2,
     starsId: 'harmony-test',
   },
 }

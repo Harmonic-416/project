@@ -1,3 +1,4 @@
+import { BookOpen, Mic } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import './VocalLearn.css'
 import RhythmLearn from './RhythmLearn.jsx'
@@ -77,7 +78,7 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
             ← Learn
           </button>
           <span className="learn-lesson-bar__title">
-            <span aria-hidden="true">{activity.icon}</span> {activity.title}
+            <span aria-hidden="true"><activity.icon size="1.1em" aria-hidden="true" /></span> {activity.title}
             <small className="learn-lesson-bar__for">Getting ready for {level.song.title}</small>
           </span>
           <button type="button" className="v-btn v-btn--sm" onClick={() => sing(level)}>
@@ -103,7 +104,7 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
     <div className="vocal-learn">
       <header className="hm-hero">
         <span className="hm-hero__badge" aria-hidden="true">
-          📖
+          <BookOpen size="1.1em" aria-hidden="true" />
         </span>
         <div className="vlearn-hero__text">
           <h1 className="hm-hero__title">Learn to sing, one song at a time</h1>
@@ -158,7 +159,7 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
                   onClick={() => sing(level)}
                   aria-label={`${state === 'done' ? 'Sing again' : 'Sing'}: ${level.song.title}`}
                 >
-                  🎤 {state === 'done' ? 'Sing again' : 'Sing the song'}
+                  <Mic size="1.1em" aria-hidden="true" /> {state === 'done' ? 'Sing again' : 'Sing the song'}
                 </button>
                 <div className="vlevel__supports">
                   <span className="vlevel__supports-label">Build up to it</span>
@@ -173,7 +174,7 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
                             onClick={() => openActivity(level, activity)}
                           >
                             <span className="vlevel__support-icon" aria-hidden="true">
-                              {activity.icon}
+                              <activity.icon size="1.1em" aria-hidden="true" />
                             </span>
                             <span className="vlevel__support-text">
                               <strong>{activity.title}</strong>
