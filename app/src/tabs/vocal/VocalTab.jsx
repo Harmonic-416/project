@@ -15,6 +15,7 @@ import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
 import TransposeControl from './components/TransposeControl.jsx'
+import KeySuggestion from './components/KeySuggestion.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
 import './components/PitchMeter.css'
 import ArrangePanel from './components/ArrangePanel.jsx'
@@ -911,6 +912,15 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         {notation && (
           <>
             {!viewingShared && <ModeCards mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />}
+            {!viewingShared && scoreModel && (
+              <KeySuggestion
+                songId={notation.fingerprint ?? notation.title}
+                notes={fitNotes}
+                keyInfo={keyInfo}
+                shift={shift}
+                onChange={handleTransposeChange}
+              />
+            )}
             <div className="v-score-row">
               <SheetMusicViewer
                 ref={sheetMusicRef}

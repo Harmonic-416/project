@@ -241,3 +241,75 @@ export function explainShift({ shift, lowest, highest, range, fifths = 0, newFif
       : `Moves the song up ${amount} so the low ${name(lowest, fifths)} becomes ${name(newLow, newFifths)}.`
   return `${sentence}${leftover}`
 }
+
+/** A note this far past the range (semitones) still counts as singable: a reach, not a strain. */
+export const FIT_GRACE = 1
+
+/** How many of `notes` sit above / below `range` after `shift` (beyond FIT_GRACE). */
+export function notesOutside(notes, range, shift = 0) {
+  let above = 0
+  let below = 0
+  for (const note of notes) {
+    const p = note.midi + shift
+    if (p > range.high + FIT_GRACE) above += 1
+    else if (p < range.low - FIT_GRACE) below += 1
+  }
+  return { above, below, fits: above === 0 && below === 0 }
+}
+
+/**
+ * The keys worth offering a singer, in the order a person would weigh them:
+ * as written; the smallest move that brings every note into reach; the same
+ * key an octave up or down (when that fits); and the move that centres the
+ * song in the range (fitKey). Duplicates are dropped. `recommended` is the
+ * first of these that fits — as written when it already does, so a song that
+ * suits the voice is never moved — or the centred one when nothing fits.
+ * Each option: { shift, key, kind, fits, above, below }.
+ */
+export function keyOptions(notes, range, { fifths = 0, mode = 'major' } = {}) {
+  const pitched = notes.filter((n) => Number.isFinite(n.midi))
+  if (!pitched.length || !range) return { options: [], recommended: null }
+  const option = (shift, kind) => ({
+    shift,
+    kind,
+    key: keyName(transposeFifths(fifths, shift), mode),
+    ...notesOutside(pitched, range, shift),
+  })
+  const written = option(0, 'written')
+  const byDistance = candidateShifts().sort((a, b) => Math.abs(a) - Math.abs(b) || a - b)
+  const smallestShift = written.fits ? null : byDistance.find((s) => notesOutside(pitched, range, s).fits)
+  const octaveShift = [-12, 12].find((s) => notesOutside(pitched, range, s).fits)
+  const centred = fitKey(pitched, range, { fifths, mode })
+
+  const options = [written]
+  const add = (shift, kind) => {
+    if (shift === undefined || shift === null || options.some((o) => o.shift === shift)) return
+    options.push(option(shift, kind))
+  }
+  add(smallestShift, 'smallest')
+  add(octaveShift, 'octave')
+  add(centred.shift, 'centred')
+  const recommended = options.find((o) => o.fits) ?? options.find((o) => o.kind === 'centred') ?? written
+  return { options, recommended }
+}
+
+/** What an option means, in a few words, for the row under its key name. */
+export function describeOption(option) {
+  if (option.kind === 'written') {
+    if (option.fits) return 'Fits your voice as written'
+    const parts = []
+    if (option.above) parts.push(`${option.above} note${option.above === 1 ? '' : 's'} too high`)
+    if (option.below) parts.push(`${option.below} note${option.below === 1 ? '' : 's'} too low`)
+    return parts.join(', ')
+  }
+  if (option.kind === 'smallest') return 'Smallest change that fits'
+  if (option.kind === 'octave') return option.fits ? 'Same key, an octave away' : 'Same key, an octave away (some notes still out)'
+  return option.fits ? 'Middle of your range' : 'Closest fit (some notes still out)'
+}
+
+/** An option's name: "As written", "Down 4", "Up an octave". */
+export function optionName(shift) {
+  if (shift === 0) return 'As written'
+  const amount = Math.abs(shift) === 12 ? 'an octave' : `${Math.abs(shift)}`
+  return `${shift < 0 ? 'Down' : 'Up'} ${amount}`
+}

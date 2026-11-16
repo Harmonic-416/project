@@ -70,6 +70,18 @@ export function rangeFromCaught(caught) {
   return { low: used[0], high: used.at(-1) }
 }
 
+// Everything showing the singer's range (the key control, the song screen's
+// suggestion) hears about a change made in any one of them.
+const listeners = new Set()
+
+/** Call `fn` whenever the voice part or the measured range is saved; returns the unsubscribe. */
+export function subscribeVoiceRange(fn) {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+
+const notify = () => listeners.forEach((fn) => fn())
+
 function storage() {
   try {
     return globalThis.localStorage ?? null
@@ -92,6 +104,7 @@ export function saveVoicePartId(id) {
   } catch {
     // Private window or blocked storage: asked again next time.
   }
+  notify()
 }
 
 /** { low, high, use } or null. `use`: fit songs to it rather than to the voice part. */
@@ -112,4 +125,5 @@ export function saveMeasuredRange(range) {
   } catch {
     // As above: measured again next time.
   }
+  notify()
 }
