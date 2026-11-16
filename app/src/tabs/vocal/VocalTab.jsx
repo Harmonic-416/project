@@ -35,7 +35,7 @@ import TempoControl from '../../audio/tempo/TempoControl.jsx'
 import { useSongTempo } from '../../audio/tempo/useSongTempo.js'
 import SharedAttemptGate from './components/SharedAttemptGate.jsx'
 import SharedAttemptPanel from './components/SharedAttemptPanel.jsx'
-import { loadNotation } from './notation/loadNotation.js'
+import { loadNotation, titleFromFilename } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
 import { LISTEN_MIXES, melodyLine, mixSchedule, scheduleFor } from './practice/practiceLogic.js'
 import { fromRemote, runsKey } from './practice/sessionRuns.js'
@@ -48,6 +48,7 @@ import { fingerprintBytes } from './share/sharedAttempt.js'
 import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
+import MySongs from '../../ui/MySongs.jsx'
 import { VOICINGS } from './arrange/arrange.js'
 import { readPartNotes, songKey, transposeMusicXml } from './transpose/transposeXml.js'
 import { useSongTranspose } from './transpose/useSongTranspose.js'
@@ -69,8 +70,9 @@ const SECTIONS = [
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
 // playback, export, the online catalog (Supabase, via the shared backend
-// layer), recording a sung attempt, and shared attempts. Songs are never
-// uploaded (copyright): your own files stay on your device, and a shared
+// layer), recording a sung attempt, and shared attempts. Your own files are
+// kept on your device and, signed in, on your account, private to you
+// (home/myFiles.js); the Songs page lists them under "My songs". A shared
 // attempt names its song by catalog id or by the file's fingerprint.
 //
 // `sharedAttemptId` comes from a share link (App.jsx); `onSharedAttemptDone`
@@ -78,10 +80,11 @@ const SECTIONS = [
 // Home's "My files" (kept on this device, myFiles.js) to open straight away.
 // `sessionsToOpen` ({ songId, songFingerprint, songTitle }, from Home's
 // "Working on") opens the Practice sessions view for that song;
-// `onSessionsOpened` tells App it has.
+// `onSessionsOpened` tells App it has. `myFilesVersion` (useMyFilesSync)
+// moves when the person's files changed, so "My songs" reads them again.
 const renderSongMeta = (song) => <SongCardMeta song={song} />
 
-function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
+function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened, myFilesVersion = 0 }) {
   const [section, setSection] = useState('songs') // songs | learn | compose (the capsule bar)
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
   // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
@@ -230,6 +233,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         video: result.video,
         lyrics: result.lyricsSource ?? null,
       })
+    },
+    [loadFromArrayBuffer],
+  )
+
+  // One of "My songs" on the Songs page (ui/MySongs.jsx hands over the file).
+  const openMySong = useCallback(
+    async (file) => {
+      setReturnTo('library')
+      rememberMyFile(file).catch(() => {}) // moves it to the top of the list
+      await loadFromArrayBuffer(file.bytes, file.name)
     },
     [loadFromArrayBuffer],
   )
@@ -713,13 +726,27 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             </button>
           </div>
 
+          <h2 className="vocal-tab__section-title">My songs</h2>
+          <MySongs
+            instrument="voice"
+            userId={userId}
+            version={myFilesVersion}
+            onOpen={openMySong}
+            renderMeta={renderSongMeta}
+            titleOf={titleFromFilename}
+            emptyText="Songs you open from a file are kept here. Add your first with the box at the bottom of this page."
+          />
+
           <h2 className="vocal-tab__section-title">Built-in songs</h2>
           <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} renderMeta={renderSongMeta} />
           <div className="vocal-upload">
             <span className="vocal-upload__plus" aria-hidden="true">
               ＋
             </span>
-            <p>Have your own sheet music? Open it here. It stays on your device.</p>
+            <p>
+              Have your own sheet music? Open it here.{' '}
+              {userId ? 'It’s kept under My songs, on your account, private to you.' : 'It’s kept under My songs on this device.'}
+            </p>
             <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
           </div>
         </div>

@@ -8,7 +8,7 @@ import { loadMyFile, rememberMyFile } from '../src/tabs/home/myFiles.js'
 const mocks = vi.hoisted(() => ({fingerprint: vi.fn(async () => 'fingerprint'), overlay: {clear: vi.fn(), mark: vi.fn()}}))
 vi.mock('../src/tabs/guitar/song/songSources.js', () => ({BUILT_IN_SONGS: [{id:'a',title:'First song',filename:'a.musicxml'}, {id:'b',title:'Second song',filename:'b.musicxml'}], findSongFile: vi.fn()}))
 vi.mock('../src/tabs/guitar/notation/loadGuitarNotation.js', () => ({GUITAR_NOTATION_ACCEPT: '.musicxml,.mid', loadGuitarNotation: vi.fn()}))
-vi.mock('../src/tabs/home/myFiles.js', () => ({loadMyFile: vi.fn(), rememberMyFile: vi.fn(async () => {}), listMyFiles: vi.fn(async () => []), fileKind: () => 'MusicXML'}))
+vi.mock('../src/tabs/home/myFiles.js', () => ({loadMyFile: vi.fn(), rememberMyFile: vi.fn(async () => {}), listMyFiles: vi.fn(async () => []), fileKind: () => 'MusicXML', myFilesAvailable: () => true, deleteMyFile: vi.fn()}))
 vi.mock('../src/tabs/vocal/share/sharedAttempt.js', () => ({fingerprintBytes: mocks.fingerprint}))
 vi.mock('../src/tabs/guitar/song/GuitarScore.jsx', () => ({default: ({score}) => <h2>{score.title}</h2>}))
 vi.mock('../src/tabs/guitar/song/follow/useAlphaTabPlayer.js', () => ({useAlphaTabPlayer: () => ({ready:true,state:'idle',loaded:1,tick:0})}))

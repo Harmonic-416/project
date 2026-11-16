@@ -84,7 +84,7 @@ import './follow/GuitarFollow.css'
  * songTitle }) lists the sittings and their runs; `onSessionsOpened` tells
  * App it has.
  */
-function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
+function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened, myFilesVersion = 0 }) {
   const [browse, setBrowse] = useState('library') // library | search | transcribe
   const [notation, setNotation] = useState(null) // loadGuitarNotation's result + { fingerprint, catalogSongId, builtin, draft }
   const requests = useLatestSongRequest()
@@ -679,7 +679,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           </section>
         )}
         <div className="guitar-song__saved">
-          <LocalSongs onOpen={open} onBeginOpen={requests.begin} />
+          <LocalSongs onOpen={open} onBeginOpen={requests.begin} userId={userId} version={myFilesVersion} />
           <MyTranscriptions phase={draftLibrary.phase} error={draftLibrary.error} deleting={draftLibrary.deleting} onRetry={draftLibrary.retry} onCreate={() => setBrowse('transcribe')} drafts={drafts} onOpen={openDraft} onDelete={removeDraft} />
         </div>
       </div>
