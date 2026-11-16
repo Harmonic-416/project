@@ -12,7 +12,7 @@ import { classifyCents } from '../audio/pitchDetector.js'
 export const METER_RANGE_CENTS = 200
 
 /** The detector's in-tune tolerance (classifyCents' default), drawn as the lane's band. */
-export const IN_TUNE_CENTS = 50
+export { IN_TUNE_CENTS } from '../audio/pitchDetector.js'
 
 /** Fold a distance into the nearest octave, for "right note, other octave". */
 export function foldOctave(cents) {

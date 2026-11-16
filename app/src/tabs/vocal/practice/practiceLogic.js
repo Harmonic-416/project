@@ -1,4 +1,4 @@
-import { centsOff } from '../audio/pitchDetector.js'
+import { centsOff, IN_TUNE_CENTS } from '../audio/pitchDetector.js'
 
 /**
  * Pure logic behind the two practice modes (no DOM, no audio graph), so it
@@ -93,7 +93,7 @@ export function noteDistanceCents(midi, targetMidi, { anyOctave = true } = {}) {
   return anyOctave ? cents - 1200 * Math.round(cents / 1200) : cents
 }
 
-export function isOnTarget(midi, targetMidi, { toleranceCents = 50, anyOctave = true } = {}) {
+export function isOnTarget(midi, targetMidi, { toleranceCents = IN_TUNE_CENTS, anyOctave = true } = {}) {
   return Math.abs(noteDistanceCents(midi, targetMidi, { anyOctave })) <= toleranceCents
 }
 
@@ -120,7 +120,7 @@ export function melodyLine(notes, partIndex = 0) {
  * succeeded began: the moment the singer first landed on the note (the
  * wait-mode score times that, not the hold).
  */
-export function createHoldDetector({ toleranceCents = 50, anyOctave = true, holdMs = 200, maxGapMs = 120 } = {}) {
+export function createHoldDetector({ toleranceCents = IN_TUNE_CENTS, anyOctave = true, holdMs = 200, maxGapMs = 120 } = {}) {
   let since = null
   let lastOn = null
   return {
