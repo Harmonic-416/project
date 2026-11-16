@@ -1,3 +1,4 @@
+import { finishGuitarPractice } from '../practice/guitarProgress.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { createClick } from '../../../audio/metronome/click.js'
@@ -115,6 +116,7 @@ function StrumDrill() {
     const result = scoreStrums(strumTargets(run.step), run.strums)
     setScore(result)
     setStatus('done')
+    if (run.strums.length) finishGuitarPractice({ sound: false })
     if (passed(result)) {
       const updated = { ...passedSteps, [run.step.id]: true }
       setPassedSteps(updated)

@@ -3,10 +3,13 @@ import React from 'react'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import EarTraining from '../src/tabs/guitar/exercises/EarTraining.jsx'
+import GuitarTab from '../src/tabs/guitar/GuitarTab.jsx'
 import { saveSongChords } from '../src/tabs/guitar/practice/chordNames.js'
+import { guitarProgress } from '../src/tabs/guitar/practice/guitarProgress.js'
+import { setMuted } from '../src/tabs/vocal/feedback/sfx.js'
 const audio = vi.hoisted(() => ({ strum: vi.fn(async () => {}), arpeggiate: vi.fn(async () => {}), stop: vi.fn() }))
 vi.mock('../src/tabs/guitar/practice/useChordPlayer.js', () => ({ useChordPlayer: () => audio }))
-afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.clearAllMocks(); audio.strum.mockImplementation(async () => {}) })
+afterEach(() => { cleanup(); setMuted(false); localStorage.clear(); guitarProgress.resetProgressCache(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.clearAllMocks(); audio.strum.mockImplementation(async () => {}) })
 it('starts with major/minor choices and advances once after an answer', async () => {
   render(<EarTraining />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: /Start/ })))
@@ -39,8 +42,13 @@ it('ignores late audio errors after ending a round', async () => {
 it('completes ten questions without microphone access and replays missed chords', async () => {
   const microphone = vi.fn(() => { throw new Error('Microphone must not be requested') })
   vi.stubGlobal('navigator', {mediaDevices: {getUserMedia: microphone}})
+  render(<GuitarTab />)
+  fireEvent.click(screen.getByRole('button', { name: 'Turn sound effects off' }))
+  expect(screen.getByRole('button', { name: 'Turn sound effects on' }).getAttribute('aria-pressed')).toBe('false')
+  expect(screen.getByRole('status', { name: '0-day practice streak' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Exercises' }))
+  fireEvent.click(screen.getByRole('button', { name: /Ear training/ }))
   const writes = vi.spyOn(Storage.prototype, 'setItem')
-  render(<EarTraining />)
   await act(async () => fireEvent.click(screen.getByRole('button', {name: /Start/})))
   let correct = 0
   const missed = new Map()
@@ -59,7 +67,8 @@ it('completes ten questions without microphone access and replays missed chords'
     expect(audio.strum.mock.calls.at(-1)[0].name).toBe(name)
   }
   expect(microphone).not.toHaveBeenCalled()
-  expect(writes).not.toHaveBeenCalled()
+  expect(screen.getByRole('status', { name: '1-day practice streak' })).toBeTruthy()
+  expect(writes.mock.calls.map(([key]) => key)).toEqual(['harmonic.guitar.practice-streak'])
   await act(async () => fireEvent.click(screen.getByRole('button', {name: 'Play again', exact: true})))
   expect(screen.getByText('Question 1 of 10')).toBeTruthy()
   vi.unstubAllGlobals()
@@ -93,7 +102,7 @@ it('asks four distinct chosen chord names, never saves results, and clears them 
     fireEvent.click(answers[0])
     await act(async () => fireEvent.click(screen.getByRole('button',{name:index===9?'See results':'Next',exact:true})))
   }
-  expect(writes).not.toHaveBeenCalled()
+  expect(writes.mock.calls.map(([key]) => key)).toEqual(['harmonic.guitar.practice-streak'])
   expect(localStorage.getItem('harmonic.guitar.earStats')).toBeNull()
   view.unmount()
   render(<EarTraining />)

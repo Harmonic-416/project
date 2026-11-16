@@ -20,7 +20,7 @@ import RecordPanel from './components/RecordPanel.jsx'
 import './components/PitchMeter.css'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
-import { useSfxMuted } from './feedback/useSfx.js'
+import PracticeHeaderControls from '../shared/PracticeHeaderControls.jsx'
 import { useVocalProgress } from './feedback/useProgress.js'
 import { currentStreak, practisedToday } from './feedback/progress.js'
 import ModeCards from './ui/ModeCards.jsx'
@@ -108,7 +108,6 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   // Element the live pitch meter portals into, beside the score (state so the portal re-renders when it mounts).
   const [meterSlot, setMeterSlot] = useState(null)
   const [actionSlot, setActionSlot] = useState(null) // the dock's spot for RecordPanel's Sing button
-  const [sfxMuted, setSfxMuted] = useSfxMuted()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const progress = useVocalProgress()
   const streak = currentStreak(progress)
@@ -1120,28 +1119,11 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           ))}
         </nav>
         <div className="vocal-frame__end">
-          <span
-            className={`vocal-frame__streak${streakLit ? ' vocal-frame__streak--lit' : ''}`}
-            title={
-              streak === 0
-                ? 'Finish a lesson, test, warm-up or run to start a streak'
-                : `${streak}-day streak${streakLit ? '' : ': practise today to keep it'}`
-            }
-            aria-label={`${streak}-day practice streak`}
-          >
-            <span aria-hidden="true">🔥</span>
-            {streak}
-          </span>
-          <button
-            type="button"
-            className="vocal-frame__sound"
-            aria-pressed={!sfxMuted}
-            aria-label={sfxMuted ? 'Turn sound effects on' : 'Turn sound effects off'}
-            title={sfxMuted ? 'Sound effects off' : 'Sound effects on'}
-            onClick={() => setSfxMuted(!sfxMuted)}
-          >
-            {sfxMuted ? '🔇' : '🔊'}
-          </button>
+          <PracticeHeaderControls
+            streak={streak}
+            practisedToday={streakLit}
+            startHint="Finish a lesson, test, warm-up or run to start a streak"
+          />
           <AccountChip auth={auth} onNavigate={onNavigate} />
         </div>
       </div>

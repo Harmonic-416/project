@@ -1,3 +1,4 @@
+import { finishGuitarPractice } from '../practice/guitarProgress.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { createClick } from '../../../audio/metronome/click.js'
@@ -73,7 +74,13 @@ export default function RhythmStudio() {
         const at=performance.now()-wall0
         setElapsed(at)
         if (at>=(COUNT_IN_BEATS+RHYTHM_BARS*4)*60000/bpm+250) {
-          run.current=null;click.current?.silence();stopListening();setScore(rhythmResult(rhythmTargets(active.pattern,active.bpm),active.strikes));setStatus('done');return
+          run.current = null
+          click.current?.silence()
+          stopListening()
+          setScore(rhythmResult(rhythmTargets(active.pattern, active.bpm), active.strikes))
+          setStatus('done')
+          if (active.strikes.length) finishGuitarPractice({ sound: active.input === 'tap' })
+          return
         }
         timer.current=setTimeout(update,40)
       }

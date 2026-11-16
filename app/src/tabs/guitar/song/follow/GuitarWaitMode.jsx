@@ -1,3 +1,4 @@
+import { finishGuitarPractice } from '../../practice/guitarProgress.js'
 import GuitarModeFeedback from './GuitarModeFeedback.jsx'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import PlaybackControls from './GuitarPlaybackControls.jsx'
@@ -180,9 +181,11 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, on
     const generation = takeGenerationRef.current
     const steps = [...stepsRef.current]
     Promise.resolve(micOpen ? stopListening() : null).then((recording) => {
-      if (takeGenerationRef.current === generation) setTake({ recording, timing: recording ? waitTiming(steps) : null, fullRun: fullRunRef.current })
+      if (takeGenerationRef.current !== generation) return
+      if (state.results.some((result) => result === 'hit' || result === 'close')) finishGuitarPractice()
+      setTake({ recording, timing: recording ? waitTiming(steps) : null, fullRun: fullRunRef.current })
     })
-  }, [done, micOpen, stopListening])
+  }, [done, micOpen, state.results, stopListening])
 
   const play = async () => {
     restart(done ? { type: 'reset' } : null)

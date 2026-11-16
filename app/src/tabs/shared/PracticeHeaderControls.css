@@ -1,0 +1,67 @@
+.practice-header__sound {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-pill);
+  background: var(--v-card);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.practice-header__sound[aria-pressed='false'] {
+  opacity: 0.6;
+}
+
+/* The daily streak: grey until something is finished today, then lit. */
+.practice-header__streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 10px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-pill);
+  background: var(--v-card);
+  color: var(--v-muted);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-header__streak > span {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.practice-header__streak--lit {
+  border-color: color-mix(in srgb, var(--v-gold) 60%, transparent);
+  background: var(--v-gold-soft);
+  color: var(--v-gold-text);
+}
+
+.practice-header__streak--lit > span {
+  filter: none;
+  opacity: 1;
+  animation: v-pop var(--v-slow) var(--v-ease-bounce);
+}
+
+@media (max-width: 480px) {
+  .practice-header__streak,
+  .practice-header__sound {
+    height: 32px;
+  }
+
+  .practice-header__streak {
+    padding: 0 8px;
+  }
+
+  .practice-header__sound {
+    width: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-header__streak--lit > span { animation: none; }
+}

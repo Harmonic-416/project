@@ -88,22 +88,6 @@
   min-width: 0;
 }
 
-.vocal-frame__sound {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 2px solid var(--v-border);
-  border-radius: var(--v-radius-pill);
-  background: var(--v-card);
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.vocal-frame__sound[aria-pressed='false'] {
-  opacity: 0.6;
-}
-
 .vocal-frame__body {
   flex: 1;
   min-height: 0;
@@ -448,39 +432,6 @@
   margin: var(--v-s2) 0 0;
 }
 
-/* The daily streak: grey until something is finished today, then lit. */
-.vocal-frame__streak {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  height: 36px;
-  padding: 0 10px;
-  border: 2px solid var(--v-border);
-  border-radius: var(--v-radius-pill);
-  background: var(--v-card);
-  color: var(--v-muted);
-  font-family: var(--v-font-display);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.vocal-frame__streak > span {
-  filter: grayscale(1);
-  opacity: 0.6;
-}
-
-.vocal-frame__streak--lit {
-  border-color: color-mix(in srgb, var(--v-gold) 60%, transparent);
-  background: var(--v-gold-soft);
-  color: var(--v-gold-text);
-}
-
-.vocal-frame__streak--lit > span {
-  filter: none;
-  opacity: 1;
-  animation: v-pop var(--v-slow) var(--v-ease-bounce);
-}
-
 /* Phones: the open tab keeps its label so it's clear where you are (three
    tabs leave room for one), the end controls shrink, and if it still doesn't
    fit the tabs scroll rather than run under the streak. */
@@ -518,18 +469,7 @@
     max-width: none;
   }
 
-  .vocal-frame__streak,
-  .vocal-frame__sound {
-    height: 32px;
-  }
 
-  .vocal-frame__streak {
-    padding: 0 8px;
-  }
-
-  .vocal-frame__sound {
-    width: 32px;
-  }
 }
 
 /* Song cards and result lists come in one after another. */
