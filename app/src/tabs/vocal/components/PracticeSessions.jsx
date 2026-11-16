@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, FileMusic } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import './PracticeSessions.css'
 import { listPracticeSessions, listSessionAttempts, recordingStorageUsed } from '@backend/practiceSessions'
@@ -26,7 +26,7 @@ const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
  * `instrument` ('voice' | 'guitar') lists only that tab's sessions, so
  * Practise opens the song where it was practised.
  */
-function PracticeSessions({ auth, supabase, song, instrument = null, onPractise = null }) {
+function PracticeSessions({ auth, supabase, song, instrument = null, onPractise = null, onOpenAttempt = null }) {
   const [sessions, setSessions] = useState(null)
   const [storage, setStorage] = useState(null)
   const [error, setError] = useState(null)
@@ -104,6 +104,7 @@ function PracticeSessions({ auth, supabase, song, instrument = null, onPractise 
               openAtFirst={Boolean(song) || i === 0}
               onRecordingDeleted={load}
               onPractise={onPractise}
+              onOpenAttempt={onOpenAttempt}
             />
           ))}
         </ul>
@@ -114,7 +115,7 @@ function PracticeSessions({ auth, supabase, song, instrument = null, onPractise 
 }
 
 /** One song: its summary, and its sessions underneath (the latest open). */
-function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted, onPractise }) {
+function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted, onPractise, onOpenAttempt }) {
   const [open, setOpen] = useState(openAtFirst)
   const { summary } = entry
 
@@ -146,7 +147,7 @@ function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted, onPractise
       {open && (
         <ol className="practice-song__sessions">
           {entry.sessions.map((session, i) => (
-            <SessionItem key={session.id} session={session} supabase={supabase} openAtFirst={i === 0} onRecordingDeleted={onRecordingDeleted} />
+            <SessionItem key={session.id} session={session} supabase={supabase} openAtFirst={i === 0} onRecordingDeleted={onRecordingDeleted} onOpenAttempt={onOpenAttempt} />
           ))}
         </ol>
       )}
@@ -155,7 +156,7 @@ function SongCard({ entry, supabase, openAtFirst, onRecordingDeleted, onPractise
 }
 
 /** One sitting: a compact row that opens to its attempts. */
-function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted }) {
+function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted, onOpenAttempt = null }) {
   const [open, setOpen] = useState(openAtFirst)
   const [attempts, setAttempts] = useState(null) // with signed URLs once opened
   const [runs, setRuns] = useState(null) // scored Wait for me / Trouble spots runs
@@ -224,6 +225,13 @@ function SessionItem({ session, supabase, openAtFirst, onRecordingDeleted }) {
                   supabase={supabase}
                   onChange={(changes) => patch(attempt.id, changes)}
                   onRecordingDeleted={onRecordingDeleted}
+                  actions={
+                    onOpenAttempt && (
+                      <button type="button" className="attempt-row__open" onClick={() => onOpenAttempt(attempt.id)}>
+                        <FileMusic size="1.05em" aria-hidden="true" /> See it on the sheet music
+                      </button>
+                    )
+                  }
                 />
               ))}
             </ol>

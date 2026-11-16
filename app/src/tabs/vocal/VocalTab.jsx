@@ -852,6 +852,12 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             song={sessionsFor}
             instrument="voice"
             onPractise={practiseFromSessions}
+            onOpenAttempt={(id) => {
+              // Your own past attempt, back on its score with the green and red notes and the pitch trace.
+              setShared(null)
+              setOpenTryId(id)
+              setView('detail')
+            }}
           />
         </div>
       )

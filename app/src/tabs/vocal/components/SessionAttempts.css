@@ -356,3 +356,21 @@
   cursor: pointer;
 }
 .attempt-row__more--button:hover { background: var(--v-subtle); }
+
+/* Open a past attempt on its score (Practice sessions). */
+.attempt-row__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+  color: var(--v-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.attempt-row__open:hover { border-color: var(--v-primary); }
