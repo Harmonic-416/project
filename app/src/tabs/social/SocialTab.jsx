@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import '../home/HomeTab.css'
+import '../home/HomePage.css'
 import './SocialTab.css'
 import { acceptInvite, formatHandle } from '@backend/friends'
 import { supabase } from '../../lib/supabaseClient.js'
-import FriendsSection from '../home/FriendsSection.jsx'
-import ProfileCard from '../home/ProfileCard.jsx'
+import SocialFriends from './SocialFriends.jsx'
+import SocialProfile from './SocialProfile.jsx'
 import { useHomeData } from '../home/useHomeData.js'
+import { PeopleIcon } from './socialIcons.jsx'
 
 const PARTS = ['profile', 'friends']
 
@@ -25,38 +27,43 @@ function SocialTab({ auth, onNavigate, inviteCode, onInviteDone }) {
   const [inviteShown, setInviteShown] = useState(inviteCode)
 
   return (
-    <div className="home-tab social-tab">
-      <header className="home-tab__header">
-        <h1>Friends</h1>
-        <p>Add friends to send them your attempts and get feedback.</p>
-      </header>
+    <div className="home-page social-page">
+      <div className="home-tab social-tab">
+        <header className="social-tab__header">
+          <span className="social-tab__eyebrow">Social</span>
+          <h1>Friends</h1>
+          <p>Send your attempts to friends and get feedback on them.</p>
+        </header>
 
-      {inviteShown && configured && (
-        <InviteBanner
-          code={inviteShown}
-          signedIn={signedIn}
-          ready={ready}
-          onDone={onInviteDone}
-          onDismiss={() => setInviteShown(null)}
-        />
-      )}
+        {inviteShown && configured && (
+          <InviteBanner
+            code={inviteShown}
+            signedIn={signedIn}
+            ready={ready}
+            onDone={onInviteDone}
+            onDismiss={() => setInviteShown(null)}
+          />
+        )}
 
-      {!configured ? (
-        <p className="home-tab__hint">Sign-in is off on this copy of the app, so friends aren’t available.</p>
-      ) : !ready ? (
-        <p className="home-tab__hint">Checking your sign-in…</p>
-      ) : signedIn ? (
-        <SignedInSocial user={user} inviteCode={inviteCode} />
-      ) : (
-        <div className="home-card">
-          <p className="home-tab__hint">Sign in to add friends.</p>
-          <div className="home-row">
-            <button type="button" className="home-button" onClick={() => onNavigate('home')}>
+        {!configured ? (
+          <p className="home-tab__hint">Sign-in is off on this copy of the app, so friends aren’t available.</p>
+        ) : !ready ? (
+          <p className="home-tab__hint">Checking your sign-in…</p>
+        ) : signedIn ? (
+          <SignedInSocial user={user} inviteCode={inviteCode} />
+        ) : (
+          <div className="social-card social-signed-out">
+            <span className="social-empty__icon" aria-hidden="true">
+              <PeopleIcon />
+            </span>
+            <h2>Practice is better with friends</h2>
+            <p>Sign in to add friends, send them your attempts and leave each other feedback.</p>
+            <button type="button" className="social-button" onClick={() => onNavigate('home')}>
               Sign in on Home
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -71,10 +78,20 @@ function SignedInSocial({ user, inviteCode }) {
     hadInvite.current = Boolean(inviteCode)
   }, [inviteCode, reload])
 
+  const friends = data.friends
+  const count = (kind) => (friends ? friends.filter((f) => f.kind === kind).length : null)
+  const counts = { friends: count('friend'), requests: count('incoming'), sent: count('outgoing') }
+
   return (
     <>
-      <ProfileCard user={user} profile={data.profile} error={errors.profile} onChanged={() => reload('profile')} />
-      <FriendsSection me={data.profile} friends={data.friends} error={errors.friends} onChanged={() => reload('friends')} />
+      <SocialProfile
+        user={user}
+        profile={data.profile}
+        error={errors.profile}
+        counts={counts}
+        onChanged={() => reload('profile')}
+      />
+      <SocialFriends me={data.profile} friends={friends} error={errors.friends} onChanged={() => reload('friends')} />
     </>
   )
 }
