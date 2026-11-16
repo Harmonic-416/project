@@ -62,18 +62,18 @@ describe('what counts as correct (strict)', () => {
     expect(tracker.collect(Infinity).hit.map((n) => n.index)).toEqual([0])
   })
 
-  it('Wait for me: within 35 cents, held for 300 ms', () => {
+  it('Wait for me: within 45 cents, held for 300 ms', () => {
     const d = createHoldDetector(STRICT_HOLD)
-    expect(d.update(69.4, 69, 0)).toBe(false)
-    expect(d.update(69.4, 69, 500)).toBe(false) // 40 cents: never
-    expect(d.update(69.3, 69, 600)).toBe(false)
-    expect(d.update(69.3, 69, 700)).toBe(false)
-    expect(d.update(69.3, 69, 800)).toBe(false)
-    expect(d.update(69.3, 69, 900)).toBe(true) // 300 ms at 30 cents
+    expect(d.update(69.5, 69, 0)).toBe(false)
+    expect(d.update(69.5, 69, 500)).toBe(false) // 50 cents: never
+    expect(d.update(69.4, 69, 600)).toBe(false)
+    expect(d.update(69.4, 69, 700)).toBe(false)
+    expect(d.update(69.4, 69, 800)).toBe(false)
+    expect(d.update(69.4, 69, 900)).toBe(true) // 300 ms at 40 cents
   })
 
   it('colours the live readout on the same scale', () => {
-    expect(liveVerdict(30, 35)).toBe('in-tune')
+    expect(liveVerdict(40, STRICT_HOLD.toleranceCents)).toBe('in-tune')
     expect(liveVerdict(-60, 50)).toBe('close')
     expect(liveVerdict(130, 50)).toBe('wrong')
   })

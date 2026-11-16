@@ -29,10 +29,18 @@ export function rms(buffer) {
 }
 
 /**
+ * How far from the note still counts as in tune, in cents. 60 rather than a
+ * strict quarter tone (50): singers asked for a little more room (vibrato and
+ * scoops sit around the note, not on it), and 60¢ is still well short of the
+ * neighbouring semitone, so a wrong note never passes.
+ */
+export const IN_TUNE_CENTS = 60
+
+/**
  * Classify a pitch error in cents: within tolerance, close (≤ 1 semitone),
  * right pitch class in the wrong octave, or wrong.
  */
-export function classifyCents(cents, toleranceCents = 50) {
+export function classifyCents(cents, toleranceCents = IN_TUNE_CENTS) {
   const abs = Math.abs(cents)
   if (abs <= toleranceCents) return 'in-tune'
   const wrapped = (((cents / 100) % 12) + 18) % 12 - 6 // fold into [-6, 6) semitones
@@ -76,7 +84,7 @@ export function findActiveNote(sortedNotes, time) {
  * Score pitch samples ({ time, midi }) against the expected melody
  * ({ midi, time, duration }). Frames during rests are not scored.
  */
-export function scoreAttempt(samples, notes, { toleranceCents = 50 } = {}) {
+export function scoreAttempt(samples, notes, { toleranceCents = IN_TUNE_CENTS } = {}) {
   const sorted = [...notes].sort((a, b) => a.time - b.time)
   let scoredFrames = 0
   let inTune = 0

@@ -14,7 +14,7 @@ const BALL_TRAVEL_PCT = 40 // the ball stops short of the lane's ends so it neve
  */
 function PitchMeter({ targetName, sungName, cents, verdict, hasTarget, toleranceCents = IN_TUNE_CENTS }) {
   const reading = readPitch({ sung: Boolean(sungName), hasTarget, cents, verdict })
-  // The band is the in-tune tolerance of whichever mode is judging (Wait for me holds 35¢, the others 50¢).
+  // The band is the in-tune tolerance of whichever mode is judging (Wait for me holds 45¢, the others 60¢).
   const bandPct = (toleranceCents / METER_RANGE_CENTS) * BALL_TRAVEL_PCT
   return (
     <div className={`pitch-meter pitch-meter--${reading.state}`}>

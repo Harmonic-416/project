@@ -14,15 +14,17 @@
 /**
  * What counts as correct, stricter than the shared defaults in
  * practiceLogic.js (which shared attempts and the record panel keep):
- *  - Wait for me: within 35 cents of the note, held steady for 300 ms.
- *  - Trouble spots: within 50 cents (the nearest semitone, not either
+ *  - Wait for me: within 45 cents of the note, held steady for 300 ms.
+ *  - Trouble spots: within 60 cents (still nearer this note than either
  *    neighbour), at least 4 frames, and on pitch for at least 60% of what
- *    was sung during the note. Sung the same way but 50–150 cents off (a
+ *    was sung during the note. Sung the same way but 60–150 cents off (a
  *    half step, give or take a quarter tone) is "close": half a point.
+ * Both were loosened by 10¢ on 2026-11-16 at the team's request (singers
+ * found them strict); the 300 ms hold and the frame counts are unchanged.
  * Any octave still counts, so every voice range can sing every melody.
  */
-export const STRICT_HOLD = { toleranceCents: 35, holdMs: 300 }
-export const STRICT_TROUBLE = { toleranceCents: 50, minFrames: 4, minOnPitchShare: 0.6, closeCents: 150 }
+export const STRICT_HOLD = { toleranceCents: 45, holdMs: 300 }
+export const STRICT_TROUBLE = { toleranceCents: 60, minFrames: 4, minOnPitchShare: 0.6, closeCents: 150 }
 
 /** The live pitch readout's colour, on the same scale: in tune, close (up to a semitone), or wrong. */
 export function liveVerdict(cents, toleranceCents) {
