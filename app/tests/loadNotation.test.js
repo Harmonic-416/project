@@ -72,15 +72,10 @@ describe('loadNotation', () => {
     }
   })
 
-  it('opens a MuseScore file itself, under its own name or another', async () => {
-    const mscz = fixture('musescore/amazing-grace.mscz')
-    for (const name of ['amazing-grace.mscz', 'amazing-grace.zip']) {
-      const loaded = await loadNotation(mscz, name)
-      expect(loaded.format).toBe('musescore')
-      expect(loaded.content).toContain('<score-partwise')
-      expect(loaded.content).toContain('<lyric')
-    }
+  // Reading .mscz / .mscx is covered in museScoreImport.test.js (it needs jsdom's XML parser).
+  it('offers MuseScore files in the picker', () => {
     expect(NOTATION_ACCEPT).toContain('.mscz')
+    expect(NOTATION_ACCEPT).toContain('.mscx')
   })
 
   it('derives readable titles from filenames', () => {
