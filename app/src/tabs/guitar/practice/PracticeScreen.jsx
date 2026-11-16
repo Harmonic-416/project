@@ -1,6 +1,8 @@
 import LessonFocus from './LessonFocus.jsx'
 import LessonModes from './LessonModes.jsx'
 import ChordPicker from './ChordPicker.jsx'
+import ChordStringCheck from './ChordStringCheck.jsx'
+import { CLIPPING_HELP } from '../song/follow/inputQuality.js'
 import GuitarFeedback from './GuitarFeedback.jsx'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { midiToNoteName } from '../../vocal/audio/pitchDetector.js'
@@ -49,11 +51,11 @@ function saveLabelMode(mode) {
   }
 }
 
-/** "an extra G", "extra G and C" — notes heard that the chord doesn't have. */
+/** Possible extra pitches supported by the spectrum. */
 function extraText(extra) {
   const names = [...new Set(extra.map((midi) => midiToNoteName(midi).replace(/-?\d+$/, '')))]
   if (!names.length) return null
-  return names.length === 1 ? `an extra ${names[0]}` : `extra ${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+  return names.length === 1 ? `possible extra ${names[0]}` : `possible extra notes ${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }
 
 /**
@@ -65,11 +67,11 @@ function extraText(extra) {
  * themselves, so a detection miss never blocks them (F28). `initialChord`
  * (an id) opens on that chord if it's unlocked, e.g. Today's chord.
  */
-function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
+function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlocked = false }) {
   // Chords cleared in Practice mode, saved in this browser.
   const [cleared, setCleared] = useState(loadCleared)
-  const statuses = chordStatuses(cleared)
-  const [state, dispatch] = useReducer(practiceReducer, unlockedCount(cleared), (count) => {
+  const statuses = chordStatuses(cleared, allUnlocked)
+  const [state, dispatch] = useReducer(practiceReducer, unlockedCount(cleared, allUnlocked), (count) => {
     const index = CHORDS.findIndex((c) => c.id === initialChord)
     return initialPractice(index >= 0 && index < count ? index : 0, count)
   })
@@ -101,26 +103,41 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
   // was up; it goes dark once another chord is. `n` replays the flash.
   const expectedChord = isPlay ? playChords[Math.min(play.index, playChords.length - 1)] : chord
   const [heard, setHeard] = useState({ verdict: null, chordId: null, extra: [], n: 0 })
-  const showHeard = (verdict, extra = []) => setHeard(({ n }) => ({ verdict, chordId: expectedChord.id, extra, n: n + 1 }))
+  const [checkingString, setCheckingString] = useState(false)
+  const [diagnostic, setDiagnostic] = useState(null)
+  const showHeard = (verdict, extra, advice) => setHeard(({ n }) => ({ verdict, chordId: expectedChord.id, extra, advice, n: n + 1 }))
   const heardVerdict = heard.chordId === expectedChord.id ? heard.verdict : null
 
   // Every result comes through here, from the mic or from the result buttons.
-  const result = ({ verdict, strings, extra = [] }) => {
+  const result = ({ verdict, strings, extra = [], advice = null }) => {
     if ((isPlay && play.status !== 'running') || (isPractice && run.status !== 'running')) return
-    showHeard(verdict, extra)
+    setDiagnostic(null)
+    showHeard(verdict, extra, advice)
     if (isPlay) playDispatch({ type: 'result', verdict })
     else if (isPractice) practiceResult(verdict)
     else dispatch({ type: 'result', verdict, strings: strings ?? undefined })
   }
 
-  const listening = useLessonListening({ chord: expectedChord, onVerdict: result })
+  const listening = useLessonListening({
+    chord: expectedChord,
+    onVerdict: result,
+    onDiagnostic: (message) => {
+      if ((isPlay && play.status !== 'running') || (isPractice && run.status !== 'running')) return
+      setDiagnostic({ chordId: expectedChord.id, message })
+    },
+  })
+  const currentDiagnostic = diagnostic?.chordId === expectedChord.id ? diagnostic.message : null
+  const advice = (heardVerdict === 'wrong' ? heard.advice : null) ?? currentDiagnostic ?? (heardVerdict ? heard.advice : null)
   const isListening = listening.status === 'listening'
   // Hint strums the chord, low to high, so the learner hears the target (F31).
   const player = useChordPlayer()
 
   const { stop: stopReference } = player
   const { start: startListening, stop: stopListening, restart: restartListening } = listening
-  const clearHeard = useCallback(() => setHeard(({ n }) => ({ verdict: null, chordId: null, extra: [], n })), [])
+  const clearHeard = useCallback(() => {
+    setDiagnostic(null)
+    setHeard(({ n }) => ({ verdict: null, chordId: null, extra: [], n }))
+  }, [])
   const cancelHint = useCallback(() => {
     hintVersion.current += 1
     clearTimeout(hintTimer.current)
@@ -176,7 +193,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
     cancelHint()
     listening.stop()
     setMode(id)
-    setHeard(({ n }) => ({ verdict: null, chordId: null, extra: [], n }))
+    clearHeard()
     runDispatch({ type: 'reset' })
     playDispatch({ type: 'reset' })
   }
@@ -193,7 +210,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
   const updateCleared = (updated) => {
     setCleared(updated)
     setSaveError(!saveCleared(updated))
-    dispatch({ type: 'unlocked', count: unlockedCount(updated) })
+    dispatch({ type: 'unlocked', count: unlockedCount(updated, allUnlocked) })
   }
 
   // Passing or "Unlock anyway" clears the chord; a pass is never downgraded to a skip.
@@ -315,7 +332,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
         {isChanges ? (
           <ChangesRun unlocked={state.unlocked} onLearnChord={() => chooseMode('guided')} />
         ) : isPlay ? (
-          <PlayRun chords={playChords} state={play} dispatch={playDispatchWithMic} labelMode={labelMode} />
+          <PlayRun chords={playChords} state={play} dispatch={playDispatchWithMic} labelMode={labelMode} advice={advice} />
         ) : isPractice ? (
           <PracticeRun
             chord={chord}
@@ -328,6 +345,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
             onUnlockAnyway={unlockAnyway}
             onHint={() => { runDispatchWithMic({ type: 'reset' }); hint() }}
             onSkip={skipChord}
+            advice={advice}
           />
         ) : (
           <>
@@ -339,7 +357,13 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
               chord={chord}
               verdict={state.verdict}
               misses={state.misses}
-              extra={heardVerdict === 'wrong' ? extraText(heard.extra) : null}
+              extra={heardVerdict === 'wrong' && !advice ? extraText(heard.extra) : null}
+              advice={advice}
+              onCheckString={() => {
+                cancelHint()
+                stopListening()
+                setCheckingString(true)
+              }}
               hinting={hinting}
               onHint={hint}
               onSkip={skipChord}
@@ -347,6 +371,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
               onNext={() => (needsPractice ? chooseMode('practice') : moveChord({ type: 'next' }))}
               nextLabel={needsPractice ? 'Practice' : 'Next'}
             />
+            {checkingString && <ChordStringCheck chord={chord} onClose={() => setCheckingString(false)} />}
           </>
         )}
       </section>
@@ -365,6 +390,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null }) {
             {listeningLabel}
           </button>
           {microphoneError && <GuitarFeedback kind="error">{microphoneError}</GuitarFeedback>}
+          {listening.clipping && <p role="status">{CLIPPING_HELP}</p>}
           {microphoneError && canStartManually && !launching && <button type="button" onClick={startManually}>Start without microphone</button>}
         </div>
         <details className="practice__self-mark"><summary>Mark it yourself</summary><div>

@@ -70,3 +70,9 @@
   color: var(--gs-on-solid);
   font-weight: 600;
 }
+.check-banner__advice { display: block; margin-block-start: 4px; font: inherit; font-size: .82rem; font-weight: 500; }
+.chord-library.chord-string-check { max-width: 520px; padding: var(--gs-space-4); }
+.chord-string-check .chord-library__header { padding: 0; }
+.chord-string-check .lesson-coach__strings { margin-block: var(--gs-space-3); }
+.chord-string-check .lesson-coach__strings button[aria-pressed="true"] { border-color: var(--gs-accent); background: var(--gs-accent-soft); color: var(--gs-accent); }
+.chord-string-check > .practice__listen { margin-block-start: var(--gs-space-2); }

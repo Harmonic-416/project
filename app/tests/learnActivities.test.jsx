@@ -15,7 +15,7 @@ describe('Guitar Learn activity list', () => {
     fireEvent.click(screen.getByRole('button', { name: /Strum on the beat/ }))
     expect(screen.getByText('Strum activity open')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Learn/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Chord lessons/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue A minor' }))
     expect(screen.getByText('Chord activity open: Am, guided')).toBeTruthy()
   })
   it('resumes the next unlocked chord and keeps completed lessons available for review', () => {

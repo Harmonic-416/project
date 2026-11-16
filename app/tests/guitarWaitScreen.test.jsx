@@ -35,6 +35,15 @@ describe('Wait for me controls and feedback', () => {
     expect(screen.getByText('Manually skipped')).toBeTruthy()
     expect(screen.getByText('First try')).toBeTruthy()
   })
+  it('reveals the new bar on a hit even before the playback cursor catches up', () => {
+    const setup = props()
+    const reveal = vi.fn()
+    render(<GuitarWaitMode {...setup} onTargetBar={reveal} timeline={{ entries: [entries[0], { ...entries[1], bar: 4 }], duration: 2 }} />)
+    expect(reveal).toHaveBeenLastCalledWith(0)
+    act(() => rig.onWindow({ wall: 200, actions: [{ type: 'judged', result: { verdict: 'hit' } }] }))
+    expect(setup.api.tickPosition).toBe(960)
+    expect(reveal).toHaveBeenLastCalledWith(4)
+  })
   it('offers practical recovery for quiet input without calling it a wrong attempt', () => {
     rig.quiet = true
     render(<GuitarWaitMode {...props()} />)

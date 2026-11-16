@@ -5,7 +5,7 @@ import { loadGuitarNotation } from '../src/tabs/guitar/notation/loadGuitarNotati
 import { createWindowCollector } from '../src/tabs/guitar/song/follow/listenWindows.js'
 import { matchTranscription, toSongNotes } from '../src/tabs/guitar/song/follow/matchTranscription.js'
 import { judgeWindow } from '../src/tabs/guitar/song/follow/noteJudge.js'
-import { createSongClock, estimateLatency, songTimeAtWall } from '../src/tabs/guitar/song/follow/songClock.js'
+import { createSongClock, estimateLatency, finishedOnsetTime, songTimeAtWall } from '../src/tabs/guitar/song/follow/songClock.js'
 import { buildTimeline } from '../src/tabs/guitar/song/follow/songTimeline.js'
 import { createGuitarTroubleTracker, troubleSummary } from '../src/tabs/guitar/song/follow/troubleTracker.js'
 import { initialWait, isDone, waitReducer, waitSummary } from '../src/tabs/guitar/song/follow/waitState.js'
@@ -14,6 +14,12 @@ import { createPitchTracker } from '../src/tabs/vocal/audio/pitchDetector.js'
 const RATE = 48000
 const FRAME = 4096
 const HOP = 512
+
+it('accepts a delayed final note using the stopped section position and excludes post-stop attacks', () => {
+  const finish = { wall: 2000, seconds: 3 }
+  expect(finishedOnsetTime(finish, 1970, 30, 0.5)).toBeCloseTo(2.97)
+  expect(finishedOnsetTime(finish, 2031, 30, 0.5)).toBeNull()
+})
 
 const entry = (index, time, extra = {}) => ({
   index,
@@ -26,6 +32,15 @@ const entry = (index, time, extra = {}) => ({
 })
 
 describe('trouble spots tracker', () => {
+  it('uses confirmed pitch to resolve a near tie without granting two hits', () => {
+    const notes = [entry(0, 0), entry(1, 0.12)]
+    const tracker = createGuitarTroubleTracker(notes)
+    const judge = (note) => ({ verdict: note.index === 0 ? 'hit' : 'close', detected: 60 })
+    expect(tracker.addOnset(0.07, judge).entry.index).toBe(0)
+    expect(tracker.collect(Infinity).map((note) => note.verdict)).toEqual(['hit', 'miss'])
+    const late = createGuitarTroubleTracker(notes)
+    expect(late.addOnset(0.11, judge).entry.index).toBe(1)
+  })
   const entries = [entry(0, 0), entry(1, 0.5), entry(2, 1.0), entry(3, 1.5, { technique: 'bend' })]
   const verdict = (v) => () => ({ verdict: v })
 
@@ -47,11 +62,12 @@ describe('trouble spots tracker', () => {
   it('credits an onset to the nearest start, keeps the better of two tries, and ignores stray onsets', () => {
     const tracker = createGuitarTroubleTracker(entries)
     expect(tracker.entryFor(0.3).index).toBe(1) // nearer to 0.5 than to 0
-    tracker.addOnset(0.45, verdict('miss'))
-    tracker.addOnset(0.55, verdict('hit'))
+    tracker.addOnset(0.45, () => ({ verdict: 'miss', detected: 58 }))
+    tracker.addOnset(0.55, () => ({ verdict: 'hit', detected: 61 }))
+    tracker.addOnset(0.59, () => ({ verdict: 'close', detected: 62 }))
     expect(tracker.addOnset(5, verdict('hit'))).toBeNull()
     expect(tracker.addOnset(1.5, verdict('hit'))).toBeNull() // bends aren't scored live
-    expect(tracker.collect(10)[1].verdict).toBe('hit')
+    expect(tracker.collect(10)[1]).toMatchObject({ verdict: 'hit', result: { detected: 61 } })
   })
 
   it('drops earlier entries without a verdict after a seek', () => {
@@ -144,6 +160,8 @@ describe('song clock', () => {
     const onsets = [120, 610, 1130, 1620, 2115, 2300]
     expect(estimateLatency(clicks, onsets)).toBe(120)
     expect(estimateLatency(clicks, [900])).toBeNull()
+    expect(estimateLatency(clicks, [15, 120, 580, 620, 1120, 1620, 1940, 2120])).toBe(120)
+    expect(estimateLatency(clicks, [10, 580, 1150, 1750, 2370])).toBeNull()
   })
 })
 
@@ -166,6 +184,13 @@ describe('after-the-run check (basic-pitch transcription)', () => {
     expect(notes[0].bendSemitones).toBe(2)
   })
 
+  it('credits one transcribed attack to just one of two repeated notes with overlapping windows', () => {
+    const repeated = [entry(0, 0), entry(1, 0.2, { notes: [{ midi: 60 }] })]
+    expect(matchTranscription(repeated, [{ time: 0.19, midi: 60 }])).toEqual(['miss', 'hit'])
+    expect(matchTranscription(repeated, [{ time: 0.01, midi: 60 }, { time: 0.21, midi: 60 }])).toEqual(['hit', 'hit'])
+    expect(matchTranscription(repeated, [{ time: 0.19, midi: 60 }, { time: 0.8, midi: 60 }])).toEqual(['hit', 'hit'])
+  })
+
   it('judges notes, chords and bends against the transcription, within the stretch the run covered', () => {
     const songNotes = [
       { time: 0.03, midi: 64, bendSemitones: 0 },
@@ -174,7 +199,7 @@ describe('after-the-run check (basic-pitch transcription)', () => {
       { time: 3.05, midi: 63, bendSemitones: 0 }, // a semitone sharp
     ]
     const verdicts = matchTranscription(entries, songNotes, { from: 0, to: 5 })
-    expect(verdicts.slice(0, 5)).toEqual(['hit', 'hit', 'close', 'close', 'skipped'])
+    expect(verdicts.slice(0, 5)).toEqual(['hit', 'close', 'close', 'close', 'skipped'])
     expect(verdicts[5]).toBeUndefined()
     expect(matchTranscription(entries, [], { from: 0, to: 0.5 })[0]).toBe('miss')
   })

@@ -1,10 +1,11 @@
 import workletUrl from './pcm-capture.worklet.js?worker&url'
+import { captureWallTime } from './captureClock.js'
 
 /**
  * Shared microphone capture: getUserMedia → AudioWorklet → fixed-hop PCM
- * frames, input level and onsets, all client-side (live audio never leaves
- * the device). Frame and onset positions are sample indices on `context`'s
- * clock; divide by `sampleRate` for seconds.
+ * frames, input level and onsets, all client-side. Positions are sample
+ * indices relative to capture. `captureWall` maps the event's context frame
+ * to page milliseconds for consumers that compare it with playback.
  *
  * Pass `context` to capture on an existing AudioContext (e.g. the one
  * playback runs on, so both share a clock); otherwise one is created and
@@ -46,6 +47,7 @@ export async function createCapture({ context, frameSize = 2048, hop = 512, onFr
 
   node.port.onmessage = (event) => {
     const message = event.data
+    message.captureWall = captureWallTime(message.contextFrame, ctx.sampleRate, ctx.currentTime, performance.now())
     if (message.type === 'frame') onFrame?.(message)
     else if (message.type === 'onset') onOnset?.(message)
   }

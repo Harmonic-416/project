@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CHORDS, barresOf, chordMidi, dotLabel, noteAt } from '../src/tabs/guitar/practice/chords.js'
 import { lessonEntry, markedStrings, toLessonVerdict } from '../src/tabs/guitar/practice/lessonVerdicts.js'
+import { guitarCoaching } from '../src/tabs/guitar/song/follow/guitarCoaching.js'
 import { initialPractice, practiceReducer } from '../src/tabs/guitar/practice/practiceState.js'
 import { createWaitAttempts } from '../src/tabs/guitar/song/follow/waitListening.js'
 import { listen, renderGuitar, strum, typing, withRoomNoise } from './guitarSignals.js'
@@ -115,6 +116,35 @@ describe('barres', () => {
 })
 
 describe('lessons from the mic', () => {
+  it('uses recorded pitch evidence to explain why an A major strum failed', () => {
+    const a = CHORDS.find((chord) => chord.id === 'A')
+    const entry = lessonEntry(a)
+    const check = (shape) => {
+      const attempts = createWaitAttempts()
+      const audio = withRoomNoise(renderGuitar(2, strum(0.5, shape)))
+      return listen(audio).flatMap((window) => attempts.consider(window, entry).actions).at(-1)?.result
+    }
+    expect(check({ 5: 0, 4: 2, 3: 2, 2: 2, 1: 0 })?.verdict).toBe('hit')
+    const lowE = check({ 6: 0, 5: 0, 4: 2, 3: 2, 2: 2, 1: 0 })
+    expect(lowE?.verdict).toBe('close')
+    expect(guitarCoaching(lowE, entry)).toContain('Start the strum on string 5 and leave string 6 quiet')
+    const lowB = check({ 5: 0, 4: 2, 3: 2, 2: 1, 1: 0 })
+    expect(lowB?.verdict).toBe('close')
+    expect(guitarCoaching(lowB, entry)).toMatch(/C4.*string 2, fret 2/)
+  })
+  it('checks an isolated fretted note and gives the learner a concrete correction', () => {
+    const entry = lessonEntry(am, 3)
+    expect(entry).toMatchObject({ kind: 'single', notes: [{ midi: 57, string: 3, fret: 2 }] })
+    expect(guitarCoaching({ verdict: 'close', detected: 69, cents: 1200 }, entry))
+      .toBe('Heard A4 in a different octave. Check string 3, fret 2 (A3).')
+    expect(guitarCoaching({ verdict: 'close', strings: { 3: 'bad' } }, lessonEntry(am)))
+      .toContain('string 3, fret 2 (A3)')
+    expect(guitarCoaching({ verdict: 'hit', detected: 57.31, cents: 31 }, entry))
+      .toBe('Heard A3, about 30 cents sharp. Check the open string in the tuner. Then fret gently just behind the fret and try again.')
+    expect(guitarCoaching({ verdict: 'hit', detected: 57.1, cents: 10 }, entry)).toBe('Target pitch heard.')
+    expect(guitarCoaching({ verdict: 'hit', detected: 56.68, cents: -32 }, entry)).toContain('about 30 cents flat')
+  })
+
   const shapeOf = (chord) => Object.fromEntries(chord.frets.flatMap((fret, i) => (fret < 0 ? [] : [[6 - i, fret]])))
 
   /** Audio through the real listener and Wait for me's rules, into the lesson reducer. */

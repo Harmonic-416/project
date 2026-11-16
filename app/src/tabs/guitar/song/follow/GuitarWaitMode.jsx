@@ -14,6 +14,9 @@ import { isFullRun, waitAccuracy, waitVerdicts } from './runHistory.js'
 import { waitTiming } from './recordingTiming.js'
 import RunReview from './RunReview.jsx'
 import HearingHelp from './HearingHelp.jsx'
+import { CLIPPING_HELP } from './inputQuality.js'
+import { songVerdicts } from './songSection.js'
+import { guitarCoaching } from './guitarCoaching.js'
 
 // How long a Hint rings; the mic ignores it for that long.
 const HINT_MS = 1500
@@ -50,7 +53,7 @@ function lightsOf(result) {
  * Each time the cursor moves on is noted against the recording
  * (recordingTiming.waitTiming), so their cursor moves with it.
  */
-function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
+function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, onTargetBar, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
   const { entries, duration } = timeline
   const reducer = useMemo(() => waitReducer(entries), [entries])
   const [state, dispatch] = useReducer(reducer, entries, initialWait)
@@ -152,8 +155,17 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, ti
   useEffect(() => {
     if (!api || !ready || !target) return
     seekToTick(api, target.tick)
-    api.scrollToCursor()
   }, [api, ready, target])
+
+  // The synth applies seeks asynchronously. Follow the target's layout
+  // directly, and look it up again if the score is redrawn or reflows.
+  const targetBar = target?.bar
+  useEffect(() => {
+    if (!api || !ready || targetBar == null || !onTargetBar) return undefined
+    const reveal = () => onTargetBar(targetBar)
+    reveal()
+    return api.postRenderFinished?.on(reveal)
+  }, [api, ready, targetBar, onTargetBar])
 
   // Last note played (or skipped): release the microphone and keep the
   // run's recording for the save below. Once per run.
@@ -200,7 +212,7 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, ti
   const first = initialWait(entries).index
   const controlState = done ? 'stopped' : listening ? 'playing' : state.index > first ? 'paused' : 'idle'
   const heard = state.heard
-  const chordResult = target && lastResult?.index === target.index ? lastResult.result : null
+  const targetResult = target && lastResult?.index === target.index ? lastResult.result : null
   const summary = done ? waitSummary(state.results) : null
   const savedVerdicts = useMemo(() => (done ? waitVerdicts(entries, state.results) : null), [done, entries, state.results])
   const stuck = state.misses >= NUDGE_AFTER
@@ -214,6 +226,7 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, ti
         state={controlState}
         position={target?.time ?? duration}
         duration={duration}
+        startTime={timeline.startTime}
         onPlay={play}
         onPause={pause}
         onStop={stop}
@@ -244,13 +257,13 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, ti
             </span>
           )
         )}
-        {listening && !done && heard && !listener.quiet && (
+        {listening && !done && listener.clipping && <span>{CLIPPING_HELP}</span>}
+        {listening && !done && !listener.clipping && heard && !listener.quiet && (
           <span className={`practice-status__live practice-status__live--${heard.verdict === 'close' ? 'close' : 'wrong'}`}>
-            {heard.verdict === 'close' ? 'Close' : 'Something else'}
-            {heard.detected != null ? ` (heard ${midiToNoteName(heard.detected)})` : ''} · try {state.misses}
+            {guitarCoaching(targetResult, target) || (heard.verdict === 'close' ? 'Close. Try again.' : 'Try the target note again.')}
           </span>
         )}
-        {listening && !done && (!heard || listener.quiet) && (
+        {listening && !done && !listener.clipping && (!heard || listener.quiet) && (
           <span className="practice-status__live">
             {listener.quiet
               ? 'Couldn’t hear you — play a little louder'
@@ -287,17 +300,17 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, ti
           timing={take.timing}
           instrument="guitar"
           recordingChoice
-          verdicts={savedVerdicts}
+          verdicts={songVerdicts(timeline, savedVerdicts)}
           session={session}
           mode="wait"
           easy={easy}
-          fullRun={take.fullRun && isFullRun(entries, savedVerdicts)}
+          fullRun={timeline.startTick == null && take.fullRun && isFullRun(entries, savedVerdicts)}
           onSaved={onSaved}
         />
       )}
       {target?.kind === 'chord' && (
         <GuitarModeFeedback host={feedbackHost}><div className="guitar-follow__strings">
-          <StringStates chord={shapeOf(target)} strings={lightsOf(chordResult)} />
+          <StringStates chord={shapeOf(target)} strings={lightsOf(targetResult)} />
         </div></GuitarModeFeedback>
       )}
     </>
