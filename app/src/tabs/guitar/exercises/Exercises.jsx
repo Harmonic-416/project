@@ -21,8 +21,13 @@ function Exercises() {
   return (
     <div className={`exercises exercise-studio${exercise?' exercise-studio--active':''}`}>
       {exercise ? <><div className="exercise-studio__toolbar"><button type="button" onClick={()=>setExerciseId(null)}>← Exercises</button><span>{exercise.category}</span><small>{exerciseId==='rhythm'?'Tap or optional microphone':'No microphone needed'}</small></div>{exerciseId==='ear'?<EarTraining />:exerciseId==='rhythm'?<RhythmStudio />:<ChordWorkout key={exerciseId} kind={exerciseId} />}</> : <>
-        <header className="exercise-studio__hero"><span className="workout__eyebrow">YOUR GUITAR GYM</span><h1>A little practice.<br />A lot more confidence.</h1><p>Build the connection between your eyes, ears and hands. Choose one skill and give it a few focused minutes.</p></header>
-        <div className="exercise-studio__skills" aria-label="Skills to practise"><span>See the shape</span><span>Remember the feeling</span><span>Find the groove</span><span>Trust your ear</span></div>
+        <header className="hm-hero exercise-studio__intro">
+          <span className="hm-hero__badge" aria-hidden="true">⚡</span>
+          <div>
+            <h1 className="hm-hero__title">Guitar exercises</h1>
+            <p className="hm-hero__subtitle">Train your ear, learn chord shapes and practise keeping time.</p>
+          </div>
+        </header>
         <ul className="exercise-studio__cards">{EXERCISES.map((item)=><li key={item.id}><button type="button" className={`exercise-card exercise-card--${item.accent}`} onClick={()=>setExerciseId(item.id)}><span className="exercise-card__icon" aria-hidden="true">{item.icon}</span><span className="exercise-card__category">{item.category}</span><strong>{item.title}</strong><span className="exercise-card__description">{item.text}</span><small>{item.meta}</small><span className="exercise-card__action">Let’s practise <span aria-hidden="true">→</span></span></button></li>)}</ul>
         <p className="exercise-studio__footnote">Your pace. Your choice. No lives to lose, no streak to protect. These rounds stay in this visit.</p>
       </>}

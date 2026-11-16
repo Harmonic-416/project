@@ -152,7 +152,7 @@
 
 .pitch-test__move--on {
   background: var(--v-gold-soft, #fff3d6);
-  color: var(--v-gold-dark, #8a5a00);
+  color: var(--v-gold-text, #8a5a00);
   font-weight: 700;
 }
 
@@ -213,6 +213,12 @@
 /* ── Polish: chunky, colourful, pressable (theme/vocalTheme.css) ── */
 .warm-up {
   gap: var(--v-s4);
+}
+
+.warm-up__intro {
+  margin: 0;
+  color: var(--v-muted);
+  font-size: 0.95rem;
 }
 
 .warm-up__voices {

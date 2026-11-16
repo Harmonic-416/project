@@ -36,6 +36,8 @@
 }
 
 .fretboard__control {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -80,7 +82,7 @@
 
 .fretboard__toggle-button.is-on {
   background: var(--hm-accent);
-  color: #ffffff;
+  color: var(--hm-on-accent);
 }
 
 .fretboard__select:focus-visible,
@@ -220,7 +222,7 @@
 }
 
 .fb-note.is-chosen text {
-  fill: #ffffff;
+  fill: var(--hm-on-accent);
 }
 
 /* ── info ─────────────────────────────────────────────────────────────── */

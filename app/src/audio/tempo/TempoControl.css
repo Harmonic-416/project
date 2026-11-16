@@ -8,14 +8,14 @@
 .tempo-control__label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #24242c;
+  color: var(--v-text, var(--hm-text));
 }
 
 .tempo-control__range {
   flex: 1;
   min-width: 80px; /* below the default ~130px so it fits a phone row; wraps instead of vanishing */
   max-width: 220px;
-  accent-color: #128789;
+  accent-color: var(--v-primary, var(--hm-accent));
 }
 
 .tempo-control__range:disabled {
@@ -25,6 +25,6 @@
 .tempo-control__readout {
   font-variant-numeric: tabular-nums;
   font-size: 0.8rem;
-  color: #6c6a72;
+  color: var(--v-muted, var(--hm-text-muted));
   white-space: nowrap;
 }

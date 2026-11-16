@@ -650,164 +650,6 @@
   }
 }
 
-/* ── The lesson path ── */
-.learn-unit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--v-s4);
-}
-
-.learn-unit__banner {
-  padding: var(--v-s4);
-  border-radius: var(--v-radius-lg);
-  background: var(--learn-accent);
-  box-shadow: 0 var(--v-lip) 0 var(--learn-accent-dark);
-  color: var(--v-on-accent, #ffffff);
-}
-
-.learn-unit--1 .learn-unit__banner {
-  background: var(--v-compose);
-  box-shadow: 0 var(--v-lip) 0 color-mix(in srgb, var(--v-compose) 70%, black);
-}
-
-.learn-unit__number {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.85;
-}
-
-.learn-unit__title {
-  margin: 2px 0 0;
-  font-size: 1.35rem;
-  font-weight: 800;
-}
-
-.learn-unit__blurb {
-  margin: 2px 0 0;
-  opacity: 0.9;
-}
-
-.learn-path {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 44px; /* room for the "Start" bubble over a node */
-  margin: 0;
-  padding: var(--v-s5) 0 var(--v-s4);
-  list-style: none;
-}
-
-.learn-path__step {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--v-s4);
-  width: min(100%, 360px);
-  transform: translateX(calc(var(--sway, 0) * 48px));
-}
-
-.learn-node {
-  position: relative;
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 66px;
-  border: none;
-  border-radius: 50%;
-  background: var(--learn-accent);
-  box-shadow: 0 6px 0 var(--learn-accent-dark);
-  font-size: 1.8rem;
-  cursor: pointer;
-  transition:
-    transform var(--v-fast) var(--v-ease-out),
-    box-shadow var(--v-fast) var(--v-ease-out);
-}
-
-.learn-node:active:not(:disabled) {
-  transform: translateY(6px);
-  box-shadow: 0 0 0 var(--learn-accent-dark);
-}
-
-.learn-node--done {
-  background: var(--v-gold);
-  box-shadow: 0 6px 0 var(--v-gold-dark);
-}
-
-.learn-node--done:active:not(:disabled) {
-  box-shadow: 0 0 0 var(--v-gold-dark);
-}
-
-.learn-node--current {
-  outline: 4px solid color-mix(in srgb, var(--learn-accent) 30%, transparent);
-  outline-offset: 5px;
-  animation: v-breathe 2s ease-in-out infinite;
-}
-
-.learn-node--locked {
-  background: var(--v-subtle);
-  box-shadow: 0 6px 0 var(--v-border);
-  font-size: 1.3rem;
-  cursor: not-allowed;
-}
-
-/* The "Start" speech bubble over the current lesson. */
-.learn-node__start {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 36px;
-  padding: 4px 12px;
-  border: 2px solid var(--v-border);
-  border-radius: var(--v-radius);
-  background: var(--v-card);
-  color: var(--learn-accent);
-  font-family: var(--v-font-display);
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  transform: translateX(-50%);
-  animation: v-float-bob 1.8s ease-in-out infinite;
-}
-
-@keyframes v-float-bob {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -4px; }
-}
-
-.learn-node__label {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.learn-node__label strong {
-  font-family: var(--v-font-display);
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-
-.learn-node__label small {
-  color: var(--learn-muted);
-  font-size: 0.85rem;
-}
-
-.learn-path__step:has(.learn-node--locked) .learn-node__label {
-  opacity: 0.55;
-}
-
-.learn-node__stars {
-  color: var(--v-border-strong);
-  font-size: 0.9rem;
-  letter-spacing: 1px;
-}
-
-.learn-node__stars .on {
-  color: var(--v-gold);
-}
-
 /* An open lesson's header */
 .learn-lesson-bar {
   display: flex;
@@ -824,8 +666,314 @@
   font-weight: 800;
 }
 
-@media (max-width: 480px) {
-  .learn-path__step {
-    transform: translateX(calc(var(--sway, 0) * 24px));
+.learn-lesson-bar__for {
+  display: block;
+  color: var(--learn-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ── The course: one song per level ── */
+.vlearn-hero__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--v-s2);
+  min-width: 0;
+}
+
+.vlearn-hero__count {
+  color: var(--learn-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* The one big "carry on" action, above the list. */
+.vlearn-continue {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--v-s4) calc(var(--v-s6) + 48px) var(--v-s4) var(--v-s4);
+  border-color: var(--learn-accent);
+  background: var(--learn-accent-soft);
+  color: var(--learn-text);
+  font: inherit;
+  text-align: left;
+}
+
+.vlearn-continue__eyebrow {
+  color: var(--learn-accent-dark);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vlearn-continue strong {
+  font-family: var(--v-font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.vlearn-continue small {
+  color: var(--learn-muted);
+  font-size: 0.9rem;
+}
+
+.vlearn-continue__go {
+  position: absolute;
+  top: 50%;
+  right: var(--v-s4);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--learn-accent);
+  box-shadow: 0 var(--v-lip) 0 var(--learn-accent-dark);
+  color: var(--v-on-accent);
+  font-size: 1.1rem;
+  transform: translateY(-50%);
+}
+
+.vlevels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v-s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vlevel {
+  display: flex;
+  gap: var(--v-s3);
+  padding: var(--v-s4);
+  border: 2px solid var(--learn-border);
+  border-radius: var(--v-radius-lg);
+  background: var(--v-card);
+  scroll-margin: var(--v-s6);
+}
+
+.vlevel--next {
+  border-color: var(--learn-accent);
+  box-shadow: 0 var(--v-lip) 0 color-mix(in srgb, var(--learn-accent) 35%, transparent);
+}
+
+.vlevel__number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--v-subtle);
+  color: var(--learn-muted);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.vlevel--next .vlevel__number {
+  background: var(--learn-accent);
+  color: var(--v-on-accent);
+}
+
+.vlevel--done .vlevel__number {
+  background: var(--v-gold);
+  color: var(--v-on-accent);
+}
+
+.vlevel__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--v-s3);
+  flex: 1;
+  min-width: 0;
+}
+
+.vlevel__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vlevel__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--v-s2);
+  color: var(--learn-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vlevel__badge {
+  padding: 1px 8px;
+  border-radius: var(--v-radius-pill);
+  background: var(--learn-accent-soft);
+  color: var(--learn-accent-dark);
+  letter-spacing: 0.04em;
+}
+
+.vlevel__badge--done {
+  background: var(--v-gold-soft);
+  color: var(--v-gold-text);
+}
+
+.vlevel__title {
+  margin: 0;
+  font-family: var(--v-font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.vlevel__focus {
+  margin: 0 0 var(--v-s1);
+  color: var(--learn-muted);
+  font-size: 0.9rem;
+}
+
+.vlevel__sing {
+  white-space: nowrap;
+}
+
+.vlevel__supports {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--v-s2);
+  padding-top: var(--v-s3);
+  border-top: 1px dashed var(--learn-border);
+}
+
+.vlevel__supports-label {
+  color: var(--learn-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vlevel__supports ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--v-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vlevel__support {
+  display: flex;
+  align-items: center;
+  gap: var(--v-s2);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--v-s2) var(--v-s3);
+  border: 1px solid var(--learn-border);
+  border-radius: var(--v-radius);
+  background: var(--v-subtle);
+  color: var(--learn-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--v-fast),
+    background var(--v-fast);
+}
+
+.vlevel__support:hover {
+  border-color: var(--learn-accent);
+  background: var(--learn-accent-soft);
+}
+
+.vlevel__support:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--learn-accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.vlevel__support-icon {
+  flex: none;
+  font-size: 1.2rem;
+}
+
+.vlevel__support-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vlevel__support-text strong {
+  font-size: 0.9rem;
+}
+
+.vlevel__support-text small {
+  overflow: hidden;
+  color: var(--learn-muted);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vlevel-stars {
+  flex: none;
+  color: var(--v-border-strong);
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+
+.vlevel-stars__on {
+  color: var(--v-gold);
+}
+
+/* Phones: an open activity's "Sing …" button takes its own full-width row,
+   so the title beside "← Learn" isn't squeezed a word to a line. */
+@media (max-width: 560px) {
+  .learn-lesson-bar > .v-btn {
+    order: 1;
+    flex-basis: 100%;
   }
+}
+
+/* Phones: every pixel of width goes to the song. The number circle goes (the
+   eyebrow already says "Level 2", and "Sung" marks a done one), and so does
+   the hero's badge, so the heading stays on one or two short lines. */
+@media (max-width: 560px) {
+  .vocal-learn > .hm-hero .hm-hero__badge {
+    display: none;
+  }
+
+  .vlevel {
+    padding: var(--v-s3) var(--v-s4) var(--v-s4);
+  }
+
+  .vlevel__number {
+    display: none;
+  }
+
+  .vlevel__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vlevel__sing {
+    width: 100%;
+  }
+}
+
+/* Kept for Guitar, not for Vocal: Vocal no longer has a .learn-unit, but
+   Guitar's Learn tab (guitar/learn/ChordUnits.jsx) uses the same class name,
+   and this global rule has always applied to its chord units too. Guitar is
+   another team's, so its look stays exactly as it was; remove this only
+   together with them. */
+.learn-unit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v-s4);
 }

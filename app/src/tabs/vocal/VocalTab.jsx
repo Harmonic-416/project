@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, Flame, Mic, Music, PenLine, Repeat, Search, Settings, Sparkles, Target, Volume2, VolumeX, X } from 'lucide-react'
+import { BookOpen, CalendarDays, Flame, Mic, Music, PenLine, Repeat, Search, Settings, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './theme/vocalTheme.css'
 import './theme/motion.css'
@@ -21,7 +21,6 @@ import RecordPanel from './components/RecordPanel.jsx'
 import './components/PitchMeter.css'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
-import WarmUp from './warmup/WarmUp.jsx'
 import { useSfxMuted } from './feedback/useSfx.js'
 import { useVocalProgress } from './feedback/useProgress.js'
 import { currentStreak, practisedToday } from './feedback/progress.js'
@@ -63,10 +62,10 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 // Each section has its own icon and accent colour (theme/vocalTheme.css).
 const SECTIONS = [
   { id: 'songs', label: 'Songs', icon: Music }, // search, practice sessions, the song list and uploads
-  { id: 'learn', label: 'Learn', icon: BookOpen }, // solfège and rhythm lessons
-  { id: 'exercises', label: 'Practice', icon: Target }, // pitch and harmony tests
+  // A course of songs, one per level, with the warm-ups, solfège, rhythm and
+  // ear tests beside each as the way to get ready for it (learn/levels.js).
+  { id: 'learn', label: 'Learn', icon: BookOpen },
   { id: 'compose', label: 'Compose', icon: PenLine }, // arrange a song for voices
-  { id: 'warmup', label: 'Warm Up', icon: Flame }, // upper and lower range
 ]
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
@@ -84,15 +83,17 @@ const SECTIONS = [
 const renderSongMeta = (song) => <SongCardMeta song={song} />
 
 function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
-  const [section, setSection] = useState('songs') // songs | learn | exercises | compose | warmup (the capsule bar)
+  const [section, setSection] = useState('songs') // songs | learn | compose (the capsule bar)
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
   // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
   const [sessionsFor, setSessionsFor] = useState(null)
   // Where the sessions view goes back to: the library, or the open song.
   const [sessionsReturnTo, setSessionsReturnTo] = useState('library')
   // Where the back button goes: a cloud song opens from the search view, a
-  // built-in song or an upload from the library view.
+  // built-in song or an upload from the library view, and a level's song from
+  // Learn (its level id kept in `learnLevel`, so Learn reopens on it).
   const [returnTo, setReturnTo] = useState('library')
+  const [learnLevel, setLearnLevel] = useState(null)
   const [status, setStatus] = useState('idle') // idle | loading | ready | error
   const [error, setError] = useState(null)
   const [notation, setNotation] = useState(null) // { format, title, content, sourceBytes, fingerprint, catalogSongId, builtin }
@@ -159,8 +160,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   )
 
   const handleSongSelected = useCallback(
-    async (song) => {
-      setReturnTo('library')
+    async (song, from = 'library') => {
+      setReturnTo(from)
       beginLoad()
       try {
         const response = await fetch(song.url)
@@ -171,6 +172,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       }
     },
     [beginLoad, fail, loadFromArrayBuffer],
+  )
+
+  // A level's song, opened from Learn: it plays on the same song screen as
+  // any other, and its back button leads back to that level.
+  const openLevelSong = useCallback(
+    (song, levelId) => {
+      setLearnLevel(levelId)
+      handleSongSelected(song, 'learn')
+    },
+    [handleSongSelected],
   )
 
   const handleCloudSongSelected = useCallback(
@@ -611,7 +622,12 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const handleBack = useCallback(() => {
     playback.stop()
     setShared(null)
-    setView(returnTo)
+    if (returnTo === 'learn') {
+      setSection('learn')
+      setView('library')
+    } else {
+      setView(returnTo)
+    }
     setStatus('idle')
     setError(null)
     setNotation(null)
@@ -619,7 +635,28 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     setArrangement(null)
   }, [playback, returnTo])
 
+  // A level's song plays on the Songs screen, but the singer is still in
+  // Learn: the capsule bar (and its colour) says so.
+  const inLevelSong = section === 'songs' && view === 'detail' && returnTo === 'learn'
+  const shownSection = inLevelSong ? 'learn' : section
+
   const openSection = (next) => {
+    if (inLevelSong && next !== 'compose') {
+      // Learn leads back to the level; Songs to the song list, not the level's song.
+      if (next === 'songs') {
+        playback.stop()
+        setReturnTo('library')
+        setView('library')
+        setStatus('idle')
+        setError(null)
+        setNotation(null)
+        setScoreModel(null)
+        setArrangement(null)
+      } else {
+        handleBack()
+      }
+      return
+    }
     if (next === section) return
     if (section === 'songs') playback.stop()
     // Back to an open song: the viewer renders the score again; the panels wait for it.
@@ -633,13 +670,13 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     if (view === 'library') {
       return (
         <div className="vocal-tab">
-          <header className="vocal-hero">
-            <span className="vocal-hero__badge" aria-hidden="true">
+          <header className="hm-hero">
+            <span className="hm-hero__badge" aria-hidden="true">
               <Mic size="1.1em" aria-hidden="true" />
             </span>
             <div>
-              <h1 className="vocal-hero__title">What do you want to sing today?</h1>
-              <p className="vocal-hero__subtitle">Pick a song, or bring your own MIDI, MusicXML or MuseScore file.</p>
+              <h1 className="hm-hero__title">What do you want to sing today?</h1>
+              <p className="hm-hero__subtitle">Pick a song, or bring your own MIDI, MusicXML or MuseScore file.</p>
             </div>
           </header>
 
@@ -844,7 +881,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       <div className="vocal-tab">
         <div className="vocal-tab__toolbar">
           <button type="button" className="vocal-tab__back" onClick={viewingShared ? closeShared : handleBack}>
-            {viewingShared ? '← Close' : returnTo === 'search' ? '← Search' : '← Songs'}
+            {viewingShared ? '← Close' : returnTo === 'search' ? '← Search' : returnTo === 'learn' ? '← Learn' : '← Songs'}
           </button>
           <span className="vocal-tab__song-title">{notation?.title}</span>
           {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
@@ -1065,15 +1102,15 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   }
 
   return (
-    <div className={`vocal-frame vocal-frame--${section}`}>
+    <div className={`vocal-frame vocal-frame--${shownSection}`}>
       <div className="vocal-frame__top">
         <nav className="vocal-frame__sections" aria-label="Vocal">
           {SECTIONS.map((item) => (
             <button
               key={item.id}
               type="button"
-              className={`vocal-frame__section vocal-frame__section--${item.id} ${section === item.id ? 'vocal-frame__section--active' : ''}`}
-              aria-pressed={section === item.id}
+              className={`vocal-frame__section vocal-frame__section--${item.id} ${shownSection === item.id ? 'vocal-frame__section--active' : ''}`}
+              aria-pressed={shownSection === item.id}
               onClick={() => openSection(item.id)}
             >
               <span className="vocal-frame__section-icon" aria-hidden="true">
@@ -1110,21 +1147,13 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         </div>
       </div>
       <div className="vocal-frame__body" key={section}>
-        {section === 'exercises' ? (
-          <div className="vocal-tab">
-            <WarmUp show="tests" />
-          </div>
-        ) : section === 'compose' ? (
+        {section === 'compose' ? (
           <div className="vocal-tab">
             <ArrangePanel onArranged={handleArranged} auth={auth} supabase={supabase} />
           </div>
-        ) : section === 'warmup' ? (
-          <div className="vocal-tab">
-            <WarmUp show="warmups" />
-          </div>
         ) : section === 'learn' ? (
           <div className="vocal-tab">
-            <VocalLearn />
+            <VocalLearn onOpenSong={openLevelSong} focusLevel={learnLevel} />
           </div>
         ) : (
           renderSongs()

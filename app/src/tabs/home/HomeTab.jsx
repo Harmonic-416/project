@@ -36,13 +36,14 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, 
   // A failed sign-in or "Connect" comes back to the app with the reason in
   // the address bar. Read it once, then tidy the address so a refresh
   // doesn't show the same message again.
-  const [notice] = useState(() => {
+  const [urlNotice] = useState(() => {
     const raw = readOAuthError(window.location.href)
     return raw ? friendlyAuthError(raw) : null
   })
+  const notice = urlNotice ?? (auth.signInError ? friendlyAuthError(auth.signInError) : null)
   useEffect(() => {
-    if (notice) window.history.replaceState(null, '', window.location.pathname)
-  }, [notice])
+    if (urlNotice) window.history.replaceState(null, '', window.location.pathname)
+  }, [urlNotice])
 
   const signedIn = Boolean(configured && ready && user)
   const [accountOpen, setAccountOpen] = useState(Boolean(notice))
@@ -64,19 +65,22 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, 
     <div className="home-page">
       <div className="home-tab hp">
         <header className="hp-header">
-          <div>
-            <h1 className="hp-title">
-              {user ? (
-                <>
-                  Welcome back, <span className="hp-accent">{firstNameFor(user)}</span>
-                </>
-              ) : (
-                <>
-                  Welcome to <span className="hp-accent">Harmonic</span>
-                </>
-              )}
-            </h1>
-            <p className="hp-subtitle">Keep learning guitar and vocal. Small steps make great music.</p>
+          <div className="hm-hero">
+            <span className="hm-hero__badge" aria-hidden="true">♫</span>
+            <div>
+              <h1 className="hm-hero__title">
+                {user ? (
+                  <>
+                    Welcome back, <span className="hp-accent">{firstNameFor(user)}</span>
+                  </>
+                ) : (
+                  <>
+                    Welcome to <span className="hp-accent">Harmonic</span>
+                  </>
+                )}
+              </h1>
+              <p className="hm-hero__subtitle">Keep learning guitar and vocal. Small steps make great music.</p>
+            </div>
           </div>
           {signedIn && (
             <button
@@ -125,8 +129,7 @@ function SignedOutHome({ auth, notice, onNavigate, onOpenFile, myFilesVersion })
         <h2 className="hp-card__title">Sign in</h2>
         {!configured ? (
           <p className="hp-muted">
-            Sign-in is off on this copy of the app: copy <code>app/.env.example</code> to <code>app/.env.local</code> and add
-            the Supabase key. Everything else works with local files.
+            Sign-in is turned off for this copy of Harmonic. You can still practise with built-in songs and your own files.
           </p>
         ) : !ready ? (
           <p className="hp-muted">Checking your sign-in…</p>
@@ -186,27 +189,6 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessi
       <SubPage title="My Files" onBack={back}>
         <MyFilesSection onOpenFile={onOpenFile} userId={user.id} version={myFilesVersion} />
       </SubPage>
-    )
-  }
-
-  // A brand-new account has nothing to continue or work on: lead with the two
-  // ways in rather than three cards that all say "start".
-  const fresh = data.latest === false && data.recent?.length === 0
-  if (fresh) {
-    return (
-      <>
-        <QuickPractice onNavigate={onNavigate} title="Start practising" hint="Your songs and progress show up here once you play or sing one." />
-        <div className="hp-columns">
-          <section className="hp-card" aria-labelledby="hp-activity">
-            <SectionHead id="hp-activity" Icon={PeopleIcon} title="Recent Activity" onViewAll={() => setPage('activity')} />
-            {activity(ACTIVITY_SHOWN)}
-          </section>
-          <section className="hp-card" aria-labelledby="hp-files">
-            <SectionHead id="hp-files" Icon={FileIcon} title="My Files" onViewAll={() => setPage('files')} />
-            <FilesSummary onViewAll={() => setPage('files')} userId={user.id} version={myFilesVersion} />
-          </section>
-        </div>
-      </>
     )
   }
 
@@ -296,7 +278,7 @@ function Activity({ data, errors, myId, tab, onTab, unseen, limit = null, onOpen
   )
 }
 
-function QuickPractice({ onNavigate, title = 'Quick Practice', hint = 'Jump straight into an instrument.' }) {
+function QuickPractice({ onNavigate }) {
   return (
     <section aria-labelledby="hp-quick">
       <div className="hp-section-head">
@@ -304,9 +286,8 @@ function QuickPractice({ onNavigate, title = 'Quick Practice', hint = 'Jump stra
           <span className="hp-card__icon hp-card__icon--bolt">
             <BoltIcon />
           </span>
-          {title}
+          Quick Practice
         </h2>
-        <span className="hp-muted hp-small">{hint}</span>
       </div>
       <div className="hp-quick">
         <button type="button" className="hp-card hp-quick__card hp-quick__card--guitar" onClick={() => onNavigate('guitar')}>

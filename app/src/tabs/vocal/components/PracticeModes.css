@@ -61,9 +61,9 @@
   background: var(--v-border, #e2dfd8);
 }
 
-.practice-status__live--in-tune { background: var(--v-good-soft, #d5f0df); color: var(--v-good-dark, #1d6b3d); }
-.practice-status__live--close { background: var(--v-gold-soft, #fbeccc); color: var(--v-gold-dark, #7a5300); }
-.practice-status__live--wrong { background: var(--v-bad-soft, #f8d9d3); color: var(--v-bad-dark, #8f2c1c); }
+.practice-status__live--in-tune { background: var(--v-good-soft, #d5f0df); color: var(--v-good, #1d6b3d); }
+.practice-status__live--close { background: var(--v-gold-soft, #fbeccc); color: var(--v-gold-text, #7a5300); }
+.practice-status__live--wrong { background: var(--v-bad-soft, #f8d9d3); color: var(--v-bad, #8f2c1c); }
 
 .practice-status__count {
   font-weight: 600;

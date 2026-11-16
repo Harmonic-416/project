@@ -5,10 +5,11 @@
   flex-direction: column;
   gap: 18px;
   padding: 20px;
-  border: 1px solid var(--hm-border);
-  border-radius: 12px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-lg);
   background: var(--hm-surface);
   color: var(--hm-text);
+  box-shadow: 0 var(--v-lip) 0 var(--v-border);
 }
 
 .account-card__who {
@@ -25,8 +26,9 @@
 }
 
 .account-card__name {
+  font-family: var(--v-font-display);
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .account-card__email,

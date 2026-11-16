@@ -1,30 +1,21 @@
-/*
- * Home's look: the same palette, card shape and heading face as the Vocal
- * tab (theme/vocalTheme.css), so moving between tabs feels like one app.
- * Teal is the brand and Guitar; violet marks Vocal. The --hm-* colours are
- * remapped here so the shared pieces Home uses (comments, people, buttons
- * from HomeTab.css) match.
- */
+/* Home and Social share the instrument palette. */
 .home-page {
-  --hp-bg: #f7f7f5;
-  --hp-card: #ffffff;
-  --hp-card-2: #f1f0ec;
-  --hp-border: #e5e3dd;
-  --hp-cyan: #12999b;
-  --hp-cyan-dark: #0b7577;
-  --hp-cyan-soft: #e2f5f5;
-  --hp-on-cyan: #ffffff;
-  --hp-purple: #7c5cd6;
-  --hp-purple-soft: #efeafb;
-  --hp-text: #24242c;
-  --hp-muted: #6c6a72;
-  --hp-hit: #357a02;
-  --hp-close: #9a6c00;
-  --hp-miss: #b8363a;
-  --hp-lip: 0 4px 0 var(--hp-border);
-  --hp-font-display: ui-rounded, 'SF Pro Rounded', 'Nunito', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --hp-bg: var(--v-bg);
+  --hp-card: var(--v-card);
+  --hp-card-2: var(--v-subtle);
+  --hp-border: var(--v-border);
+  --hp-cyan: var(--v-primary);
+  --hp-cyan-soft: var(--v-primary-soft);
+  --hp-on-cyan: var(--v-on-accent);
+  --hp-purple: var(--v-learn);
+  --hp-purple-soft: color-mix(in srgb, var(--hp-purple) 16%, var(--hp-card));
+  --hp-text: var(--v-text);
+  --hp-muted: var(--v-muted);
+  --hp-hit: var(--v-good);
+  --hp-close: var(--v-gold-text);
+  --hp-miss: var(--v-bad);
+  --hp-glow: 0 var(--v-lip) 0 var(--hp-border);
 
-  --hm-accent: var(--hp-cyan);
   --hm-surface: var(--hp-card);
   --hm-border: var(--hp-border);
   --hm-text: var(--hp-text);
@@ -35,31 +26,8 @@
   color: var(--hp-text);
 }
 
-@media (prefers-color-scheme: dark) {
-  .home-page {
-    --hp-bg: #16161b;
-    --hp-card: #1e1e24;
-    --hp-card-2: #26262e;
-    --hp-border: #33333b;
-    --hp-cyan: #3fb6b8;
-    --hp-cyan-dark: #227f81;
-    --hp-cyan-soft: #16383a;
-    --hp-on-cyan: #0f1a1b;
-    --hp-purple: #a78bfa;
-    --hp-purple-soft: #2a2440;
-    --hp-text: #f2f1ee;
-    --hp-muted: #a6a4ad;
-    --hp-hit: #6bcf2a;
-    --hp-close: #ffc933;
-    --hp-miss: #ff6b6f;
-  }
-}
-
-.home-page h1,
-.home-page h2,
-.home-page h3 {
-  font-family: var(--hp-font-display);
-  letter-spacing: -0.01em;
+.home-page :is(h1, h2, h3, button strong, .social-hero__name) {
+  font-family: var(--v-font-display);
 }
 
 /* wider than the old single column; sections use a grid on laptops */
@@ -93,21 +61,8 @@
   gap: 16px;
 }
 
-.hp-title {
-  margin: 0 0 6px;
-  font-size: clamp(1.7rem, 4vw, 2.4rem);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
 .hp-accent {
   color: var(--hp-cyan);
-}
-
-.hp-subtitle {
-  margin: 0;
-  color: var(--hp-muted);
 }
 
 .hp-account {
@@ -115,12 +70,12 @@
   align-items: center;
   gap: 10px;
   padding: 6px 12px 6px 6px;
-  border: 2px solid var(--hp-border);
-  border-radius: 999px;
+  border: 1px solid var(--hp-border);
+  border-radius: 14px;
   background: var(--hp-card);
   color: var(--hp-text);
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -138,15 +93,15 @@
   flex-direction: column;
   gap: 14px;
   padding: 18px 20px;
-  border: 2px solid var(--hp-border);
-  border-radius: 16px;
+  border: 1px solid var(--hp-border);
+  border-radius: 18px;
   background: var(--hp-card);
   color: var(--hp-text);
 }
 
-/* The one card that leads the page: an accent border, no glow. */
 .hp-card--glow {
-  border-color: var(--hp-cyan);
+  box-shadow: var(--hp-glow);
+  border-color: color-mix(in srgb, var(--hp-cyan) 45%, var(--hp-border));
 }
 
 .hp-card--loading {
@@ -176,9 +131,11 @@
   font-weight: 700;
 }
 
-/* Section headings outside a card: plain, like the card headings. */
 .hp-section-title--pill {
-  padding: 0;
+  padding: 6px 16px 6px 8px;
+  border: 1px solid var(--hp-border);
+  border-radius: 999px;
+  background: var(--hp-card);
 }
 
 .hp-card__icon {
@@ -192,16 +149,17 @@
 }
 
 .hp-pill {
+  padding: 5px 14px;
+  border: 1px solid var(--hp-border);
+  border-radius: 999px;
+  background: var(--hp-card);
   color: var(--hp-muted);
 }
 
 .hp-pill--button {
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--hp-cyan);
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -228,11 +186,9 @@
   border: none;
   border-radius: 12px;
   background: var(--hp-cyan);
-  box-shadow: 0 3px 0 var(--hp-cyan-dark);
   color: var(--hp-on-cyan);
-  font-family: var(--hp-font-display);
-  font-size: inherit;
-  font-weight: 800;
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -298,10 +254,10 @@
   place-items: center;
   width: 64px;
   height: 64px;
-  border: 0;
+  border: 1px solid var(--hp-border);
   border-radius: 14px;
   color: var(--hp-cyan);
-  background: var(--hp-cyan-soft);
+  background: linear-gradient(160deg, var(--hp-cyan-soft), transparent);
 }
 
 .hp-art svg {
@@ -311,7 +267,7 @@
 
 .hp-art--vocal {
   color: var(--hp-purple);
-  background: var(--hp-purple-soft);
+  background: linear-gradient(160deg, var(--hp-purple-soft), transparent);
 }
 
 .hp-art--large {
@@ -646,22 +602,14 @@
   cursor: pointer;
 }
 
-/* The two ways in: chunky cards with the Vocal tab's pressed-button lip. */
-.hp-quick__card {
-  box-shadow: var(--hp-lip);
-  transition: transform 120ms ease-out, box-shadow 120ms ease-out, border-color 120ms;
+.hp-quick__card--guitar {
+  border-color: color-mix(in srgb, var(--hp-cyan) 35%, var(--hp-border));
+  background: linear-gradient(120deg, var(--hp-cyan-soft), var(--hp-card) 70%);
 }
 
-.hp-quick__card:active {
-  transform: translateY(4px);
-  box-shadow: none;
-}
-
-.hp-quick__card--guitar:hover { border-color: var(--hp-cyan); }
-.hp-quick__card--vocal:hover { border-color: var(--hp-purple); }
-
-@media (prefers-reduced-motion: reduce) {
-  .hp-quick__card { transition: none; }
+.hp-quick__card--vocal {
+  border-color: color-mix(in srgb, var(--hp-purple) 35%, var(--hp-border));
+  background: linear-gradient(120deg, var(--hp-purple-soft), var(--hp-card) 70%);
 }
 
 .hp-quick__card .hp-art {
@@ -888,14 +836,52 @@
     min-width: 0;
   }
 }
-/* Signed out: one card, one heading. AuthPanel's own card and title step back inside Home's. */
-.home-page .hp-card .auth-card {
-  padding: 0;
+.hp-header .hm-hero {
+  min-width: 0;
+}
+
+.hp-card {
+  border-width: 2px;
+  border-radius: var(--v-radius-lg);
+  box-shadow: var(--hp-glow);
+}
+
+.hp-button:not(.hp-button--ghost) {
+  box-shadow: 0 var(--v-lip) 0 var(--v-primary-dark);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.hp-quick__card {
+  --cover-start: #47dfc3;
+  --cover-end: #2495e8;
+  transition: transform var(--v-fast) var(--v-ease-out), border-color var(--v-fast);
+}
+
+.hp-quick__card--vocal {
+  --cover-start: #a893ff;
+  --cover-end: #eb43c4;
+}
+
+.hp-quick__card .hp-art {
+  background: linear-gradient(135deg, var(--cover-start), var(--cover-end));
   border: 0;
-  background: none;
+  color: #261943;
+  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 12%);
+}
+
+.hp-quick__card:hover {
+  border-color: var(--cover-end);
+}
+
+.hp-quick__card:active,
+.hp-button:not(.hp-button--ghost):active {
+  transform: translateY(var(--v-lip));
   box-shadow: none;
 }
 
-.home-page .hp-card .auth-card__title {
-  display: none;
+@media (prefers-reduced-motion: reduce) {
+  .hp-quick__card {
+    transition: none;
+  }
 }

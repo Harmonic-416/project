@@ -13,10 +13,10 @@ import { TuningReportContext } from './tuner/tuningReport.js'
 const GuitarSong = lazy(() => import('./song/GuitarSong.jsx'))
 
 const VIEWS = [
-  { id: 'song', label: 'Songs' },
-  { id: 'learn', label: 'Learn' }, // chord lessons, strum on the beat (F18); progress on the account
-  { id: 'exercises', label: 'Exercises' }, // ear training (F41)
-  { id: 'tuner', label: 'Tuner' }, // also opens the fretboard map (every note on the neck)
+  { id: 'song', label: 'Songs', icon: '🎵' },
+  { id: 'learn', label: 'Learn', icon: '📖' }, // chord lessons, strum on the beat (F18); progress on the account
+  { id: 'exercises', label: 'Exercises', icon: '⚡' }, // ear training (F41)
+  { id: 'tuner', label: 'Tuner', icon: '♮' }, // also opens the fretboard map (every note on the neck)
 ]
 
 /**
@@ -77,7 +77,7 @@ function GuitarTab({
   const returnLabel = VIEWS.find((v) => v.id === returnTo)?.label
 
   return (
-    <div className="guitar-tab">
+    <div className={`guitar-tab guitar-tab--${view}`}>
       <div className="guitar-tab__top">
         <nav className="guitar-tab__views" aria-label="Guitar">
           {VIEWS.map((item) => (
@@ -85,9 +85,11 @@ function GuitarTab({
               key={item.id}
               type="button"
               className={`guitar-tab__view ${view === item.id ? 'guitar-tab__view--active' : ''}`}
+              data-view={item.id}
               aria-pressed={view === item.id}
               onClick={() => open(item.id)}
             >
+              <span className="guitar-tab__view-icon" aria-hidden="true">{item.icon}</span>
               {item.label}
             </button>
           ))}

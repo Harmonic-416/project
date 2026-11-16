@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { logout, signInWithProvider } from '@backend/auth'
 import { isCloudConfigured, supabase } from '../lib/supabaseClient.js'
+import { finishGoogleSignIn, googleClientId, startGoogleSignIn } from './googleSignIn.js'
 
 /**
  * Supabase session state for the whole app. supabase-js persists the session
@@ -12,13 +13,19 @@ import { isCloudConfigured, supabase } from '../lib/supabaseClient.js'
 export function useSession() {
   const [session, setSession] = useState(null)
   const [ready, setReady] = useState(!isCloudConfigured)
+  const [signInError, setSignInError] = useState(null)
 
   useEffect(() => {
     if (!supabase) return undefined
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setReady(true)
-    })
+    // A return from Google (googleSignIn.js) is finished first, so the app
+    // doesn't show the signed-out screen for a moment in between.
+    finishGoogleSignIn(supabase)
+      .catch((error) => setSignInError(error))
+      .then(() => supabase.auth.getSession())
+      .then(({ data }) => {
+        setSession(data.session)
+        setReady(true)
+      })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, next) => setSession(next))
@@ -29,8 +36,13 @@ export function useSession() {
 
   // OAuth leaves the page entirely; the session comes back through the
   // onAuthStateChange subscription above once the provider redirects here.
+  // Google goes straight there and back when its client ID is set, so its
+  // page names this site rather than supabase.co.
   const signInWith = useCallback(
-    (provider) => signInWithProvider(supabase, provider, window.location.origin),
+    (provider) =>
+      provider === 'google' && googleClientId
+        ? startGoogleSignIn('signin')
+        : signInWithProvider(supabase, provider, window.location.origin),
     [],
   )
 
@@ -41,5 +53,6 @@ export function useSession() {
     user: session?.user ?? null,
     signOut,
     signInWith,
+    signInError,
   }
 }

@@ -631,7 +631,13 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
     }
     return (
       <div ref={pageRef} className="guitar-song guitar-song--library">
-        <h2 className="guitar-song__library-title">Songs</h2>
+        <header className="hm-hero">
+          <span className="hm-hero__badge" aria-hidden="true">🎸</span>
+          <div>
+            <h2 className="hm-hero__title">Songs</h2>
+            <p className="hm-hero__subtitle">Pick a song, read the tab and play along.</p>
+          </div>
+        </header>
         <div className="guitar-song__library-actions">
           <label className={`notation-uploader ${status === 'loading' ? 'notation-uploader--disabled' : ''}`}>
             <input
@@ -644,19 +650,23 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
                 event.target.value = ''
               }}
             />
+            <span className="guitar-song__action-icon" aria-hidden="true">↥</span>
             <span>Open a score <small>Guitar Pro, MusicXML, MIDI or MuseScore</small></span>
           </label>
           {auth?.configured && (
             <button type="button" className="guitar-song__search" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('search') }}>
-              Search songs
+              <span className="guitar-song__action-icon" aria-hidden="true">🔎</span>
+              <span>Search songs</span>
             </button>
           )}
-          <button type="button" className="guitar-song__search" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('transcribe') }}>
-            Tab the guitar from a song
+          <button type="button" className="guitar-song__search guitar-song__action--transcribe" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('transcribe') }}>
+            <span className="guitar-song__action-icon" aria-hidden="true">♫</span>
+            <span>Tab the guitar from a song</span>
           </button>
           {auth?.configured && (
-            <button type="button" className="guitar-song__search" onClick={() => openSessions(null, 'library')}>
-              Practice sessions
+            <button type="button" className="guitar-song__search guitar-song__action--sessions" onClick={() => openSessions(null, 'library')}>
+              <span className="guitar-song__action-icon" aria-hidden="true">▤</span>
+              <span>Practice sessions</span>
             </button>
           )}
         </div>

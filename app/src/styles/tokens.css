@@ -1,14 +1,13 @@
 /* Product theme. Light/dark pairs, spacing and responsive rules live here. */
 .guitar-tab {
-  color-scheme: dark;
-  --gs-bg: light-dark(#f7f6f2, #16161c);
-  --gs-surface: light-dark(#ffffff, #202027);
-  --gs-raised: light-dark(#efece5, #282830);
-  --gs-border: light-dark(#d5d1ca, #363640);
-  --gs-text: light-dark(#24242c, #f4f3f1);
-  --gs-muted: light-dark(#615e69, #b7b3c0);
-  --gs-accent: light-dark(#107476, #3bb5b8);
-  --gs-accent-soft: light-dark(#e3f3f3, #20363b);
+  --gs-bg: var(--v-bg);
+  --gs-surface: var(--v-card);
+  --gs-raised: var(--v-subtle);
+  --gs-border: var(--v-border);
+  --gs-text: var(--v-text);
+  --gs-muted: var(--v-muted);
+  --gs-accent: var(--guitar-accent, var(--v-primary));
+  --gs-accent-soft: color-mix(in srgb, var(--gs-accent) 14%, var(--gs-surface));
   --gs-lilac: light-dark(#7653c0, #b49aff);
   --gs-blue: light-dark(#166f98, #4bb9ed);
   --gs-orange: light-dark(#a24c00, #ffa04b);
@@ -23,7 +22,6 @@
   --gs-on-solid: light-dark(#ffffff, #10242a);
   --gs-paper: light-dark(#ffffff, #ffffff);
   --gs-header: light-dark(#24242c, #1b1b22);
-  --gs-header-text: light-dark(#f4f3f1, #f4f3f1);
   --gs-score-accent: light-dark(#128789, #128789);
   --gs-score-hit: light-dark(#2e9e5b, #2e9e5b);
   --gs-score-close: light-dark(#946b00, #946b00);
@@ -36,7 +34,7 @@
   --gs-space-4: 16px;
   --gs-space-5: 24px;
   --gs-radius-control: 12px;
-  --gs-radius-card: 24px;
+  --gs-radius-card: var(--v-radius-lg);
   --gs-focus-width: 3px;
   --gs-focus-offset: 4px;
   --gs-disabled-opacity: .55;
@@ -44,6 +42,7 @@
   --gs-hover: color-mix(in srgb, var(--gs-accent) 32%, var(--gs-transparent));
   --gs-motion-duration: 140ms;
   --hm-accent: var(--gs-accent);
+  --hm-on-accent: var(--gs-on-solid);
   --hm-surface: var(--gs-surface);
   --hm-border: var(--gs-border);
   --hm-text: var(--gs-text);
@@ -56,7 +55,7 @@
   --practice-warn: var(--gs-warning);
   --practice-warn-ink: var(--gs-on-solid);
   --practice-bar: var(--gs-raised);
-  --practice-ink: var(--gs-header);
+  --practice-header: light-dark(var(--gs-raised), var(--gs-header));
 }
 
 /* The only width breakpoints: compact phone, phone, and stacked lesson. */
@@ -126,11 +125,6 @@
 
 @media (width > 560px) {
   .exercise-studio--active { min-height: 100%; }
-  .guitar-tab .exercise-studio__hero { max-width: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--gs-space-5); align-items: center; padding: 0 0 var(--gs-space-3); }
-  .guitar-tab .exercise-studio__hero > .workout__eyebrow { grid-column: 1 / -1; }
-  .guitar-tab .exercise-studio__hero h1 { font-size: 2rem; margin: var(--gs-space-2) 0; }
-  .guitar-tab .exercise-studio__hero p { margin: 0; font-size: .85rem; }
-  .guitar-tab .exercise-studio__skills { margin-bottom: var(--gs-space-4); }
   .guitar-tab .exercise-studio__cards { gap: var(--gs-space-4); }
   .guitar-tab .exercise-card { padding: var(--gs-space-4); gap: var(--gs-space-1) var(--gs-space-3); }
   .guitar-tab .exercise-card__icon { width: 48px; height: 48px; font-size: 1.6rem; }
@@ -203,10 +197,10 @@
   .guitar-tab .song-workspace__side .song-workspace__feedback { max-height: 35dvh; }
 }
 
-/* A player holding a guitar needs the whole Guided workspace in view. Phones
-   retain the stacked lesson; larger screens use the available shell height. */
-@media (width > 560px) {
-  .guitar-tab .learn--in-lesson:has(.practice--focused) { height: 100%; max-width: none; padding: var(--gs-space-2) var(--gs-space-4); }
+/* Fit the guided workspace to the shell when there is room for the diagram
+   and controls. Short viewports use the scrollable lesson layout. */
+@media (min-width: 740px) and (min-height: 700px) {
+  .guitar-tab .learn--in-lesson:has(.practice--focused) { height: 100%; max-width: 1440px; padding: var(--gs-space-2) var(--gs-space-4); }
   .learn__activity:has(.practice--focused) { height: 100%; min-height: 0; position: relative; display: flex; flex-direction: column; }
   .learn__activity:has(.practice--focused) .learn__activity-top { position: absolute; inset: 0 auto auto 0; margin: 0; z-index: 2; }
   .learn__activity:has(.practice--focused) .learn__activity-top h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -268,7 +262,7 @@
   .practice--focused .practice__self-mark[open] > div { position: absolute; bottom: 100%; right: 0; padding: var(--gs-space-3); border: 1px solid var(--gs-border); background: var(--gs-surface); border-radius: var(--gs-radius-control); z-index: 4; }
 }
 
-@media (width > 560px) and (orientation: portrait) {
+@media (min-width: 740px) and (min-height: 700px) and (orientation: portrait) {
   .practice--guided .lesson-coach { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; }
   .practice--guided .lesson-coach__prompt { grid-column: 2; }
   .practice--guided .lesson-coach__diagram { grid-row: 1 / 3; }
@@ -284,12 +278,12 @@
 
 /* The three-strum checkpoint shares Guided's screen-sized shell. Its target
    stays beside the streak and controls throughout countdown and playing. */
-@media (width > 560px) {
+@media (min-width: 740px) and (min-height: 700px) {
   .practice--checkpoint .practice__header { grid-column: 1 / -1; border-radius: var(--gs-radius-card) var(--gs-radius-card) 0 0; }
   .practice--checkpoint .play-run { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto auto; gap: var(--gs-space-2) var(--gs-space-4); padding: var(--gs-space-2) var(--gs-space-4); }
   .practice--checkpoint .play-run > .practice-run__actions { grid-column: 2; grid-row: 1; gap: var(--gs-space-2); }
   .practice--checkpoint .play-run__top { grid-column: 2; grid-row: 2; align-self: end; flex-wrap: wrap; gap: var(--gs-space-2); }
-  .practice--checkpoint .play-run__stage { grid-column: 1; grid-row: 1 / 7; min-height: 0; height: 100%; max-width: none; overflow: hidden; border-radius: var(--gs-radius-control); }
+  .practice--checkpoint .play-run__stage { grid-column: 1; grid-row: 1 / 7; min-height: 0; height: 100%; max-width: 1440px; overflow: hidden; border-radius: var(--gs-radius-control); }
   .practice--checkpoint .play-run__stage .chord-diagram { flex: 1; min-height: 0; height: 0; width: 100%; }
   .practice--checkpoint .play-run__chord { flex: none; font-family: inherit; }
   .practice--checkpoint .play-run__bar { grid-column: 2; grid-row: 3; max-width: none; }
@@ -301,7 +295,7 @@
   .practice--checkpoint .play-run__score strong { font-family: inherit; font-size: clamp(1.4rem, 3vw, 2.2rem); }
 }
 
-@media (width > 560px) {
+@media (min-width: 740px) and (min-height: 700px) {
   .practice--focused .chord-picker__trigger { padding: 0 var(--gs-space-4); }
   :is(.practice--loop, .practice--switches) .practice__header { grid-column: 1 / -1; border-radius: var(--gs-radius-card) var(--gs-radius-card) 0 0; }
   .practice--loop .strumming-loop { grid-column: 1 / -1; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gs-space-2); container: strumming / size; }

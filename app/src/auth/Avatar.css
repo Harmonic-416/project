@@ -8,7 +8,7 @@
   overflow: hidden;
   border-radius: 50%;
   background: var(--hm-accent);
-  color: #ffffff;
+  color: var(--hm-on-accent);
   font-weight: 600;
 }
 

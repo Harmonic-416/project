@@ -1,143 +1,197 @@
-import { BookOpen, Ear, Eye, Hand, ListMusic, Lock } from 'lucide-react'
-import { useState } from 'react'
+import { BookOpen, Mic } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import './VocalLearn.css'
 import RhythmLearn from './RhythmLearn.jsx'
 import SolfegeLearn from './SolfegeLearn.jsx'
+import WarmUp from '../warmup/WarmUp.jsx'
+import SongCardMeta from '../components/SongCardMeta.jsx'
+import ProgressBar from '../ui/ProgressBar.jsx'
 import { usePlayback } from './usePlayback.js'
+import { courseLevels, levelStates } from './levels.js'
+import { songLibrary } from '../songs/songLibrary.js'
 import { bestStars } from '../feedback/progress.js'
 import { useVocalProgress } from '../feedback/useProgress.js'
 import { sfx } from '../feedback/sfx.js'
 
-// The lessons in order, a unit at a time. Each unlocks once the one before it
-// has been done (feedback/progress.js keeps that on this device).
-const UNITS = [
-  {
-    title: 'Solfège',
-    blurb: 'Give every note a name you can sing',
-    lessons: [
-      { id: 'solfege-scale', lesson: 'scale', title: 'The scale', blurb: 'Meet do re mi on the staff', icon: ListMusic },
-      { id: 'solfege-read', lesson: 'read', title: 'Read it', blurb: 'Name the notes you see', icon: Eye },
-      { id: 'solfege-ear', lesson: 'ear', title: 'Hear it', blurb: 'Name the notes you hear', icon: Ear },
-    ],
-  },
-  {
-    title: 'Rhythm',
-    blurb: 'Feel how long each note lasts',
-    lessons: [{ id: 'rhythm', lesson: 'rhythm', title: 'Clap along', blurb: 'Quarter, half, whole and eighth notes', icon: Hand }],
-  },
-]
-const LESSONS = UNITS.flatMap((u) => u.lessons)
+const LEVELS = courseLevels(songLibrary)
 
-// Nodes sway left and right down the path.
-const SWAY = [0, 1, 0, -1]
+function Stars({ count }) {
+  return (
+    <span className="vlevel-stars" aria-label={`Best: ${count} of 3 stars`}>
+      {[0, 1, 2].map((s) => (
+        <span key={s} className={s < count ? 'vlevel-stars__on' : undefined} aria-hidden="true">
+          ★
+        </span>
+      ))}
+    </span>
+  )
+}
 
-/** Vocal → Learn: a path of lessons (solfège, then rhythm); tap one to open it. */
-export default function VocalLearn() {
-  const [open, setOpen] = useState(null) // a LESSONS entry, or null for the path
+/**
+ * Vocal → Learn: a course of songs. Each level is one main song, opened on
+ * the song screen through `onOpenSong(song, levelId)`; beside it sit the
+ * activities that build up to it (warm-ups, solfège, rhythm, the ear tests),
+ * which open here. Nothing is locked: the first level whose song hasn't been
+ * sung is marked "Up next" (levels.js). `focusLevel` is the level a singer
+ * came back from, scrolled into view so they land where they left off.
+ */
+export default function VocalLearn({ onOpenSong, focusLevel = null }) {
+  const [open, setOpen] = useState(null) // { level, activity } while a supporting activity is open
   const playback = usePlayback()
   const progress = useVocalProgress()
+  const states = levelStates(LEVELS, progress.stars)
+  const doneCount = states.filter((s) => s === 'done').length
+  const nextIndex = states.indexOf('next')
+  const cards = useRef(new Map())
 
-  const firstUndone = LESSONS.findIndex((l) => bestStars(l.id, progress) === null)
-  const stateOf = (i) => (firstUndone === -1 || i < firstUndone ? 'done' : i === firstUndone ? 'current' : 'locked')
+  useEffect(() => {
+    if (open || !focusLevel) return
+    cards.current.get(focusLevel)?.scrollIntoView?.({ block: 'center' })
+  }, [open, focusLevel])
 
-  const openLesson = (lesson) => {
+  const openActivity = (level, activity) => {
     playback.stop()
     sfx.tap()
-    setOpen(lesson)
+    setOpen({ level, activity })
   }
 
   const back = () => {
     playback.stop()
+    const levelId = open.level.id
     setOpen(null)
+    // Back on the course, the level just practised for is where the eye should land.
+    requestAnimationFrame(() => cards.current.get(levelId)?.scrollIntoView?.({ block: 'center' }))
+  }
+
+  const sing = (level) => {
+    playback.stop()
+    sfx.tap()
+    onOpenSong(level.song, level.id)
   }
 
   if (open) {
-    const index = LESSONS.indexOf(open)
-    const next = LESSONS[index + 1]
-    const nextReady = next && stateOf(index + 1) !== 'locked'
+    const { level, activity } = open
     return (
       <div className="vocal-learn">
         <div className="learn-lesson-bar">
           <button type="button" className="vocal-tab__back" onClick={back}>
-            ← Lessons
+            ← Learn
           </button>
           <span className="learn-lesson-bar__title">
-            <span aria-hidden="true">{open.icon}</span> {open.title}
+            <span aria-hidden="true"><activity.icon size="1.1em" aria-hidden="true" /></span> {activity.title}
+            <small className="learn-lesson-bar__for">Getting ready for {level.song.title}</small>
           </span>
-          {nextReady && (
-            <button type="button" className="v-btn v-btn--sm" onClick={() => openLesson(next)}>
-              Next: {next.title} →
-            </button>
-          )}
+          <button type="button" className="v-btn v-btn--sm" onClick={() => sing(level)}>
+            Sing {level.song.title} →
+          </button>
         </div>
-        {open.lesson === 'rhythm' ? (
+        {activity.kind === 'warmup' ? (
+          <WarmUp show="warmups" />
+        ) : activity.kind === 'tests' ? (
+          <WarmUp show="tests" only={activity.test} />
+        ) : activity.lesson === 'rhythm' ? (
           <RhythmLearn playback={playback} />
         ) : (
-          <SolfegeLearn key={open.lesson} playback={playback} lesson={open.lesson} />
+          <SolfegeLearn key={activity.lesson} playback={playback} lesson={activity.lesson} />
         )}
       </div>
     )
   }
 
+  const next = LEVELS[nextIndex]
+
   return (
     <div className="vocal-learn">
-      <header className="vocal-hero">
-        <span className="vocal-hero__badge" aria-hidden="true">
+      <header className="hm-hero">
+        <span className="hm-hero__badge" aria-hidden="true">
           <BookOpen size="1.1em" aria-hidden="true" />
         </span>
-        <div>
-          <h1 className="vocal-hero__title">Learn to read music</h1>
-          <p className="vocal-hero__subtitle">
-            {firstUndone === -1
-              ? 'Every lesson done. Replay any of them to keep sharp.'
-              : `${firstUndone} of ${LESSONS.length} lessons done`}
+        <div className="vlearn-hero__text">
+          <h1 className="hm-hero__title">Learn to sing, one song at a time</h1>
+          <p className="hm-hero__subtitle">
+            Every level is a song. The warm-ups and lessons beside it are there to help, so use the ones you need.
           </p>
+          <ProgressBar value={doneCount} max={LEVELS.length} label="Songs sung" />
+          <span className="vlearn-hero__count">
+            {doneCount} of {LEVELS.length} songs sung
+          </span>
         </div>
       </header>
 
-      {UNITS.map((unit, u) => (
-        <section key={unit.title} className={`learn-unit learn-unit--${u}`}>
-          <div className="learn-unit__banner">
-            <span className="learn-unit__number">Unit {u + 1}</span>
-            <h2 className="learn-unit__title">{unit.title}</h2>
-            <p className="learn-unit__blurb">{unit.blurb}</p>
-          </div>
-          <ol className="learn-path">
-            {unit.lessons.map((lesson) => {
-              const i = LESSONS.indexOf(lesson)
-              const state = stateOf(i)
-              const stars = bestStars(lesson.id, progress)
-              return (
-                <li key={lesson.id} className="learn-path__step" style={{ '--sway': SWAY[i % SWAY.length] }}>
-                  <button
-                    type="button"
-                    className={`learn-node learn-node--${state}`}
-                    disabled={state === 'locked'}
-                    onClick={() => openLesson(lesson)}
-                    aria-label={`${lesson.title}: ${state === 'locked' ? 'locked' : state === 'done' ? 'done' : 'start'}`}
-                  >
-                    <span aria-hidden="true">{state === 'locked' ? <Lock size="1.1em" aria-hidden="true" /> : <lesson.icon size="1.1em" aria-hidden="true" />}</span>
-                  </button>
-                  {state === 'current' && <span className="learn-node__start">Start</span>}
-                  <span className="learn-node__label">
-                    <strong>{lesson.title}</strong>
-                    <small>{lesson.blurb}</small>
-                    {stars !== null && (
-                      <span className="learn-node__stars" aria-label={`Best: ${stars} of 3 stars`}>
-                        {[0, 1, 2].map((s) => (
-                          <span key={s} className={s < stars ? 'on' : undefined} aria-hidden="true">
-                            ★
-                          </span>
-                        ))}
-                      </span>
-                    )}
+      {/* On a fresh start the first level is right there; later, it saves a scroll. */}
+      {next && nextIndex > 0 && (
+        <button type="button" className="vlearn-continue v-card v-card--pressable" onClick={() => sing(next)}>
+          <span className="vlearn-continue__eyebrow">Up next · Level {nextIndex + 1}</span>
+          <strong>{next.song.title}</strong>
+          <small>{next.focus}</small>
+          <span className="vlearn-continue__go" aria-hidden="true">
+            ▶
+          </span>
+        </button>
+      )}
+
+      <ol className="vlevels" aria-label="Levels">
+        {LEVELS.map((level, i) => {
+          const state = states[i]
+          return (
+            <li
+              key={level.id}
+              ref={(el) => (el ? cards.current.set(level.id, el) : cards.current.delete(level.id))}
+              className={`vlevel vlevel--${state}`}
+            >
+              <span className="vlevel__number" aria-hidden="true">
+                {state === 'done' ? '✓' : i + 1}
+              </span>
+              <div className="vlevel__body">
+                <div className="vlevel__head">
+                  <span className="vlevel__eyebrow">
+                    Level {i + 1}
+                    {state === 'next' && <span className="vlevel__badge">Up next</span>}
+                    {state === 'done' && <span className="vlevel__badge vlevel__badge--done">✓ Sung</span>}
                   </span>
-                </li>
-              )
-            })}
-          </ol>
-        </section>
-      ))}
+                  <h2 className="vlevel__title">{level.song.title}</h2>
+                  <p className="vlevel__focus">{level.focus}</p>
+                  <SongCardMeta song={level.song} />
+                </div>
+                <button
+                  type="button"
+                  className={`v-btn ${state === 'next' ? '' : 'v-btn--secondary'} vlevel__sing`}
+                  onClick={() => sing(level)}
+                  aria-label={`${state === 'done' ? 'Sing again' : 'Sing'}: ${level.song.title}`}
+                >
+                  <Mic size="1.1em" aria-hidden="true" /> {state === 'done' ? 'Sing again' : 'Sing the song'}
+                </button>
+                <div className="vlevel__supports">
+                  <span className="vlevel__supports-label">Build up to it</span>
+                  <ul>
+                    {level.supports.map((activity) => {
+                      const stars = activity.starsId ? bestStars(activity.starsId, progress) : null
+                      return (
+                        <li key={activity.id}>
+                          <button
+                            type="button"
+                            className="vlevel__support"
+                            onClick={() => openActivity(level, activity)}
+                          >
+                            <span className="vlevel__support-icon" aria-hidden="true">
+                              <activity.icon size="1.1em" aria-hidden="true" />
+                            </span>
+                            <span className="vlevel__support-text">
+                              <strong>{activity.title}</strong>
+                              <small>{activity.blurb}</small>
+                            </span>
+                            {stars !== null && <Stars count={stars} />}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }

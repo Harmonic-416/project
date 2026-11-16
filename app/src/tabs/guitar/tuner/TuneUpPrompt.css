@@ -41,7 +41,7 @@
 .tune-up-prompt__tune {
   border: none;
   background: var(--hm-accent, #128789);
-  color: #ffffff;
+  color: var(--hm-on-accent);
   font-weight: 600;
 }
 
