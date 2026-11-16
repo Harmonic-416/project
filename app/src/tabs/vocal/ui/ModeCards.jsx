@@ -11,20 +11,21 @@ const BLURBS = { listen: 'Sing along, get a score', wait: 'Waits for each note',
  * PracticeModeToggle): icon, name and a few words each, with the longer
  * hint on hover, so the score — not the mode picker — owns the screen.
  */
-export default function ModeCards({ mode, onChange, disabled }) {
+export default function ModeCards({ mode, onChange, disabled, modes = PRACTICE_MODES, playFeedback = true }) {
   return (
     <div className="v-modes-wrap">
       <div className="v-modes" role="group" aria-label="Practice mode">
-        {PRACTICE_MODES.map((m) => (
+        {modes.map((m) => (
           <button
             key={m.id}
             type="button"
             className={`v-modes__card v-modes__card--${m.id}`}
             aria-pressed={m.id === mode}
+            aria-label={m.label}
             title={m.hint}
-            disabled={disabled}
+            disabled={disabled || m.disabled}
             onClick={() => {
-              if (m.id !== mode) sfx.tap()
+              if (playFeedback && m.id !== mode) sfx.tap()
               onChange(m.id)
             }}
           >
@@ -36,7 +37,7 @@ export default function ModeCards({ mode, onChange, disabled }) {
             </span>
             <span className="v-modes__text">
               <strong>{m.label}</strong>
-              <small>{BLURBS[m.id]}</small>
+              <small>{m.blurb ?? BLURBS[m.id]}</small>
             </span>
           </button>
         ))}

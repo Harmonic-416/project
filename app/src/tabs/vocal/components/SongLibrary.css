@@ -105,3 +105,20 @@
     transition: none;
   }
 }
+
+/* Facts on a song card (SongCardMeta): parts and length, range and who it suits, best stars. */
+.song-library--covers .song-library__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.song-library--covers .song-library__title {
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.song-meta { display: flex; flex-direction: column; gap: 2px; font-size: 0.75rem; font-weight: 600; color: var(--v-muted); }
+.song-meta__facts { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.song-meta__range { font-variant-numeric: tabular-nums; }
+.song-meta__stars { color: var(--v-border-strong); font-size: 0.95rem; letter-spacing: 1px; }
+.song-meta__star--on { color: var(--v-gold); }

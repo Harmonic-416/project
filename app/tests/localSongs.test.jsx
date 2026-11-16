@@ -13,7 +13,7 @@ describe('Guitar saved files', () => {
     loadMyFile.mockResolvedValue({ bytes, name: 'My song.musicxml' })
     const open = vi.fn()
     render(<LocalSongs onOpen={open} />)
-    fireEvent.click(await screen.findByRole('button', { name: /^My song/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^My Song/ }))
     await waitFor(() => expect(open).toHaveBeenCalledWith(bytes, 'My song.musicxml'))
     expect(screen.queryByText('Voice')).toBe(null)
   })

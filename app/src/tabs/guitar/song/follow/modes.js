@@ -6,9 +6,9 @@
  */
 
 export const GUITAR_MODES = [
-  { id: 'listen', label: 'Listen', hint: 'Plain playback, with tempo, metronome, count-in and loop.' },
-  { id: 'wait', label: 'Wait for me', hint: 'The next note is highlighted and the song waits until you play it.' },
-  { id: 'trouble', label: 'Trouble spots', hint: 'Play along in time; every note is marked, misses in red.' },
+  { id: 'listen', label: 'Listen', blurb: 'Play the reference', hint: 'Plain playback, with tempo, metronome, count-in and loop.' },
+  { id: 'wait', label: 'Wait for me', blurb: 'Waits for each note', hint: 'The next note is highlighted and the song waits until you play it.' },
+  { id: 'trouble', label: 'Trouble spots', blurb: 'Marks notes you miss', hint: 'Play along in time; every note is marked, misses in red.' },
 ]
 
 export const GUITAR_ACCOMPANIMENTS = [

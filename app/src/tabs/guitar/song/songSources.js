@@ -11,6 +11,7 @@ import { supabase } from '../../../lib/supabaseClient.js'
 export const BUILT_IN_SONGS = __GUITAR_SONG_FILES__.map((filename) => ({
   id: filename,
   filename,
+  url: `${import.meta.env.BASE_URL}guitar-songs/${filename}`,
   title: titleFromFilename(filename),
 })).sort((a, b) => a.title.localeCompare(b.title))
 
@@ -28,7 +29,7 @@ export async function findSongFile({ songId, fingerprint }) {
     return { bytes, filename: `${song.title}.musicxml`, options: { title: song.title, catalogSongId: songId } }
   }
   for (const song of BUILT_IN_SONGS) {
-    const response = await fetch(`${import.meta.env.BASE_URL}guitar-songs/${song.filename}`)
+    const response = await fetch(song.url)
     if (!response.ok) continue
     const bytes = await response.arrayBuffer()
     if ((await fingerprintBytes(bytes)) === fingerprint) return { bytes, filename: song.filename, options: { builtin: true } }

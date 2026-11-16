@@ -1,4 +1,4 @@
-import { Mic, Users } from 'lucide-react'
+import { Guitar, Mic, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { fetchSongInfo, lengthLabel } from '../songs/songInfo.js'
 import { bestStars } from '../feedback/progress.js'
@@ -11,10 +11,12 @@ import { useVocalProgress } from '../feedback/useProgress.js'
  * far on this device. Read from the file once (songs/songInfo.js); until
  * then — or for a file it can't read — just the stars, if any.
  */
-function SongCardMeta({ song }) {
+function SongCardMeta({ song, instrument = 'voice' }) {
   const [info, setInfo] = useState(null)
   const progress = useVocalProgress()
-  const stars = bestStars(`song:${song.title}`, progress)
+  const isVocal = instrument === 'voice'
+  const SoloIcon = isVocal ? Mic : Guitar
+  const stars = !isVocal ? null : bestStars(`song:${song.title}`, progress)
 
   useEffect(() => {
     let live = true
@@ -31,11 +33,11 @@ function SongCardMeta({ song }) {
     <span className="song-meta">
       {info && (
         <span className="song-meta__facts">
-          <span>{info.partCount > 1 ? <><Users size="1.1em" aria-hidden="true" /> {info.partCount} parts</> : <><Mic size="1.1em" aria-hidden="true" /> Solo</>}</span>
+          <span>{info.partCount > 1 ? <><Users size="1.1em" aria-hidden="true" /> {info.partCount} parts</> : <><SoloIcon size="1.1em" aria-hidden="true" /> Solo</>}</span>
           {length && <span>{length}</span>}
         </span>
       )}
-      {info?.range && (
+      {isVocal && info?.range && (
         <span className="song-meta__range" title={`The tune goes from ${info.range.label}`}>
           {info.range.label}
           {info.fits.length > 0 ? ` · ${info.fits.join(', ')}` : ' · wide range'}

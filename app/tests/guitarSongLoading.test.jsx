@@ -54,7 +54,7 @@ it('opens a saved file requested from Home and acknowledges it only after parsin
 
 it('offers catalog browsing and file import without signing in', () => {
   const {container} = render(<GuitarSong auth={{configured:true,ready:true,user:null}} />)
-  expect(screen.getByRole('button', {name:'Search songs'})).toBeTruthy()
+  expect(screen.getByRole('button', {name:/^Search songs/})).toBeTruthy()
   expect(container.querySelector('input[type="file"]').disabled).toBe(false)
 })
 it('puts the score, transport and practice modes in the main workspace', async () => {
@@ -71,8 +71,8 @@ it('puts the score, transport and practice modes in the main workspace', async (
   expect(options.querySelector('.guitar-song__tempo-slot')).toBeTruthy()
   expect(container.querySelector('.song-workspace').children[0]).toBe(main)
   expect(main.nextElementSibling.querySelector('.song-workspace__feedback')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button',{name:'Options',exact:true}))
-  expect(screen.getByRole('button',{name:'Options',exact:true}).getAttribute('aria-expanded')).toBe('true')
+  fireEvent.click(screen.getByRole('button',{name:'Settings',exact:true}))
+  expect(screen.getByRole('button',{name:'Settings',exact:true}).getAttribute('aria-expanded')).toBe('true')
   fireEvent.click(screen.getByRole('button',{name:'Close practice options'}))
-  expect(screen.getByRole('button',{name:'Options',exact:true}).getAttribute('aria-expanded')).toBe('false')
+  expect(screen.getByRole('button',{name:'Settings',exact:true}).getAttribute('aria-expanded')).toBe('false')
 })

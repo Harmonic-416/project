@@ -79,6 +79,7 @@ const cache = new Map()
  * `song.load()`, cached by its `id` (the file's fingerprint).
  */
 export async function fetchSongInfo(song) {
+  if (!song.url && !song.load) return null
   const key = song.url ?? song.id
   if (cache.has(key)) return cache.get(key)
   const pending = (async () => {
