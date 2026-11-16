@@ -36,7 +36,7 @@ async function sendToAna(song) {
   render(<ShareAttempt auth={auth} supabase={supabase} song={song} accuracy={80} recording={null} />)
   await waitFor(() => expect(screen.getByRole('button', { name: 'Send to friends' }).disabled).toBe(false))
   fireEvent.click(screen.getByRole('button', { name: 'Send to friends' }))
-  fireEvent.click(await screen.findByLabelText('Ana'))
+  fireEvent.click(await screen.findByLabelText(/Ana/))
   fireEvent.click(screen.getByRole('button', { name: 'Send' }))
   await screen.findByText(/Sent to Ana/)
 }

@@ -1,3 +1,4 @@
+import { Music } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import '../tabs/vocal/components/SongLibrary.css'
 import './MySongs.css'
@@ -51,7 +52,7 @@ function MySongs({
   renderMeta = null,
   renderNote = plainNote,
   titleOf = stripExtension,
-  icon = '🎵',
+  icon = <Music size="1.1em" aria-hidden="true" />,
   emptyText,
 }) {
   const { files, error, update, reload } = useMyFiles(userId, version)
