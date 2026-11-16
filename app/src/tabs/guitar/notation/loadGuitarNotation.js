@@ -3,6 +3,7 @@ import { midiToMusicXml } from '../../vocal/midi/midiToMusicXml.js'
 import { readLyricStreams } from '../../vocal/midi/lyrics.js'
 import { parseMidiFile } from '../../vocal/midi/parseMidi.js'
 import { titleFromFilename, unzipMxl } from '../../vocal/notation/loadNotation.js'
+import { EXTENSION_FORMATS } from './formats.js'
 import { addGuitarTab } from './fretAssign.js'
 import { tidyMidiForTab } from './tidyMidi.js'
 import { loadMuseScore } from './museScore.js'
@@ -26,25 +27,8 @@ import { loadMuseScore } from './museScore.js'
  * `hasTab` whether every note now has a string and fret.
  */
 
-const EXTENSION_FORMATS = {
-  mscx: 'musescore',
-  mscz: 'musescore',
-  gp: 'guitar-pro',
-  gp3: 'guitar-pro',
-  gp4: 'guitar-pro',
-  gp5: 'guitar-pro',
-  gpx: 'guitar-pro',
-  alphatex: 'alphatex',
-  atex: 'alphatex',
-  musicxml: 'musicxml',
-  xml: 'musicxml',
-  mxl: 'mxl',
-  mid: 'midi',
-  midi: 'midi',
-}
-
-export const GUITAR_NOTATION_EXTENSIONS = Object.keys(EXTENSION_FORMATS)
-export const GUITAR_NOTATION_ACCEPT = GUITAR_NOTATION_EXTENSIONS.map((ext) => `.${ext}`).join(',')
+// The extension map lives in formats.js (Home needs it without alphaTab); re-exported for callers here.
+export { GUITAR_NOTATION_ACCEPT, GUITAR_NOTATION_EXTENSIONS } from './formats.js'
 
 export function detectGuitarFormat(filename, bytes) {
   const ext = (filename.match(/\.([a-z0-9]+)$/i)?.[1] ?? '').toLowerCase()

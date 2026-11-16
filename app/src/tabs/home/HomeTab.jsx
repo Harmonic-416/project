@@ -27,8 +27,10 @@ const SONGS_SHOWN = 2
  *
  * `onOpenAttempt` / `onOpenFile` open an attempt or a file in its
  * instrument's tab; `onOpenSessions` a song's practice sessions.
+ * `myFilesVersion` (App.jsx) goes up when the device's file list changed, so
+ * My Files reads it again.
  */
-function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions }) {
+function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, myFilesVersion = 0 }) {
   const { user, configured, ready } = auth
 
   // A failed sign-in or "Connect" comes back to the app with the reason in
@@ -91,22 +93,29 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions }
         </header>
 
         {signedIn ? (
-          <SignedInHome user={user} onNavigate={onNavigate} onOpenAttempt={onOpenAttempt} onOpenFile={onOpenFile} onOpenSessions={onOpenSessions} />
+          <SignedInHome
+            user={user}
+            onNavigate={onNavigate}
+            onOpenAttempt={onOpenAttempt}
+            onOpenFile={onOpenFile}
+            onOpenSessions={onOpenSessions}
+            myFilesVersion={myFilesVersion}
+          />
         ) : (
-          <SignedOutHome auth={auth} notice={notice} onNavigate={onNavigate} onOpenFile={onOpenFile} />
+          <SignedOutHome auth={auth} notice={notice} onNavigate={onNavigate} onOpenFile={onOpenFile} myFilesVersion={myFilesVersion} />
         )}
       </div>
     </div>
   )
 }
 
-function SignedOutHome({ auth, notice, onNavigate, onOpenFile }) {
+function SignedOutHome({ auth, notice, onNavigate, onOpenFile, myFilesVersion }) {
   const { configured, ready } = auth
   const [page, setPage] = useState(null)
   if (page === 'files') {
     return (
       <SubPage title="My Files" onBack={() => setPage(null)}>
-        <MyFilesSection onOpenFile={onOpenFile} />
+        <MyFilesSection onOpenFile={onOpenFile} version={myFilesVersion} />
       </SubPage>
     )
   }
@@ -131,13 +140,13 @@ function SignedOutHome({ auth, notice, onNavigate, onOpenFile }) {
       <QuickPractice onNavigate={onNavigate} />
       <section className="hp-card" aria-labelledby="hp-files">
         <SectionHead id="hp-files" Icon={FileIcon} title="My Files" onViewAll={() => setPage('files')} />
-        <FilesSummary onViewAll={() => setPage('files')} />
+        <FilesSummary onViewAll={() => setPage('files')} version={myFilesVersion} />
       </section>
     </>
   )
 }
 
-function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions }) {
+function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, myFilesVersion }) {
   const { data, errors, reload } = useHomeData(user.id, PARTS)
   const [page, setPage] = useState(null) // null | 'songs' | 'activity' | 'files'
   const [activityTab, setActivityTab] = useState('received')
@@ -175,7 +184,7 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessi
   if (page === 'files') {
     return (
       <SubPage title="My Files" onBack={back}>
-        <MyFilesSection onOpenFile={onOpenFile} />
+        <MyFilesSection onOpenFile={onOpenFile} userId={user.id} version={myFilesVersion} />
       </SubPage>
     )
   }
@@ -224,7 +233,7 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessi
 
         <section className="hp-card" aria-labelledby="hp-files">
           <SectionHead id="hp-files" Icon={FileIcon} title="My Files" onViewAll={() => setPage('files')} />
-          <FilesSummary onViewAll={() => setPage('files')} />
+          <FilesSummary onViewAll={() => setPage('files')} userId={user.id} version={myFilesVersion} />
         </section>
       </div>
     </>

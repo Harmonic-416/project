@@ -6,6 +6,7 @@ import VocalTab from './tabs/vocal/VocalTab.jsx'
 import SocialTab from './tabs/social/SocialTab.jsx'
 import { useSession } from './auth/useSession.js'
 import { useLearnProgressSync } from './tabs/guitar/learn/useLearnProgressSync.js'
+import { useMyFilesSync } from './tabs/home/useMyFilesSync.js'
 import { GuitarIcon, HomeIcon, MicIcon, SocialIcon } from './nav/TabIcons.jsx'
 import { readSharedAttemptId, readSharedAttemptInstrument } from './tabs/vocal/share/sharedAttempt.js'
 import { readInviteCode } from '@backend/friends'
@@ -77,6 +78,8 @@ function App() {
   const auth = useSession()
   // Guitar → Learn's progress follows the account (signing in merges it, signing out clears it here).
   const learnProgressVersion = useLearnProgressSync(auth.user?.id ?? null)
+  // Song files opened from a file are kept on the device and, signed in, on the account (useMyFilesSync.js).
+  const myFilesVersion = useMyFilesSync(auth.user?.id ?? null)
   const ActiveComponent = TABS.find((tab) => tab.id === activeTab).Component
 
   const sharedAttemptDone = useCallback(() => {
@@ -139,6 +142,7 @@ function App() {
           sessionsToOpen={sessionsToOpen?.tab === activeTab ? sessionsToOpen : null}
           onSessionsOpened={sessionsOpened}
           learnProgressVersion={learnProgressVersion}
+          myFilesVersion={myFilesVersion}
         />
       </main>
 

@@ -63,6 +63,21 @@ describe('loadNotation', () => {
     await expect(loadNotation(xml, 'tw.musicxml')).rejects.toThrow(/partwise/)
   })
 
+  // Real MuseScore 4 output (tests/fixtures/musescore/: one score saved as .mscz and exported).
+  it('opens what MuseScore exports, lyrics included', async () => {
+    for (const name of ['amazing-grace.mxl', 'amazing-grace.mid']) {
+      const loaded = await loadNotation(fixture(`musescore/${name}`), name)
+      expect(loaded.content).toContain('<score-partwise')
+      expect(loaded.content).toContain('<lyric')
+    }
+  })
+
+  // Reading .mscz / .mscx is covered in museScoreImport.test.js (it needs jsdom's XML parser).
+  it('offers MuseScore files in the picker', () => {
+    expect(NOTATION_ACCEPT).toContain('.mscz')
+    expect(NOTATION_ACCEPT).toContain('.mscx')
+  })
+
   it('derives readable titles from filenames', () => {
     expect(titleFromFilename('c-major-scale.mid')).toBe('C Major Scale')
     expect(titleFromFilename('paint_it-black.musicxml')).toBe('Paint It Black')
