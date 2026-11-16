@@ -22,17 +22,19 @@ export function normalizeCleared(cleared) {
 export function clearClearedMemory() { unsaved = null }
 
 /** Per chord id: 'passed' | 'skipped' | 'unlocked' | 'locked'. */
-export function chordStatuses(cleared) {
+export function chordStatuses(cleared, allUnlocked = false) {
   const statuses = {}
+  const count = unlockedCount(cleared, allUnlocked)
   CHORDS.forEach((chord, i) => {
-    const open = i < unlockedCount(cleared)
+    const open = i < count
     statuses[chord.id] = !open ? 'locked' : isCleared(cleared[chord.id]) ? cleared[chord.id] : 'unlocked'
   })
   return statuses
 }
 
-/** How many chords, from the start of CHORDS, are open (unlocked chords are always a prefix). */
-export function unlockedCount(cleared) {
+/** How many chords are open from the start of CHORDS, including a Learn override. */
+export function unlockedCount(cleared, allUnlocked = false) {
+  if (allUnlocked) return CHORDS.length
   let count = 1
   while (count < CHORDS.length && isCleared(cleared[CHORDS[count - 1].id])) count++
   return count

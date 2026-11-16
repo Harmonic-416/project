@@ -9,12 +9,17 @@ import { OPEN_STRING_MIDI } from './chords.js'
  */
 
 /** A chord as a one-entry song timeline (songTimeline.js), so the song judge can listen for it. Tab numbering: 1 = high e. */
-export function lessonEntry(chord) {
+export function lessonEntry(chord, stringIndex = null) {
   return {
     index: 0,
-    kind: 'chord',
+    kind: stringIndex == null ? 'chord' : 'single',
     technique: 'pick',
-    notes: chord.frets.flatMap((fret, i) => (fret < 0 ? [] : [{ midi: OPEN_STRING_MIDI[i] + fret, string: 6 - i, fret }])),
+    mutedStrings: chord.frets.flatMap((fret, i) =>
+      fret < 0 ? [{ midi: OPEN_STRING_MIDI[i], string: 6 - i }] : [],
+    ),
+    notes: chord.frets.flatMap((fret, i) =>
+      fret < 0 || (stringIndex != null && stringIndex !== i) ? [] : [{ midi: OPEN_STRING_MIDI[i] + fret, string: 6 - i, fret }],
+    ),
   }
 }
 

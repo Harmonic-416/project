@@ -3,9 +3,9 @@ import React from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import PracticeScreen from '../src/tabs/guitar/practice/PracticeScreen.jsx'
-const mic = vi.hoisted(() => ({start:vi.fn(async () => true),stop:vi.fn(),restart:vi.fn(),muteFor:vi.fn(),status:'idle',error:null,verdict:null}))
+const mic = vi.hoisted(() => ({start:vi.fn(async () => true),stop:vi.fn(),restart:vi.fn(),muteFor:vi.fn(),status:'idle',error:null,verdict:null,diagnostic:null}))
 const sound = vi.hoisted(() => ({strum:vi.fn(async () => {}),arpeggiate:vi.fn(async () => {}),stop:vi.fn()}))
-vi.mock('../src/tabs/guitar/practice/useLessonListening.js', () => ({useLessonListening: ({onVerdict}) => {mic.verdict = onVerdict; return mic}}))
+vi.mock('../src/tabs/guitar/practice/useLessonListening.js', () => ({useLessonListening: ({onVerdict,onDiagnostic}) => {mic.verdict = onVerdict; mic.diagnostic = onDiagnostic; return mic}}))
 vi.mock('../src/tabs/guitar/practice/useChordPlayer.js', () => ({useChordPlayer: () => sound}))
 vi.mock('../src/tabs/guitar/practice/useLessonCountIn.js', () => ({useLessonCountIn: () => null}))
 vi.mock('../src/tabs/guitar/practice/ChangesRun.jsx', () => ({default: () => null}))
@@ -48,6 +48,17 @@ it('releases the microphone after a checkpoint passes and preserves its unlock',
   expect(mic.stop).toHaveBeenCalledOnce()
   expect(screen.getByRole('button',{name:'Learn A minor'})).toBeTruthy()
   expect(JSON.parse(localStorage.getItem('harmonic.guitar.cleared')).Em).toBe('passed')
+})
+it('keeps an unverified attack explanation on the timeout screen without resetting the streak', async () => {
+  render(<PracticeScreen initialMode="practice" initialChord="A" allUnlocked />)
+  await begin()
+  act(() => mic.verdict({ verdict: 'verified' }))
+  const message = 'The expected pitches were heard, but the attack was too similar to the sound already ringing.'
+  act(() => mic.diagnostic(message))
+  expect(screen.getByText(message)).toBeTruthy()
+  await tick(5)
+  expect(screen.getByText(/What the mic picked up/).parentElement.textContent).toContain(message)
+  expect(screen.getByText('1 of 3')).toBeTruthy()
 })
 it('releases the microphone after the uninterrupted Play run completes', async () => {
   render(<PracticeScreen initialMode="play" />)

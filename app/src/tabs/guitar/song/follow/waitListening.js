@@ -12,7 +12,8 @@ import { EVERY_STRING, averageSpectrum, judgeWindow, noteGain, spectralPeaks } f
  *     Typing, taps and bumps fail, and get no verdict at all (N6).
  *   - One strum, one judgement: onsets within `groupSeconds` of each other
  *     are one gesture, however spread out the strum. A hit counts at once
- *     and the rest of the gesture is ignored; a wrong verdict waits until
+ *     and the rest of the gesture is ignored unless a new single-note target
+ *     has its own pick or pitch onset. A wrong verdict waits until
  *     the gesture is over, so a slow strum's first half isn't called wrong.
  *   - Freshly played: a hit needs the expected notes to be louder than just
  *     before the gesture, so a chord still ringing can't satisfy the next,
@@ -37,6 +38,14 @@ const RING_SECONDS = 0.3
 const MIN_FREQUENCY = 60
 const MAX_FREQUENCY = 5000
 const LOUDEST_PEAKS = 5
+const REATTACK_GAIN = 1.35
+
+function hasFreshAttack({ source, onset, sampleRate, levels = [], hop = 512, beforeLevel = 0 }) {
+  if (source === 'pitch') return false
+  const end = onset + HEAD_SECONDS * sampleRate
+  return levels.some(({ position, level }) => position - hop >= onset && position <= end &&
+    level > Math.max(1e-6, beforeLevel) * REATTACK_GAIN)
+}
 
 const db = (ratio) => 20 * Math.log10(Math.max(ratio, 1e-9))
 
@@ -102,6 +111,7 @@ export function soundsLikeANote({ spectra, sampleRate, onset, levels = [], hop =
  */
 export function createWaitAttempts({ groupSeconds = GROUP_SECONDS, judgeOptions = EVERY_STRING } = {}) {
   let gesture = null // { first, reference, hit, held }
+  let lastHit = null // { onset, pitches }
 
   const settle = () => {
     const held = gesture?.held
@@ -114,10 +124,21 @@ export function createWaitAttempts({ groupSeconds = GROUP_SECONDS, judgeOptions 
       const { sampleRate } = window
       const group = groupSeconds * sampleRate
       const actions = []
+      if (lastHit && window.onset <= lastHit.onset) {
+        return { actions, log: { decision: 'ignored: onset already credited' } }
+      }
+      const pitches = entry.notes.map((note) => note.midi).sort((a, b) => a - b).join(',')
+      const repeated = lastHit?.pitches === pitches
+      // The strum guard still applies to chords. A new pick or pitch onset
+      // can start the next single-note target, with its own freshness check.
+      const nextPick = gesture?.hit?.kind === 'single' && entry.kind === 'single' &&
+        gesture.hit.index !== entry.index && (repeated
+          ? hasFreshAttack(window)
+          : window.source === 'energy' || window.source === 'pitch')
       // A new gesture: the first window, one past the group, or the clock started over (a new mic session).
-      if (!gesture || window.onset < gesture.first || window.onset - gesture.first > group) {
+      if (!gesture || nextPick || window.onset < gesture.first || window.onset - gesture.first > group) {
         actions.push(...settle())
-        gesture = { first: window.onset, reference: window.referenceSpectrum ?? window.beforeSpectrum ?? null, hit: false, held: null }
+        gesture = { first: window.onset, reference: window.referenceSpectrum ?? window.beforeSpectrum ?? null, hit: null, held: null }
       }
 
       const note = soundsLikeANote(window)
@@ -126,15 +147,19 @@ export function createWaitAttempts({ groupSeconds = GROUP_SECONDS, judgeOptions 
       if (gesture.hit) log.decision = 'ignored: same strum as the hit'
       else if (!note.ok) log.decision = 'ignored: not a note'
       else {
-        result = judgeWindow({ ...window, beforeSpectrum: gesture.reference }, entry, judgeOptions)
+        const reference = repeated ? window.beforeSpectrum ?? gesture.reference : gesture.reference
+        result = judgeWindow({ ...window, beforeSpectrum: reference }, entry, judgeOptions)
         log.verdict = result.verdict
         log.result = result
         const after = spectralPeaks(averageSpectrum(window.spectra), sampleRate)
-        const before = gesture.reference ? spectralPeaks(gesture.reference, sampleRate) : null
+        const before = reference ? spectralPeaks(reference, sampleRate) : null
         const gain = (midi) => (before ? noteGain(after, before, midi) : Infinity)
         if (result.verdict === 'hit') {
           log.fresh = median(entry.notes.map((n) => gain(n.midi)))
-          log.decision = log.fresh >= FRESH_GAIN ? 'hit' : 'ignored: still ringing'
+          // Spectral gain alone can rise as a ringing string beats or its
+          // overtones change. A repeated pitch needs a fresh attack too.
+          const reattacked = !repeated || hasFreshAttack(window)
+          log.decision = log.fresh >= FRESH_GAIN && reattacked ? 'hit' : 'ignored: still ringing'
         } else if (result.verdict === 'skipped') {
           log.decision = 'ignored: not scored'
         } else {
@@ -145,7 +170,8 @@ export function createWaitAttempts({ groupSeconds = GROUP_SECONDS, judgeOptions 
       }
 
       if (log.decision === 'hit') {
-        gesture.hit = true
+        gesture.hit = entry
+        lastHit = { onset: window.onset, pitches }
         gesture.held = null
         actions.push({ type: 'judged', result })
       } else if (log.decision === 'wrong') {
@@ -159,6 +185,7 @@ export function createWaitAttempts({ groupSeconds = GROUP_SECONDS, judgeOptions 
 
     reset() {
       gesture = null
+      lastHit = null
     },
   }
 }

@@ -1,13 +1,15 @@
 import { isScored } from './songTimeline.js'
 import { betterVerdict } from './noteJudge.js'
 
+const NEIGHBOR_TIE_SECONDS = 0.06
+
 /**
  * "Trouble spots" on a guitar song (pure, unit-tested): playback never
  * waits, and every pick or strum the mic hears is matched to the timeline
  * entry it belongs to and judged there. An entry's window is its start ±
  * `graceSeconds` (reaction time, latency), running at least `minWindow`
- * into the note; an onset goes to the window's entry whose start is
- * nearest, so a late note isn't credited to the next one. Once playback is
+ * into the note. The nearest entry normally owns the onset. Confirmed
+ * pitch can resolve a near tie between overlapping single-note windows. Once playback is
  * past a window, collect() settles that entry: its best verdict, or 'miss'
  * if nothing was heard. Same shape as the Vocal tab's tracker
  * (vocal/practice/practiceLogic.js), so the two modes read alike.
@@ -19,16 +21,19 @@ export function createGuitarTroubleTracker(entries, { graceSeconds = 0.2, minWin
   const windowStart = (entry) => entry.time - graceSeconds
   const windowEnd = (entry) => entry.time + Math.min(Math.max(entry.duration, minWindow), maxWindow) + graceSeconds
 
-  return {
-    /** The entry an onset at `time` (song seconds) belongs to, or null. */
-    entryFor(time) {
-      let pick = null
+  const candidatesAt = (time) => {
+      const candidates = []
       for (let i = first; i < entries.length && windowStart(entries[i]) <= time; i += 1) {
         const entry = entries[i]
-        if (time > windowEnd(entry)) continue
-        if (!pick || Math.abs(time - entry.time) < Math.abs(time - pick.time)) pick = entry
+        if (time <= windowEnd(entry)) candidates.push(entry)
       }
-      return pick
+      return candidates.sort((a, b) => Math.abs(time - a.time) - Math.abs(time - b.time))
+  }
+
+  return {
+    /** The nearest in-window entry, or null. */
+    entryFor(time) {
+      return candidatesAt(time)[0] ?? null
     },
 
     /**
@@ -36,10 +41,28 @@ export function createGuitarTroubleTracker(entries, { graceSeconds = 0.2, minWin
      * entry it belongs to. Returns { entry, result } or null.
      */
     addOnset(time, judge) {
-      const entry = this.entryFor(time)
+      const [nearest, ...neighbors] = candidatesAt(time)
+      let entry = nearest
       if (!entry || !isScored(entry)) return null
-      const result = judge(entry)
-      best[entry.index] = betterVerdict(best[entry.index], result.verdict)
+      let result = judge(entry)
+      if (entry.kind === 'single' && result.verdict !== 'hit' && Number.isFinite(result.detected)) {
+        const neighbor = neighbors.find((candidate) =>
+          candidate.kind === 'single' && isScored(candidate) &&
+          best[candidate.index]?.verdict !== 'hit' &&
+          Math.abs(candidate.time - time) - Math.abs(nearest.time - time) <= NEIGHBOR_TIE_SECONDS &&
+          Math.abs(candidate.notes[0].midi - result.detected) < 0.35)
+        if (neighbor) {
+          const alternate = judge(neighbor)
+          if (alternate.verdict === 'hit') {
+            entry = neighbor
+            result = alternate
+          }
+        }
+      }
+      const prior = best[entry.index]
+      if (!prior || (prior.verdict !== result.verdict && betterVerdict(prior.verdict, result.verdict) === result.verdict)) {
+        best[entry.index] = result
+      }
       return { entry, result }
     },
 
@@ -48,8 +71,9 @@ export function createGuitarTroubleTracker(entries, { graceSeconds = 0.2, minWin
       const settled = []
       while (first < entries.length && windowEnd(entries[first]) < time) {
         const entry = entries[first]
-        const verdict = isScored(entry) ? best[first] ?? 'miss' : 'skipped'
-        settled.push({ entry, verdict })
+        const result = best[first]
+        const verdict = isScored(entry) ? result?.verdict ?? 'miss' : 'skipped'
+        settled.push({ entry, verdict, result })
         first += 1
       }
       return settled
