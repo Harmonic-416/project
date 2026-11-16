@@ -159,3 +159,11 @@ the worker VM runs this code against production).
 
 ## 2026-11-15 · loop stopped
 Every backlog item DONE except V18 (BLOCKED, thresholds = Eddie's call). Branch not pushed.
+
+## 2026-11-16 · auto-transpose design iteration
+Table of fitKey picks per built-in song × voice showed Auto over-centring: moved songs that already fit (Ode to Joy
+soprano +5, tenor −5; C scale soprano +3) and over-moved others (Amazing Grace alto −9 vs −4 smallest fit).
+New `keyOptions` (written / smallest-fit / octave / centred; suggestion = first that fits), Key control redesign
+(voice chips, RangeStrip, option cards), `KeySuggestion` banner on the song screen, `useVoiceRange` shared store.
+Verified: Amazing Grace + Alto → banner "Down 4 (to Ab)", Move it → score in Ab, "Key −4"; Ode to Joy + Tenor →
+"As written" suggested. Tests: keyOptions (6) + transpose suite 98/98. Lint clean.
