@@ -23,6 +23,9 @@ import { scaleTempoMarks } from '../notation/tempoMarks.js'
  * `tempoFactor` (the tempo, F37) rescales the printed tempo marks so they
  * show the tempo being played; the score model keeps the written tempo.
  */
+// Notes of the parts you aren't singing, when all parts are shown (see SheetMusicViewer.css).
+const OTHER_PART_CLASS = 'sheet-note--other-part'
+
 // Where the cursor sits in the strip, as a fraction of its width.
 const CURSOR_ANCHOR = 0.3
 
@@ -40,6 +43,7 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
   const sourceNotesRef = useRef([]) // OSMD Notes, aligned with scoreModel.notes
   const marksRef = useRef(new Map()) // note index -> Set of classes we added (re-applied after every render)
   const tempoFactorRef = useRef(tempoFactor) // re-applied to the tempo marks after every render
+  const othersRef = useRef([]) // note indexes of the other parts, dimmed so the singer's own line stands out
 
   useEffect(() => {
     tempoFactorRef.current = tempoFactor
@@ -142,12 +146,15 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
         // The strip is one line tall; OSMD's default page margins would leave a band of blank space.
         osmdRef.current.EngravingRules.PageTopMargin = 1
         osmdRef.current.EngravingRules.PageBottomMargin = 1
+        // Singers read the words more than the notes: lyrics a size up from OSMD's 2.
+        osmdRef.current.EngravingRules.LyricsHeight = 2.5
         // Re-rendering (autoResize on window resize / phone rotation) replaces every SVG
         // element, so put the note marks back on the new ones and rescale the tempo marks.
         const baseRender = osmdRef.current.render.bind(osmdRef.current)
         osmdRef.current.render = () => {
           baseRender()
           for (const [noteIndex, classes] of marksRef.current) noteElement(noteIndex)?.classList.add(...classes)
+          for (const noteIndex of othersRef.current) noteElement(noteIndex)?.classList.add(OTHER_PART_CLASS)
           scaleTempoMarks(containerRef.current, tempoFactorRef.current)
         }
       }
@@ -155,12 +162,19 @@ const SheetMusicViewer = forwardRef(function SheetMusicViewer({ content, onReady
       await osmd.load(content)
       if (cancelled) return
       marksRef.current.clear() // they belong to the previous score
+      // A part name only tells parts apart; on a one-part score it just costs a phone a bar of width.
+      const severalParts = (osmd.Sheet?.Instruments?.length ?? 1) > 1
+      osmd.EngravingRules.RenderPartNames = severalParts
+      osmd.EngravingRules.RenderPartAbbreviations = severalParts
       osmd.Zoom = zoomFor(containerRef.current.clientWidth)
       osmd.render()
       containerRef.current.scrollLeft = 0
       const sourceNotes = []
       const model = extractScoreModel(osmd, { sourceNotes })
       sourceNotesRef.current = sourceNotes
+      // With every part on screen, the singer's (part 0, on top) stays black and the rest step back.
+      othersRef.current = model.partNames.length > 1 ? model.notes.flatMap((n, i) => (n.partIndex === 0 ? [] : [i])) : []
+      for (const noteIndex of othersRef.current) noteElement(noteIndex)?.classList.add(OTHER_PART_CLASS)
       stepRef.current = 0
       osmd.cursor.show()
       onReady?.(model)

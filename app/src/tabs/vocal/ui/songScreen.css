@@ -12,17 +12,17 @@
   --mode-dark: var(--v-primary-dark);
 
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: var(--v-s3) var(--v-s2);
+  gap: var(--v-s2);
+  min-width: 0;
+  padding: var(--v-s2) var(--v-s3);
   border: 2px solid var(--v-border);
   border-radius: var(--v-radius-lg);
   background: var(--v-card);
   box-shadow: 0 var(--v-lip) 0 var(--v-border);
   color: var(--v-text);
   font: inherit;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   transition:
     transform var(--v-fast) var(--v-ease-out),
@@ -55,7 +55,15 @@
 }
 
 .v-modes__icon {
-  font-size: 1.6rem;
+  flex: none;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.v-modes__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   line-height: 1.2;
 }
 
@@ -83,28 +91,18 @@
     gap: var(--v-s2);
   }
 
+  .v-modes__card {
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--v-s2) var(--v-s1);
+    text-align: center;
+  }
+
   .v-modes__card small {
     display: none;
   }
 }
 
-/* ── Settings button + summary ── */
-.v-settings-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--v-s2);
-  min-width: 0;
-}
-
-.v-settings-bar__summary {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--v-muted);
-  font-size: 0.85rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* ── Bottom sheet ── */
 .v-sheet {
@@ -361,11 +359,45 @@
   gap: var(--v-s2);
 }
 
-.v-modes__hint {
-  margin: 0;
+.v-dock {
+  display: flex;
+  align-items: center;
+  gap: var(--v-s3);
+}
+
+.v-dock > .playback-controls { flex: 1; min-width: 0; }
+.v-dock__action { display: flex; gap: var(--v-s2); }
+.v-dock__action:empty { display: none; }
+
+/* Sing: the screen's primary action, so it is the biggest thing in the dock. */
+.v-dock__action .record-panel__button {
+  min-height: 44px;
+  padding: 10px 22px;
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .v-dock { flex-wrap: wrap; gap: var(--v-s2); }
+  .v-dock__action { flex: 1 0 100%; display: flex; }
+  .v-dock__action .record-panel__button { flex: 1; }
+}
+
+/* Settings lives in the song's header; its summary rides under the word on wide screens. */
+.vocal-tab__settings { display: inline-flex; align-items: center; gap: 6px; }
+.vocal-tab__settings-text { display: flex; flex-direction: column; line-height: 1.1; text-align: left; }
+.vocal-tab__settings-text small {
+  max-width: 220px;
+  overflow: hidden;
   color: var(--v-muted);
-  font-size: 0.85rem;
-  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .vocal-tab__settings-text { display: none; }
 }
 
 /* The sheet's own .vocal-frame wrapper (see Sheet.jsx): just the theme, none of the tab's layout. */
@@ -373,4 +405,25 @@
   height: auto;
   background: none;
   flex-direction: row;
+}
+
+/* During an attempt its own Stop ends it: the transport's Play/Pause/Stop would be a second, competing stop. */
+.v-dock:has(.record-panel__button--stop) .playback-controls__button { display: none; }
+
+@media (max-width: 560px) {
+  .vocal-tab__format { display: none; }
+}
+
+/* A passage on repeat: says which, and one tap stops looping. */
+.v-dock__loop {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 2px solid var(--v-primary);
+  border-radius: var(--v-radius-pill);
+  background: var(--v-primary-soft);
+  color: var(--v-primary-dark);
+  font: inherit;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
 }

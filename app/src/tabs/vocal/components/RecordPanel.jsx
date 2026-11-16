@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as Tone from 'tone'
 import './RecordPanel.css'
 import { useMicPitch } from '../audio/useMicPitch.js'
@@ -10,9 +11,15 @@ import { getScoreSeconds } from '../playback/scoreClock.js'
 import ShareAttempt from './ShareAttempt.jsx'
 import SessionAttempts from './SessionAttempts.jsx'
 import DynamicsMeter from './DynamicsMeter.jsx'
+import PitchMeter from './PitchMeter.jsx'
+import { gradeNote, median } from './pitchReading.js'
+import { createTroubleTracker, melodyLine, noteDistanceCents } from '../practice/practiceLogic.js'
 import { describeDynamics, summarizeDynamics } from '../audio/dynamics.js'
 import { sfx } from '../feedback/sfx.js'
-import { recordActivity } from '../feedback/progress.js'
+import { recordStars } from '../feedback/progress.js'
+import TakeSummary from './TakeSummary.jsx'
+import { tapNote } from '../learn/usePlayback.js'
+import { summarizeTake } from '../practice/takeSummary.js'
 
 const SUNG_CLASS = 'practice-note--sung'
 const MISSED_CLASS = 'practice-note--missed'
@@ -32,9 +39,19 @@ const getTransportSeconds = () => (Tone.Transport.state === 'started' ? getScore
  * compressed recording can be downloaded, and the attempt shared as a link
  * (see ShareAttempt; `shareSong` describes the song without uploading it).
  * `session` (usePracticeSession, from VocalTab) collects the attempts of
- * this sitting under the panel ("This session").
+ * this sitting under the panel ("This session"). While listening, the live
+ * PitchMeter is portalled into `meterSlot`: beside the score, where the
+ * singer is already looking. The Sing / Stop button is portalled into
+ * `actionSlot` (the player dock), so starting an attempt is the screen's
+ * primary action rather than a button below the transport.
+ *
+ * Each note is graded on the staff as soon as it has gone by — a ✓ or an
+ * arrow badge, and the note head turns green or red — by the same Trouble
+ * spots tracker judgeNotes runs at the end, so the live marks and the final
+ * result always agree. Singers learn more from a graded staff after the
+ * phrase than from watching a meter during it (docs/vocal-community-research.md).
  */
-function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null }) {
+function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabase, shareSong, session = null, meterSlot = null, actionSlot = null }) {
   const melody = useMemo(
     () =>
       scoreModel
@@ -48,6 +65,10 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   const [recording, setRecording] = useState(null)
   const [notes, setNotes] = useState(null) // { hit, missed, total }
   const [samples, setSamples] = useState([])
+  const [take, setTake] = useState(null) // summarizeTake(...) for the last finished attempt
+  // The line judged note by note while singing (entries keep `index` into scoreModel.notes).
+  const judgedLine = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
+  const liveJudgeRef = useRef(null) // { tracker, cents: Map<lineIndex, number[]> } during an attempt
 
   const clearNoteMarks = useCallback(() => {
     sheetMusicRef.current?.clearMarks(SUNG_CLASS)
@@ -57,12 +78,37 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   // Leaving (another part, another mode, another song) takes the marks along.
   useEffect(() => clearNoteMarks, [clearNoteMarks])
 
+  const gradeOnStaff = useCallback(
+    (note, hit) => {
+      const lineIndex = judgedLine.indexOf(note)
+      const sung = liveJudgeRef.current?.cents.get(lineIndex) ?? []
+      sheetMusicRef.current?.markNote(note.index, hit ? SUNG_CLASS : MISSED_CLASS)
+      overlay.addBadge(note, gradeNote({ hit, cents: median(sung) }))
+    },
+    [judgedLine, overlay, sheetMusicRef],
+  )
+
   const handleSample = useCallback(
     (sample) => {
       const target = findActiveNote(melody, sample.time)
       overlay.addSample(sample, target ? classifyCents(centsOff(sample.midi, target.midi)) : 'rest')
+      const judge = liveJudgeRef.current
+      if (!judge) return
+      // Which way a note was off: what was sung during its body, after the attack.
+      const lineIndex = judgedLine.findIndex(
+        (note) => sample.time >= note.time + Math.min(0.1, note.duration / 2) && sample.time < note.time + note.duration,
+      )
+      if (lineIndex >= 0) {
+        const list = judge.cents.get(lineIndex) ?? []
+        list.push(noteDistanceCents(sample.midi, judgedLine[lineIndex].midi))
+        judge.cents.set(lineIndex, list)
+      }
+      judge.tracker.addSample(sample)
+      const { hit, missed } = judge.tracker.collect(sample.time)
+      hit.forEach((note) => gradeOnStaff(note, true))
+      missed.forEach((note) => gradeOnStaff(note, false))
     },
-    [melody, overlay],
+    [melody, overlay, judgedLine, gradeOnStaff],
   )
 
   const mic = useMicPitch({ getTime: getTransportSeconds, onSample: handleSample })
@@ -71,13 +117,16 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     setResult(null)
     setRecording(null)
     setNotes(null)
+    setTake(null)
     clearNoteMarks()
     overlay.clear()
+    liveJudgeRef.current = { tracker: createTroubleTracker(judgedLine), cents: new Map() }
+    playback.setLoop(null) // a take is judged front to back, once
     playback.stop()
     await mic.start()
     await playback.play()
     setArmed(true)
-  }, [clearNoteMarks, mic, overlay, playback])
+  }, [clearNoteMarks, mic, overlay, playback, judgedLine])
 
   const finishAttempt = useCallback(async () => {
     setArmed(false)
@@ -85,13 +134,29 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     if (playback.state === 'counting' || playback.state === 'playing' || playback.state === 'paused') playback.stop()
     const sung = [...mic.getSamples()]
     const judged = judgeNotes(sung, scoreModel.notes)
-    judged.hit.forEach((note) => sheetMusicRef.current?.markNote(note.index, SUNG_CLASS))
-    judged.missed.forEach((note) => sheetMusicRef.current?.markNote(note.index, MISSED_CLASS))
+    // The final word: re-grade every note (the live pass hasn't closed the last ones yet).
+    overlay.clearBadges()
+    const hits = new Set(judged.hit.map((note) => note.index))
+    const misses = new Set(judged.missed.map((note) => note.index))
+    judgedLine.forEach((note) => {
+      if (hits.has(note.index) || misses.has(note.index)) gradeOnStaff(note, hits.has(note.index))
+    })
+    const centsByNote = new Map()
+    for (const [lineIndex, list] of liveJudgeRef.current?.cents ?? []) centsByNote.set(lineIndex, median(list))
+    setTake(
+      summarizeTake({
+        line: judgedLine,
+        hits: new Set(judgedLine.flatMap((note, i) => (hits.has(note.index) ? [i] : []))),
+        centsByNote,
+        bars: scoreModel.bars ?? [],
+      }),
+    )
+    liveJudgeRef.current = null
     setRecording(blob)
     setSamples(sung)
     setNotes(judged)
     setResult(scoreAttempt(sung, melody))
-  }, [melody, mic, playback, scoreModel, sheetMusicRef])
+  }, [melody, mic, playback, scoreModel, overlay, judgedLine, gradeOnStaff])
 
   // Playback reaching the end (or Stop) ends the attempt. Deferred a tick so
   // the state updates in finishAttempt don't cascade inside this effect.
@@ -114,14 +179,15 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
 
   const dynamicsLine = useMemo(() => (result ? describeDynamics(summarizeDynamics(samples)) : null), [result, samples])
 
-  // A scored attempt: the finish sound, and it counts towards the day's streak.
-  const accuracy = result?.accuracy ?? null
+  // A scored take: the finish sound ("perfect" only for every note) and its stars, best kept per
+  // song title — the key the song cards read (SongCardMeta) before a file is opened.
+  const songKey = title
   useEffect(() => {
-    if (accuracy === null) return
-    if (accuracy >= 90) sfx.perfect()
+    if (!take) return
+    if (take.ratio >= 1) sfx.perfect()
     else sfx.complete()
-    recordActivity()
-  }, [accuracy])
+    recordStars(`song:${songKey}`, take.stars)
+  }, [take, songKey])
 
   const live = mic.current
   const liveTarget = live ? findActiveNote(melody, live.time) : null
@@ -129,50 +195,87 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
   const liveVerdict = liveCents === null ? 'rest' : classifyCents(liveCents)
   const listening = mic.status === 'listening'
 
-  return (
-    <section className="record-panel">
-      <div className="record-panel__row">
-        {listening ? (
-          <button type="button" className="record-panel__button record-panel__button--stop" onClick={finishAttempt}>
-            ■ Stop attempt
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="record-panel__button"
-            disabled={!scoreModel || mic.status === 'requesting'}
-            onClick={startAttempt}
-          >
-            {mic.status === 'requesting' ? 'Starting microphone…' : '● Record attempt'}
-          </button>
-        )}
-        {listening && (
-          <span className={`record-panel__live record-panel__live--${liveVerdict}`} aria-live="polite">
-            {live
-              ? `${live.noteName}${liveTarget ? ` · target ${midiToNoteName(liveTarget.midi)} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : ' · rest'}`
-              : 'listening…'}
-          </span>
-        )}
-        {listening && <DynamicsMeter dynamics={mic.dynamics} />}
-        {mic.status === 'error' && <span className="record-panel__error">{mic.error}</span>}
-      </div>
+  const actionButton = listening ? (
+    <button type="button" className="record-panel__button record-panel__button--stop" onClick={finishAttempt}>
+      ■ Stop
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="record-panel__button"
+      disabled={!scoreModel || mic.status === 'requesting'}
+      onClick={startAttempt}
+      title="Plays the song and listens: you get a score at the end"
+    >
+      {mic.status === 'requesting' ? 'Starting mic…' : '🎤 Sing'}
+    </button>
+  )
+  // The pitch to start on, before singing: the first note of the part, held long enough to find.
+  const firstNote = judgedLine[0] ?? null
+  const startingNote = !listening && firstNote && (
+    <button
+      type="button"
+      className="record-panel__first-note"
+      onClick={() => tapNote(firstNote.midi, 1.2)}
+      title={`Play your first note (${midiToNoteName(firstNote.midi)})`}
+    >
+      🎵 <span className="record-panel__first-note-name">{midiToNoteName(firstNote.midi)}</span>
+    </button>
+  )
+  const showRow = !actionSlot || listening || mic.status === 'error'
+  const empty = !showRow && !result && !(session && supabase)
 
-      {result && (
-        <div className="record-panel__result">
-          <strong>{Math.round(result.accuracy)}% in tune</strong>
-          {notes && notes.total > 0 && (
-            <span>
-              {notes.hit.length} of {notes.total} notes sung
-              {notes.missed.length ? ` · ${notes.missed.length} missed (red)` : ''}
+  return (
+    <section className={`record-panel${empty ? ' record-panel--empty' : ''}`}>
+      {actionSlot &&
+        createPortal(
+          <>
+            {actionButton}
+            {startingNote}
+          </>,
+          actionSlot,
+        )}
+      {showRow && (
+        <div className="record-panel__row">
+          {!actionSlot && actionButton}
+          {!actionSlot && startingNote}
+          {listening &&
+            meterSlot &&
+            createPortal(
+              <PitchMeter
+                hasTarget={Boolean(liveTarget)}
+                targetName={liveTarget ? midiToNoteName(liveTarget.midi) : null}
+                sungName={live?.noteName ?? null}
+                cents={liveCents}
+                verdict={liveVerdict}
+              />,
+              meterSlot,
+            )}
+          {listening && !meterSlot && (
+            <span className={`record-panel__live record-panel__live--${liveVerdict}`} aria-live="polite">
+              {live
+                ? `${live.noteName}${liveTarget ? ` · target ${midiToNoteName(liveTarget.midi)} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : ' · rest'}`
+                : 'listening…'}
             </span>
           )}
-          {dynamicsLine && <span>{dynamicsLine}</span>}
-          <span>
-            {result.inTune} of {result.scoredFrames} frames within 50¢
-            {result.octaveAgnosticAccuracy > result.accuracy + 0.5
-              ? ` · ${Math.round(result.octaveAgnosticAccuracy)}% ignoring octave`
-              : ''}
-          </span>
+          {listening && <span className="record-panel__listening">Listening — sing along</span>}
+          {listening && <DynamicsMeter dynamics={mic.dynamics} />}
+          {mic.status === 'error' && <span className="record-panel__error">{mic.error}</span>}
+        </div>
+      )}
+
+      {result && take && (
+        <TakeSummary
+          summary={take}
+          accuracy={result.accuracy}
+          octaveAccuracy={result.octaveAgnosticAccuracy ?? null}
+          dynamicsLine={dynamicsLine}
+          onLoop={(spot) => {
+            playback.stop()
+            playback.setLoop({ start: spot.time, end: spot.endTime ?? playback.duration, label: spot.label })
+            playback.play()
+          }}
+        >
           {recording && (
             <button
               type="button"
@@ -190,9 +293,10 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
               clearNoteMarks()
               setResult(null)
               setNotes(null)
+              setTake(null)
             }}
           >
-            Clear trace
+            Clear marks
           </button>
           <ShareAttempt
             auth={auth}
@@ -204,7 +308,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
             verdicts={notes?.verdicts ?? null}
             session={session}
           />
-        </div>
+        </TakeSummary>
       )}
       {session && supabase && <SessionAttempts supabase={supabase} session={session} />}
     </section>

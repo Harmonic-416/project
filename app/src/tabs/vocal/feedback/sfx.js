@@ -56,9 +56,18 @@ function voices() {
 
 const buzz = (pattern) => globalThis.navigator?.vibrate?.(pattern)
 
-/** Plays `notes` ([note, offsetSeconds, lengthSeconds]) on the bell, unless muted. */
+// While a microphone is listening, the app keeps quiet: a chime would land in the
+// recording and in the pitch tracker, and sounds compete with singers hearing themselves.
+let micLive = false
+
+/** useMicPitch calls this as it starts and stops listening. */
+export function setMicLive(next) {
+  micLive = Boolean(next)
+}
+
+/** Plays `notes` ([note, offsetSeconds, lengthSeconds]) on the bell, unless muted or the mic is live. */
 async function chime(notes) {
-  if (muted) return
+  if (muted || micLive) return
   try {
     await Tone.start()
     const { bell } = voices()
@@ -81,7 +90,7 @@ export const sfx = {
   /** A wrong answer: a soft low bump. */
   wrong: async () => {
     buzz(60)
-    if (muted) return
+    if (muted || micLive) return
     try {
       await Tone.start()
       const { thud } = voices()

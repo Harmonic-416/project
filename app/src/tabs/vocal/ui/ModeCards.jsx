@@ -3,11 +3,14 @@ import { sfx } from '../feedback/sfx.js'
 import './songScreen.css'
 
 const ICONS = { listen: '🎧', wait: '⏸️', trouble: '🎯' }
-const BLURBS = { listen: 'Play along, then record', wait: 'It waits for your note', trouble: 'Find the hard bits' }
+const BLURBS = { listen: 'Sing along, get a score', wait: 'Waits for each note', trouble: 'Marks the notes you miss' }
 
-/** The three ways to practise a song, as big cards (Vocal's take on PracticeModeToggle). */
+/**
+ * The three ways to practise a song, as one compact row (Vocal's take on
+ * PracticeModeToggle): icon, name and a few words each, with the longer
+ * hint on hover, so the score — not the mode picker — owns the screen.
+ */
 export default function ModeCards({ mode, onChange, disabled }) {
-  const current = PRACTICE_MODES.find((m) => m.id === mode)
   return (
     <div className="v-modes-wrap">
       <div className="v-modes" role="group" aria-label="Practice mode">
@@ -27,12 +30,13 @@ export default function ModeCards({ mode, onChange, disabled }) {
             <span className="v-modes__icon" aria-hidden="true">
               {ICONS[m.id]}
             </span>
-            <strong>{m.label}</strong>
-            <small>{BLURBS[m.id]}</small>
+            <span className="v-modes__text">
+              <strong>{m.label}</strong>
+              <small>{BLURBS[m.id]}</small>
+            </span>
           </button>
         ))}
       </div>
-      {current && <p className="v-modes__hint">{current.hint}</p>}
     </div>
   )
 }

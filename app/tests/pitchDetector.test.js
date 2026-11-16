@@ -8,7 +8,7 @@ import {
   midiToNoteName,
   scoreAttempt,
 } from '../src/tabs/vocal/audio/pitchDetector.js'
-import { diatonicIndex, pitchToY, positionFor } from '../src/tabs/vocal/audio/useSheetOverlay.js'
+import { bottomLineIndex, diatonicIndex, pitchToY, positionFor } from '../src/tabs/vocal/audio/useSheetOverlay.js'
 
 const SAMPLE_RATE = 48000
 function sine(frequency, amplitude = 0.4, size = 2048) {
@@ -136,5 +136,38 @@ describe('sheet overlay geometry (treble clef)', () => {
     expect(positionFor(steps, 1.5).top).toBe(50)
     expect(positionFor(steps, 5)).toEqual({ x: 60, top: 300 })
     expect(positionFor([], 1)).toBeNull()
+  })
+})
+
+describe('clef-aware pitch trail (bass and treble-8 parts)', () => {
+  const top = 100
+  const staffPx = 40
+  const G = 0
+  const F = 1
+  const C = 2
+
+  it('puts each clef’s bottom line on the right note', () => {
+    expect(bottomLineIndex({ ClefType: G, Line: 2, OctaveOffset: 0 })).toBe(diatonicIndex(64)) // E4
+    expect(bottomLineIndex({ ClefType: F, Line: 4, OctaveOffset: 0 })).toBe(diatonicIndex(43)) // G2
+    expect(bottomLineIndex({ ClefType: G, Line: 2, OctaveOffset: -1 })).toBe(diatonicIndex(52)) // E3, treble-8
+    expect(bottomLineIndex({ ClefType: C, Line: 3, OctaveOffset: 0 })).toBe(diatonicIndex(53)) // F3, alto
+    expect(bottomLineIndex({ ClefType: C, Line: 4, OctaveOffset: 0 })).toBe(diatonicIndex(50)) // D3, tenor
+  })
+
+  it('falls back to treble for percussion, tab or no clef', () => {
+    expect(bottomLineIndex(undefined)).toBe(diatonicIndex(64))
+    expect(bottomLineIndex({ ClefType: 3, Line: 3, OctaveOffset: 0 })).toBe(diatonicIndex(64))
+  })
+
+  it('draws a bass part’s notes on its own staff, not two ledger lines up', () => {
+    const bass = bottomLineIndex({ ClefType: F, Line: 4, OctaveOffset: 0 })
+    expect(pitchToY(43, top, staffPx, bass)).toBeCloseTo(140, 6) // G2 bottom line
+    expect(pitchToY(57, top, staffPx, bass)).toBeCloseTo(100, 6) // A3 top line
+    expect(pitchToY(48, top, staffPx, bass)).toBeCloseTo(125, 6) // C3 second space
+  })
+
+  it('carries the clef along with the cursor stop', () => {
+    const steps = [{ time: 0, x: 0, top: 0, bottom: 25 }]
+    expect(positionFor(steps, 0).bottom).toBe(25)
   })
 })

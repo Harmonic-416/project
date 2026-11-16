@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createDynamicsTracker } from './dynamics.js'
 import { createPitchTracker, midiToNoteName } from './pitchDetector.js'
+import { setMicLive } from '../feedback/sfx.js'
 
 const UI_INTERVAL_MS = 50
 
@@ -44,6 +45,7 @@ export function useMicPitch({ getTime, onSample }) {
           rig.ctx.close().catch(() => {})
         }
         const finish = () => {
+          setMicLive(false)
           setStatus('idle')
           setCurrent(null)
           setDynamics(null)
@@ -129,6 +131,7 @@ export function useMicPitch({ getTime, onSample }) {
         rig.raf = requestAnimationFrame(tick)
       }
       rig.raf = requestAnimationFrame(tick)
+      setMicLive(true)
       setStatus('listening')
       return true
     } catch (err) {

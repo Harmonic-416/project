@@ -3,6 +3,7 @@ import './theme/vocalTheme.css'
 import './theme/motion.css'
 import './VocalTab.css'
 import SongLibrary from './components/SongLibrary.jsx'
+import SongCardMeta from './components/SongCardMeta.jsx'
 import OnlineSongs from './components/OnlineSongs.jsx'
 import NotationUploader from './components/NotationUploader.jsx'
 import SheetMusicViewer from './components/SheetMusicViewer.jsx'
@@ -13,7 +14,10 @@ import SolfegeToggle from './components/SolfegeToggle.jsx'
 import WaitModePlayer from './components/WaitModePlayer.jsx'
 import TroubleSpotsPlayer from './components/TroubleSpotsPlayer.jsx'
 import ExportButtons from './components/ExportButtons.jsx'
+import TransposeControl from './components/TransposeControl.jsx'
+import KeySuggestion from './components/KeySuggestion.jsx'
 import RecordPanel from './components/RecordPanel.jsx'
+import './components/PitchMeter.css'
 import ArrangePanel from './components/ArrangePanel.jsx'
 import PracticeSessions from './components/PracticeSessions.jsx'
 import WarmUp from './warmup/WarmUp.jsx'
@@ -34,7 +38,7 @@ import SharedAttemptGate from './components/SharedAttemptGate.jsx'
 import SharedAttemptPanel from './components/SharedAttemptPanel.jsx'
 import { loadNotation } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
-import { melodyLine, scheduleFor } from './practice/practiceLogic.js'
+import { LISTEN_MIXES, melodyLine, mixSchedule, scheduleFor } from './practice/practiceLogic.js'
 import { fromRemote, runsKey } from './practice/sessionRuns.js'
 import { listPracticeRuns, savePracticeRun } from '@backend/practiceRuns'
 import { extractPart, listParts, partOnTop } from './notation/partFilter.js'
@@ -46,8 +50,10 @@ import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
 import { VOICINGS } from './arrange/arrange.js'
+import { readPartNotes, songKey, transposeMusicXml } from './transpose/transposeXml.js'
+import { useSongTranspose } from './transpose/useSongTranspose.js'
 
-const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL' }
+const FORMAT_LABEL = { midi: 'MIDI', musicxml: 'MusicXML', mxl: 'MXL', musescore: 'MuseScore' }
 const NO_SCHEDULE = []
 const NO_TIMESTAMPS = []
 const NO_BEATS = []
@@ -74,6 +80,8 @@ const SECTIONS = [
 // `sessionsToOpen` ({ songId, songFingerprint, songTitle }, from Home's
 // "Working on") opens the Practice sessions view for that song;
 // `onSessionsOpened` tells App it has.
+const renderSongMeta = (song) => <SongCardMeta song={song} />
+
 function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
   const [section, setSection] = useState('songs') // songs | learn | exercises | compose | warmup (the capsule bar)
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
@@ -93,9 +101,12 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const [shared, setShared] = useState(null)
   const [practiceMode, setPracticeMode] = useState('listen') // listen | wait | trouble (see practice/practiceLogic.js)
   const [practicePart, setPracticePart] = useState(undefined) // part id; undefined = the first part
-  const [accompaniment, setAccompaniment] = useState('solo') // solo | all (see practice/practiceLogic.js)
+  const [accompaniment, setAccompaniment] = useState('solo') // solo | lead | others | all (LISTEN_MIXES; Wait / Trouble read solo vs the rest)
   const [arrangement, setArrangement] = useState(null) // what the arranger did, for the song it just wrote (arrange/pipeline.js)
   const sheetMusicRef = useRef(null)
+  // Element the live pitch meter portals into, beside the score (state so the portal re-renders when it mounts).
+  const [meterSlot, setMeterSlot] = useState(null)
+  const [actionSlot, setActionSlot] = useState(null) // the dock's spot for RecordPanel's Sing button
   const [sfxMuted, setSfxMuted] = useSfxMuted()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const progress = useVocalProgress()
@@ -382,16 +393,45 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const parts = useMemo(() => (notation ? listParts(notation.content) : []), [notation])
   const multiPart = parts.length > 1
   const selectedPart = multiPart ? (parts.find((p) => p.id === practicePart) ?? parts[0]) : null
-  const withOthers = multiPart && accompaniment === 'all'
-  const partContent = useMemo(() => {
-    if (!notation || !selectedPart) return notation?.content
+  const withOthers = multiPart && accompaniment !== 'solo'
+  // The key (transpose/): the whole score moves, before a part is picked out
+  // of it, so the viewer, playback, the cursor and pitch scoring — all read
+  // off the rendered score — move together. Remembered per song. A shared
+  // attempt was sung in the written key, so it is shown in that one.
+  const [savedShift, setSavedShift] = useSongTranspose(notation?.fingerprint)
+  const shift = shared?.phase === 'open' ? 0 : savedShift
+  // MIDI files spell every black key as a sharp and often carry a wrong key
+  // signature, so they are respelled in the key their notes are in.
+  const keyInfo = useMemo(
+    () => songKey(notation?.content, { trustSpelling: notation?.format !== 'midi' }),
+    [notation],
+  )
+  const transposed = useMemo(() => {
+    if (!notation) return null
     try {
-      return withOthers ? partOnTop(notation.content, selectedPart.id) : extractPart(notation.content, selectedPart.id)
+      const midi = notation.format === 'midi'
+      return transposeMusicXml(notation.content, shift, { respell: midi, keyFifths: midi ? keyInfo.fifths : null })
     } catch (err) {
       console.error(err)
       return notation.content
     }
-  }, [notation, selectedPart, withOthers])
+  }, [notation, shift, keyInfo])
+  const fitPartId = (selectedPart ?? parts[0])?.id ?? null
+  const fitNotes = useMemo(() => readPartNotes(notation?.content, fitPartId), [notation, fitPartId])
+  // What Export writes: what's on screen, in its key.
+  const exportable = useMemo(
+    () => (notation && shift ? { ...notation, format: 'musicxml', content: transposed } : notation),
+    [notation, shift, transposed],
+  )
+  const partContent = useMemo(() => {
+    if (!notation || !selectedPart) return transposed ?? undefined
+    try {
+      return withOthers ? partOnTop(transposed, selectedPart.id) : extractPart(transposed, selectedPart.id)
+    } catch (err) {
+      console.error(err)
+      return transposed
+    }
+  }, [notation, transposed, selectedPart, withOthers])
   // Solfège: the same score with do re mi in place of its lyrics. MIDI files
   // spell every black key as a sharp, so their chromatic notes go by pitch.
   const [solfegeOn, setSolfegeOn] = useState(loadSolfegeOn)
@@ -411,14 +451,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     [withOthers, scoreModel],
   )
 
-  // What Play sounds like: every part on screen, except in Trouble spots
-  // with all parts, where your part is left for you to sing. (Wait for me
-  // doesn't use playback; it holds the other parts' chords itself.)
+  // What Play sounds like. Listen follows the part-mix ladder (yours only,
+  // yours louder, the others only, everyone). Trouble spots with other
+  // parts leaves yours for you to sing. (Wait for me doesn't use playback;
+  // it holds the other parts' chords itself.)
   const playbackSchedule = useMemo(() => {
     if (!scoreModel) return NO_SCHEDULE
     if (otherPartNotes && practiceMode === 'trouble') return scheduleFor(otherPartNotes)
+    if (withOthers && practiceMode === 'listen') return mixSchedule(scoreModel.notes, accompaniment)
     return scoreModel.playbackSchedule
-  }, [scoreModel, otherPartNotes, practiceMode])
+  }, [scoreModel, otherPartNotes, practiceMode, withOthers, accompaniment])
 
   const [metronome, setMetronome] = useMetronomeSettings()
   // Per song (by file fingerprint), remembered in this browser.
@@ -526,10 +568,21 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     (value) => {
       if (value === accompaniment) return
       playback.stop()
-      if (multiPart) setScoreModel(null) // the viewer re-renders with or without the other parts
+      // The viewer re-renders only when the other parts appear or disappear; moving between rungs that show them is just a remix.
+      if (multiPart && (value === 'solo') !== (accompaniment === 'solo')) setScoreModel(null)
       setAccompaniment(value)
     },
     [accompaniment, multiPart, playback],
+  )
+
+  const handleTransposeChange = useCallback(
+    (next) => {
+      if (next === shift) return
+      playback.stop()
+      setScoreModel(null) // the notes move: the panels wait for the viewer's new score model
+      setSavedShift(next)
+    },
+    [shift, playback, setSavedShift],
   )
 
   // The notes don't change, so the panels keep the score model until the viewer hands over the new one.
@@ -546,6 +599,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const handleModeChange = useCallback(
     (mode) => {
       playback.stop()
+      playback.setLoop(null) // a loop belongs to Listen's transport; the other modes run their own
       setPracticeMode(mode)
     },
     [playback],
@@ -582,7 +636,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             </span>
             <div>
               <h1 className="vocal-hero__title">What do you want to sing today?</h1>
-              <p className="vocal-hero__subtitle">Pick a song, or bring your own MIDI or MusicXML file.</p>
+              <p className="vocal-hero__subtitle">Pick a song, or bring your own MIDI, MusicXML or MuseScore file.</p>
             </div>
           </header>
 
@@ -621,7 +675,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           </div>
 
           <h2 className="vocal-tab__section-title">Built-in songs</h2>
-          <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} />
+          <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} renderMeta={renderSongMeta} />
           <div className="vocal-upload">
             <span className="vocal-upload__plus" aria-hidden="true">
               ＋
@@ -756,7 +810,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     const shareSong = notation && {
       songId: notation.catalogSongId,
       title: notation.title,
-      format: notation.format,
+      // Shared attempts record the format as MIDI / MusicXML / MXL; a MuseScore file opens as MusicXML.
+      format: notation.format === 'musescore' ? 'musicxml' : notation.format,
       fingerprint: notation.fingerprint,
       builtin: notation.builtin,
       partId: selectedPart?.id ?? null,
@@ -767,8 +822,15 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     // What the settings sheet is set to, in one line under the mode cards.
     const settingsSummary = [
       multiPart && selectedPart?.name,
-      multiPart && !viewingShared && (withOthers ? 'With all parts' : 'By myself'),
+      multiPart &&
+        !viewingShared &&
+        (practiceMode === 'listen'
+          ? LISTEN_MIXES.find((m) => m.id === accompaniment)?.label
+          : withOthers
+            ? 'With all parts'
+            : 'By myself'),
       solfegeOn ? 'Solfège' : 'Lyrics',
+      shift !== 0 && `Key ${shift > 0 ? '+' : '−'}${Math.abs(shift)}`,
       scoreModel && practiceMode !== 'wait' && `${tempo}% tempo`,
       scoreModel && practiceMode !== 'wait' && metronome.on && 'Click on',
     ]
@@ -785,6 +847,18 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           {notation && <span className="vocal-tab__format">{FORMAT_LABEL[notation.format]}</span>}
           {notation && (
             <div className="vocal-tab__actions">
+              <button
+                type="button"
+                className="v-btn v-btn--secondary v-btn--sm vocal-tab__settings"
+                onClick={() => setSettingsOpen(true)}
+                aria-haspopup="dialog"
+                title={settingsSummary}
+              >
+                <span aria-hidden="true">⚙️</span>
+                <span className="vocal-tab__settings-text">
+                  Settings<small>{settingsSummary}</small>
+                </span>
+              </button>
               <Menu label="More song actions">
                 {!viewingShared && auth.user && supabase && (
                   <button
@@ -800,7 +874,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                     🗓 Practice sessions
                   </button>
                 )}
-                <ExportButtons notation={notation} scoreModel={scoreModel} disabled={!scoreModel} />
+                <ExportButtons notation={exportable} scoreModel={scoreModel} disabled={!scoreModel} />
               </Menu>
             </div>
           )}
@@ -838,24 +912,26 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         {notation && (
           <>
             {!viewingShared && <ModeCards mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />}
-            <div className="v-settings-bar">
-              <button
-                type="button"
-                className="v-btn v-btn--secondary v-btn--sm"
-                onClick={() => setSettingsOpen(true)}
-                aria-haspopup="dialog"
-              >
-                ⚙️ Settings
-              </button>
-              <span className="v-settings-bar__summary">{settingsSummary}</span>
+            {!viewingShared && scoreModel && (
+              <KeySuggestion
+                songId={notation.fingerprint ?? notation.title}
+                notes={fitNotes}
+                keyInfo={keyInfo}
+                shift={shift}
+                onChange={handleTransposeChange}
+              />
+            )}
+            <div className="v-score-row">
+              <SheetMusicViewer
+                ref={sheetMusicRef}
+                content={viewerContent}
+                onReady={handleSheetReady}
+                onError={handleSheetError}
+                tempoFactor={tempo / 100}
+              />
+              {/* The live pitch meter is portalled here while someone sings (RecordPanel). */}
+              <div className="v-score-row__meter" ref={setMeterSlot} />
             </div>
-            <SheetMusicViewer
-              ref={sheetMusicRef}
-              content={viewerContent}
-              onReady={handleSheetReady}
-              onError={handleSheetError}
-              tempoFactor={tempo / 100}
-            />
             <Sheet open={settingsOpen} title="Song settings" onClose={closeSettings}>
               {multiPart && (
                 <div className="v-setting">
@@ -865,10 +941,11 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               )}
               {multiPart && !viewingShared && (
                 <div className="v-setting">
-                  <h3 className="v-setting__label">Practise with</h3>
+                  <h3 className="v-setting__label">{practiceMode === 'listen' ? 'What plays' : 'Practise with'}</h3>
                   <AccompanimentToggle
                     value={accompaniment}
                     mode={practiceMode}
+                    options={practiceMode === 'listen' ? LISTEN_MIXES : undefined}
                     onChange={handleAccompanimentChange}
                     disabled={!scoreModel}
                   />
@@ -878,6 +955,18 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 <h3 className="v-setting__label">Under the notes</h3>
                 <SolfegeToggle on={solfegeOn} doName={solfege?.doName} onChange={handleSolfegeChange} disabled={!scoreModel} />
               </div>
+              {!viewingShared && (
+                <div className="v-setting">
+                  <h3 className="v-setting__label">Key</h3>
+                  <TransposeControl
+                    shift={shift}
+                    onChange={handleTransposeChange}
+                    notes={fitNotes}
+                    keyInfo={keyInfo}
+                    disabled={!scoreModel}
+                  />
+                </div>
+              )}
               {/* Wait for me has no transport to click along with or slow down. */}
               {scoreModel && practiceMode !== 'wait' && (
                 <div className="v-setting">
@@ -902,6 +991,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 backingNotes={withOthers ? otherPartNotes : null}
                 runsKey={runsKey({ ...runsSetting, mode: 'wait' })}
                 runsRemote={runsRemotes.wait}
+                meterSlot={meterSlot}
               />
             ) : scoreModel && practiceMode === 'trouble' ? (
               <TroubleSpotsPlayer
@@ -911,9 +1001,22 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 sheetMusicRef={sheetMusicRef}
                 runsKey={runsKey({ ...runsSetting, mode: 'trouble' })}
                 runsRemote={runsRemotes.trouble}
+                meterSlot={meterSlot}
               />
             ) : (
               <div className="v-dock">
+                {/* RecordPanel portals its Sing / Stop button here: the one primary action, next to Play. */}
+                {practiceMode === 'listen' && !viewingShared && <div className="v-dock__action" ref={setActionSlot} />}
+                {playback.loop && (
+                  <button
+                    type="button"
+                    className="v-dock__loop"
+                    onClick={() => playback.setLoop(null)}
+                    title="Stop looping"
+                  >
+                    🔁 {playback.loop.label} <span aria-hidden="true">✕</span>
+                  </button>
+                )}
                 <PlaybackControls
                   state={playback.state}
                   position={playback.position}
@@ -948,6 +1051,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 supabase={supabase}
                 shareSong={shareSong}
                 session={auth.user && supabase ? practiceSession : null}
+                meterSlot={meterSlot}
+                actionSlot={actionSlot}
               />
             )}
           </>

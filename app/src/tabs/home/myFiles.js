@@ -94,6 +94,7 @@ export function fileKind(name) {
   const ext = name.split('.').pop()?.toLowerCase()
   if (ext === 'mid' || ext === 'midi') return 'MIDI'
   if (ext === 'musicxml' || ext === 'xml' || ext === 'mxl') return 'MusicXML'
+  if (ext === 'mscz' || ext === 'mscx') return 'MuseScore'
   if (ext?.startsWith('gp')) return 'Guitar Pro'
   if (ext === 'alphatex' || ext === 'atex') return 'alphaTex'
   return ext ? ext.toUpperCase() : 'File'

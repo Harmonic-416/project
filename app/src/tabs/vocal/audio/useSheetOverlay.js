@@ -6,8 +6,10 @@ import { useCallback, useEffect, useRef } from 'react'
  * Geometry comes from OSMD itself: after render, the cursor is walked once
  * (visible, follow-scroll off) and each stop's on-screen box is recorded,
  * so x(t) interpolates between the same cursor stops playback uses, and the
- * cursor's top edge is the top staff line of that system. Pitch → y assumes
- * a treble clef (bottom line E4); one diatonic step is half a staff space.
+ * cursor's top edge is the top staff line of that system. Pitch → y reads
+ * the clef of the top staff (the singer's part) at each stop, so bass and
+ * treble-8 parts — every TTBB arrangement — plot at the right height; one
+ * diatonic step is half a staff space.
  */
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -29,9 +31,24 @@ export function diatonicIndex(midi) {
 
 const E4_INDEX = diatonicIndex(64)
 
-/** y in px of a pitch on a treble staff whose top line is at `top` and is `staffPx` tall. */
-export function pitchToY(midi, top, staffPx) {
-  return top + staffPx - (diatonicIndex(midi) - E4_INDEX) * (staffPx / 8)
+// Each clef sign names the pitch on its line: G4 for G, F3 for F, C4 for C (OSMD's ClefEnum 0, 1, 2).
+const CLEF_REFERENCE = { 0: diatonicIndex(67), 1: diatonicIndex(53), 2: diatonicIndex(60) }
+
+/**
+ * Diatonic index of a staff's bottom line for an OSMD ClefInstruction
+ * ({ ClefType, Line, OctaveOffset }; Line counts from the bottom, 1–5).
+ * Treble → E4, bass → G2, treble-8 → E3, alto → F3. Anything else
+ * (percussion, tab, missing) falls back to treble.
+ */
+export function bottomLineIndex(clef) {
+  const reference = clef ? CLEF_REFERENCE[clef.ClefType] : undefined
+  if (reference === undefined) return E4_INDEX
+  return reference - 2 * ((clef.Line ?? 2) - 1) + 7 * (clef.OctaveOffset ?? 0)
+}
+
+/** y in px of a pitch on a staff whose top line is at `top`, `staffPx` tall, bottom line at `bottom` (diatonic index). */
+export function pitchToY(midi, top, staffPx, bottom = E4_INDEX) {
+  return top + staffPx - (diatonicIndex(midi) - bottom) * (staffPx / 8)
 }
 
 /** x in px for a playback time, interpolated between recorded cursor stops. */
@@ -52,7 +69,7 @@ export function positionFor(steps, time) {
     const t = Math.min(1, Math.max(0, (time - a.time) / (b.time - a.time)))
     x = b.top === a.top ? a.x + (b.x - a.x) * t : a.x + LINE_BREAK_NUDGE_PX * t
   }
-  return { x, top: a.top }
+  return { x, top: a.top, bottom: a.bottom }
 }
 
 function measureCursorSteps(osmd, container, cursorTimestamps) {
@@ -67,9 +84,16 @@ function measureCursorSteps(osmd, container, cursorTimestamps) {
   const originX = containerRect.left + container.clientLeft - container.scrollLeft
   const originY = containerRect.top + container.clientTop - container.scrollTop
   const steps = []
+  const measures = osmd.GraphicSheet?.MeasureList ?? []
   for (let i = 0; i < cursorTimestamps.length && !cursor.iterator.EndReached; i += 1) {
     const rect = element.getBoundingClientRect()
-    steps.push({ time: cursorTimestamps[i], x: rect.left - originX + rect.width / 2, top: rect.top - originY })
+    const clef = measures[cursor.iterator.CurrentMeasureIndex]?.[0]?.InitiallyActiveClef
+    steps.push({
+      time: cursorTimestamps[i],
+      x: rect.left - originX + rect.width / 2,
+      top: rect.top - originY,
+      bottom: bottomLineIndex(clef),
+    })
     cursor.next()
   }
   cursor.reset()
@@ -108,15 +132,48 @@ export function useSheetOverlay(sheetMusicRef, scoreModel) {
     if (!position) return
     const circle = document.createElementNS(SVG_NS, 'circle')
     circle.setAttribute('cx', position.x.toFixed(1))
-    circle.setAttribute('cy', pitchToY(sample.midi, position.top, geometry.staffPx).toFixed(1))
+    circle.setAttribute('cy', pitchToY(sample.midi, position.top, geometry.staffPx, position.bottom).toFixed(1))
     circle.setAttribute('r', '3')
     circle.setAttribute('class', `pitch-overlay__dot pitch-overlay__dot--${verdict}`)
     geometry.svg.appendChild(circle)
+  }, [])
+
+  /**
+   * A grade badge above a note that has gone by (pitchReading.gradeNote):
+   * a coloured disc with ✓ / ↑ / ↓, so the verdict reads by shape as well as colour.
+   */
+  const addBadge = useCallback((note, grade) => {
+    const geometry = geometryRef.current
+    if (!geometry) return
+    const position = positionFor(geometry.steps, note.time)
+    if (!position) return
+    const y = pitchToY(note.midi, position.top, geometry.staffPx, position.bottom) - geometry.staffPx * 0.45
+    const group = document.createElementNS(SVG_NS, 'g')
+    group.setAttribute('class', `pitch-badge pitch-badge--${grade.tier}`)
+    group.setAttribute('transform', `translate(${position.x.toFixed(1)} ${y.toFixed(1)})`)
+    const title = document.createElementNS(SVG_NS, 'title')
+    title.textContent = grade.label
+    const disc = document.createElementNS(SVG_NS, 'circle')
+    disc.setAttribute('r', '7')
+    const text = document.createElementNS(SVG_NS, 'text')
+    text.setAttribute('text-anchor', 'middle')
+    text.setAttribute('dominant-baseline', 'central')
+    text.textContent = grade.glyph
+    // Position on the outer group, animation on the inner one: a CSS transform would replace the translate.
+    const pop = document.createElementNS(SVG_NS, 'g')
+    pop.setAttribute('class', 'pitch-badge__pop')
+    pop.append(title, disc, text)
+    group.append(pop)
+    geometry.svg.appendChild(group)
+  }, [])
+
+  const clearBadges = useCallback(() => {
+    geometryRef.current?.svg.querySelectorAll('.pitch-badge').forEach((badge) => badge.remove())
   }, [])
 
   const clear = useCallback(() => {
     geometryRef.current?.svg.replaceChildren()
   }, [])
 
-  return { addSample, clear }
+  return { addSample, addBadge, clearBadges, clear }
 }

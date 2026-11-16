@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { VOICINGS, arrangeSong, bestShift, blockChord, estimateKey, harmonySegments, heardWithTune, leadLine, reach, songChords, songScale, sungByBeat, tidy } from '../src/tabs/vocal/arrange/arrange.js'
+import { MELODY_WEIGHT, SOLO_WEIGHT, VOICINGS, arrangeSong, bestShift, ensembleShift, moveKey, blockChord, estimateKey, harmonySegments, heardWithTune, leadLine, reach, songChords, songScale, sungByBeat, tidy } from '../src/tabs/vocal/arrange/arrange.js'
 import { chordId } from '../src/tabs/guitar/song/transcribe/chords.js'
 import { partXml } from '../src/tabs/guitar/song/transcribe/scoreXml.js'
 import { listParts } from '../src/tabs/vocal/notation/partFilter.js'
@@ -264,9 +264,22 @@ describe('arranging a song', () => {
   })
 
   it('moves a soprano’s tune down to the tenors, and names the key', () => {
+    // An octave down puts the tune on C4–A4, the very top of Tenor 1's range
+    // for much of the song; the finished parts then move down a step more
+    // (ensembleShift) so it sits on Bb3–G4, with every part still in range.
     const result = arrangeSong(twinkle({ transpose: 12 }), { voicing: 'ttbb' })
-    expect(result.shift).toBe(-12)
-    expect(result.key.name).toBe('C major')
+    expect(result.shift).toBe(-14)
+    expect(result.key).toMatchObject({ name: 'Bb major', fifths: -2 })
+    result.parts.forEach((part, v) => {
+      const { low, high } = VOICINGS.ttbb.voices[v]
+      for (const e of part.events) {
+        expect(e.midi).toBeGreaterThanOrEqual(low)
+        expect(e.midi).toBeLessThanOrEqual(high)
+      }
+    })
+    expect(Math.max(...result.parts[0].events.map((e) => e.midi))).toBe(67)
+    expect(result.musicXml).toContain('<fifths>-2</fifths>')
+    expect(result.musicXml).toContain('<root-step>B</root-step><root-alter>-1</root-alter>') // the Bb chord symbol
   })
 
   it('keeps a recording in E♭ in E♭ when asked, with flats', () => {
@@ -373,5 +386,66 @@ describe('tidying the tune', () => {
     expect(tidy([ev(0, 2, 60), ev(3, 4, 63), ev(4, 8, 64)])).toEqual([ev(0, 2, 60), ev(3, 8, 64)])
     expect(tidy([ev(0, 2, 60), ev(2, 3, 67), ev(3, 8, 64)])).toEqual([ev(0, 2, 60), ev(2, 3, 67), ev(3, 8, 64)]) // on the grid: sung
     expect(tidy([ev(0, 3, 60), ev(3, 4, 67), ev(4, 8, 64)])).toEqual([ev(0, 3, 60), ev(3, 4, 67), ev(4, 8, 64)]) // a leap: sung
+  })
+})
+
+// Synthetic parts: one event per pitch, a beat (4 sixteenths) each.
+const line = (...pitches) => ({ events: pitches.map((midi, i) => ({ start: i * 4, end: i * 4 + 4, midi })) })
+
+describe('ensembleShift', () => {
+  const satb = VOICINGS.satb.voices // S 60–79, A 55–74, T 48–67, B 40–60
+
+  it('leaves parts that already sit in the middle of their ranges', () => {
+    const parts = [line(69, 71, 72, 69), line(64, 65, 67, 64), line(57, 59, 60, 57), line(48, 50, 52, 48)]
+    expect(ensembleShift(parts, satb, 0)).toBe(0)
+  })
+
+  // Every part a few semitones high, each spanning too much to go down an octave.
+  const high = [line(67, 72, 76, 79, 81), line(62, 67, 71, 74, 76), line(55, 60, 64, 67, 69), line(47, 52, 55, 58, 62)]
+
+  it('moves everything down a little when every part sits high', () => {
+    const shift = ensembleShift(high, satb, 0)
+    expect(shift).toBeLessThanOrEqual(-2)
+    expect(shift).toBeGreaterThanOrEqual(-5)
+  })
+
+  it('counts the tune most when the parts pull different ways', () => {
+    // The soprano's tune sits above its range; the bass at the bottom of its sweet spot.
+    const parts = [line(80, 81, 80, 81), line(64, 65, 64, 65), line(55, 57, 55, 57), line(44, 45, 44, 45)]
+    const tuneOnTop = ensembleShift(parts, satb, 0)
+    expect(tuneOnTop).toBeLessThanOrEqual(-4)
+    // With the tune in the bass instead, the bass holds the song up nearer where it is.
+    expect(ensembleShift(parts, satb, 3)).toBeGreaterThan(tuneOnTop)
+  })
+
+  it('weighs a soloist above a choir tune', () => {
+    expect(SOLO_WEIGHT).toBeGreaterThan(MELODY_WEIGHT)
+    const voices = VOICINGS.solo_ttbb.voices // Solo 53–72, then T1, T2, Bar, B
+    const parts = [line(72, 74, 72, 74), line(57, 59, 57, 59), line(53, 55, 53, 55), line(50, 52, 50, 52), line(40, 39, 40, 39)]
+    const asTune = ensembleShift(parts, voices, 0)
+    const asSolo = ensembleShift(parts, voices, 0, { solo: true })
+    expect(asSolo).toBeLessThanOrEqual(asTune)
+    expect(asSolo).toBeLessThan(0)
+  })
+
+  it('moves only by octaves when the key is kept', () => {
+    const parts = [line(91, 93, 91), line(86, 88, 86), line(79, 81, 79), line(72, 74, 72)] // an octave too high
+    expect(ensembleShift(parts, satb, 0, { octavesOnly: true })).toBe(-12)
+    expect(ensembleShift(high, satb, 0, { octavesOnly: true })).toBe(0)
+  })
+
+  it('ignores parts with nothing to sing', () => {
+    expect(ensembleShift([line(69, 71), { events: [] }, { events: [] }, { events: [] }], satb, 0)).toBe(0)
+  })
+})
+
+describe('moveKey', () => {
+  it('moves the tonic and the signature, spelled with the fewest accidentals', () => {
+    const c = estimateKey([{ start: 0, end: 16, midi: 60 }, { start: 16, end: 24, midi: 64 }, { start: 24, end: 32, midi: 67 }], [])
+    expect(c.name).toBe('C major')
+    expect(moveKey(c, -2)).toEqual({ tonic: 10, minor: false, fifths: -2, name: 'Bb major' })
+    expect(moveKey(c, 4)).toEqual({ tonic: 4, minor: false, fifths: 4, name: 'E major' })
+    expect(moveKey(c, 0)).toBe(c)
+    expect(moveKey({ tonic: 9, minor: true, fifths: 0, name: 'A minor' }, -2)).toEqual({ tonic: 7, minor: true, fifths: -2, name: 'G minor' })
   })
 })

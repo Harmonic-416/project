@@ -1,0 +1,156 @@
+/* The key control in the song settings (TransposeControl.jsx) and its range strip (RangeStrip.jsx). */
+
+.key-fit { display: flex; flex-direction: column; gap: var(--v-s3); }
+
+.key-fit__voices { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Separate chips, not a segmented bar: beats the theme's .vocal-frame .practice-modes__option. */
+.vocal-frame .key-fit__voices .practice-modes__option {
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-pill);
+  background: var(--v-card);
+}
+.vocal-frame .key-fit__voices .practice-modes__option[aria-pressed='true'] {
+  border-color: var(--v-accent);
+  background: var(--v-accent);
+}
+
+/* ── The strip: your range as a band, the song as a bar over it ── */
+.range-strip { display: flex; flex-direction: column; gap: 4px; }
+.range-strip__track {
+  position: relative;
+  height: 22px;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-subtle);
+}
+.range-strip__voice {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-primary-soft);
+  box-shadow: inset 0 0 0 2px var(--v-primary);
+}
+.range-strip__song {
+  position: absolute;
+  top: 7px;
+  height: 8px;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-good);
+  transition: left var(--v-med) var(--v-ease-out), width var(--v-med) var(--v-ease-out);
+}
+.range-strip__song--reach { background: var(--v-gold); }
+.range-strip__song--out { background: var(--v-bad); }
+.range-strip__tick {
+  position: absolute;
+  top: 3px;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--v-text);
+  transition: left var(--v-med) var(--v-ease-out);
+}
+.range-strip__labels { position: relative; height: 1.1em; font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.range-strip__labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; transition: left var(--v-med) var(--v-ease-out); }
+.range-strip__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 2px 0 0;
+  color: var(--v-muted);
+  font-size: 0.72rem;
+}
+.range-strip__key { display: inline-block; width: 14px; height: 8px; border-radius: 4px; margin-left: 8px; }
+.range-strip__key:first-child { margin-left: 0; }
+.range-strip__key--voice { background: var(--v-primary-soft); box-shadow: inset 0 0 0 2px var(--v-primary); }
+.range-strip__key--song { background: var(--v-good); }
+
+/* ── The choices ── */
+.key-fit__options { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--v-s2); }
+.key-fit__option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--v-s2) var(--v-s3);
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+  color: var(--v-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--v-fast), background-color var(--v-fast);
+}
+.key-fit__option:hover:not(:disabled) { border-color: var(--v-primary); }
+.key-fit__option[aria-checked='true'] { border-color: var(--v-primary); background: var(--v-primary-soft); }
+.key-fit__option:disabled { opacity: 0.55; cursor: not-allowed; }
+.key-fit__name { font-family: var(--v-font-display); font-weight: 800; }
+.key-fit__key { font-weight: 700; color: var(--v-muted); }
+.key-fit__why { font-size: 0.78rem; color: var(--v-muted); }
+.key-fit__option--fits .key-fit__why::before { content: '✓ '; color: var(--v-good); font-weight: 800; }
+.key-fit__option--out .key-fit__why::before { content: '! '; color: var(--v-bad); font-weight: 800; }
+.key-fit__badge {
+  position: absolute;
+  top: -9px;
+  right: 8px;
+  padding: 1px 7px;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-primary);
+  color: var(--v-on-accent);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ── Fine-tune and measuring ── */
+.key-fit__fine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v-s2) var(--v-s4); }
+.transpose__now { min-width: 11em; text-align: center; cursor: default; font-variant-numeric: tabular-nums; }
+.key-fit__link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--v-primary);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* RangeCapture's panel (kept from the first version of this control). */
+.transpose__capture { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; }
+.transpose__capture > p { margin: 0; }
+.transpose__capture-notes { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .range-strip__song, .range-strip__tick, .range-strip__labels span { transition: none; }
+}
+
+/* The song screen's one-line key suggestion (KeySuggestion.jsx). */
+.key-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v-s2) var(--v-s3);
+  padding: var(--v-s2) var(--v-s3);
+  border: 2px solid var(--v-gold);
+  border-radius: var(--v-radius);
+  background: var(--v-gold-soft);
+}
+.key-suggestion__icon { font-size: 1.1rem; }
+.key-suggestion__text { flex: 1; min-width: 12em; margin: 0; font-size: 0.9rem; }
+.key-suggestion__actions { display: flex; align-items: center; gap: var(--v-s3); }
+.key-suggestion__keep {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--v-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}

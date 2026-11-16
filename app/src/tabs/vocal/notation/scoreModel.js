@@ -114,9 +114,21 @@ export function extractScoreModel(osmd, { sourceNotes } = {}) {
     playbackSchedule,
     cursorTimestamps,
     beats: beatsFromMeasures(measures),
+    bars: barNumbers(measures),
     startBpm: measures[0]?.bpm ?? defaultBpm, // the written tempo at the start, for the tempo readout
     duration,
     bpm: cursorTimestamps.length ? (iterator.CurrentBpm > 0 ? prevBpm : defaultBpm) : defaultBpm,
     partNames: instruments.map((i) => i.Name),
   }
+}
+
+/**
+ * Each measure's start time and the number printed over it: a short first
+ * measure is a pickup, numbered 0 the way the rendered score numbers it, so
+ * "bar 9" in a summary is the bar labelled 9 on screen.
+ */
+export function barNumbers(measures) {
+  const first = measures[0]
+  const pickup = first && first.length > 0 && first.length < first.numerator / first.denominator - 1e-6
+  return measures.map((measure, index) => ({ time: measure.time, number: pickup ? index : index + 1 }))
 }
