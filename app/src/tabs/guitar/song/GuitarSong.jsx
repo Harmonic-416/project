@@ -2,7 +2,7 @@ import { useLatestSongRequest } from './useLatestSongRequest.js'
 import { useDraftLibrary } from './useDraftLibrary.js'
 import SongHeading from './SongHeading.jsx'
 import SongSectionPicker from './SongSectionPicker.jsx'
-import { BUILT_IN_SONGS, findSongFile } from './songSources.js'
+import { BUILT_IN_SONGS, findAttemptSongFile, findSongFile } from './songSources.js'
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AccompanimentToggle from '../../vocal/components/AccompanimentToggle.jsx'
@@ -326,8 +326,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         if (cancelled) return
         if (!attempt) throw new Error('This shared attempt doesn’t exist anymore.')
         if (attempt.instrument !== 'guitar') throw new Error('This attempt was sung — open it from the Vocal tab.')
-        // The catalog song, a built-in song both people have, or a file of yours on this device.
-        const found = await findSongFile({ songId: attempt.song_id, fingerprint: attempt.song_fingerprint })
+        // The catalog song, a built-in song both people have, a file of yours on this device, or the sender's own copy.
+        const found = await findAttemptSongFile(attempt)
         if (cancelled) return
         if (found) await openShared(attempt, found.bytes, found.filename, found.options)
         else setShared({ phase: 'need-file', attempt })

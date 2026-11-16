@@ -1,6 +1,7 @@
 /* global __GUITAR_SONG_FILES__ */
 import { titleFromFilename } from '../../vocal/notation/loadNotation.js'
 import { loadMyFile } from '../../home/myFiles.js'
+import { fetchSongOfAttempt } from '../../home/songSharing.js'
 import { fingerprintBytes } from '../../vocal/share/sharedAttempt.js'
 import { fetchCatalogSong, fetchCloudNotation } from '../../vocal/songs/cloudLibrary.js'
 import { supabase } from '../../../lib/supabaseClient.js'
@@ -34,4 +35,18 @@ export async function findSongFile({ songId, fingerprint }) {
   }
   const mine = await loadMyFile(fingerprint)
   return mine ? { bytes: mine.bytes, filename: mine.name, options: {} } : null
+}
+
+/**
+ * The song of an attempt being opened (yours, or one a friend sent): as
+ * findSongFile, and failing that the sender's own copy, kept on their
+ * account for the friends it was sent to (home/songSharing.js), which then
+ * becomes one of this person's songs too. Null when neither has it: the
+ * gate asks for this person's own copy.
+ */
+export async function findAttemptSongFile(attempt) {
+  const found = await findSongFile({ songId: attempt.song_id, fingerprint: attempt.song_fingerprint })
+  if (found) return found
+  const theirs = await fetchSongOfAttempt(supabase, attempt)
+  return theirs ? { bytes: theirs.bytes, filename: theirs.name, options: {} } : null
 }

@@ -48,6 +48,7 @@ import { fingerprintBytes } from './share/sharedAttempt.js'
 import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
+import { fetchSongOfAttempt } from '../home/songSharing.js'
 import MySongs from '../../ui/MySongs.jsx'
 import { VOICINGS } from './arrange/arrange.js'
 import { readPartNotes, songKey, transposeMusicXml } from './transpose/transposeXml.js'
@@ -73,7 +74,8 @@ const SECTIONS = [
 // layer), recording a sung attempt, and shared attempts. Your own files are
 // kept on your device and, signed in, on your account, private to you
 // (home/myFiles.js); the Songs page lists them under "My songs". A shared
-// attempt names its song by catalog id or by the file's fingerprint.
+// attempt names its song by catalog id or by the file's fingerprint, and a
+// friend it is sent to gets the sender's file with it (home/songSharing.js).
 //
 // `sharedAttemptId` comes from a share link (App.jsx); `onSharedAttemptDone`
 // tells App it has been opened or dismissed. `fileToOpenId` is a file from
@@ -338,7 +340,15 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           if (!cancelled) await openShared(attempt, mine.bytes, mine.name)
           return
         }
-        if (!cancelled) setShared({ phase: 'need-file', attempt })
+        // The sender's own copy, kept on their account for the friends it was sent to;
+        // it becomes one of this person's songs too.
+        const theirs = await fetchSongOfAttempt(supabase, attempt)
+        if (cancelled) return
+        if (theirs) {
+          await openShared(attempt, theirs.bytes, theirs.name)
+          return
+        }
+        setShared({ phase: 'need-file', attempt })
       } catch (err) {
         console.error(err)
         if (!cancelled) setShared({ phase: 'error', error: err.message || 'Could not open this shared attempt.' })
