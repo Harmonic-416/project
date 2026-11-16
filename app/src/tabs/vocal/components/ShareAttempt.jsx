@@ -354,7 +354,7 @@ async function withRetries(task, delaysMs = [1000, 3000]) {
 const sameVerdicts = (a, b) => a === b || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i]))
 
 /** Tick friends, then Send. */
-function FriendPicker({ supabase, onSend, onClose }) {
+export function FriendPicker({ supabase, onSend, onClose }) {
   const [friends, setFriends] = useState(null)
   const [chosen, setChosen] = useState(() => new Set())
   const [sending, setSending] = useState(false)

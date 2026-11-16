@@ -1,5 +1,6 @@
 import { loadSongBars, missedBars } from '../practice/songBars.js'
 import { Trash2 } from 'lucide-react'
+import AttemptShare from './AttemptShare.jsx'
 import { useEffect, useRef, useState } from 'react'
 import './SessionAttempts.css'
 import { deleteAttemptRecording, getRecordingUrl, saveAttemptFeedback } from '@backend/practiceSessions'
@@ -59,6 +60,7 @@ function SessionAttempts({ supabase, session }) {
         <ol className="session-attempts__list">
           {attempts.map((attempt, i) => (
             <AttemptRow
+              share={false /* the card above already shares this sitting's latest take; Practice sessions shares any */}
               key={attempt.id}
               index={i + 1}
               attempt={attempt}
@@ -98,7 +100,7 @@ export function RecordingBudget({ storage }) {
  * `actions` go at the end of the row's first line; `showAudio` false leaves
  * the recording to the caller (an opened attempt already has a player).
  */
-export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDeleted, actions = null, showAudio = true, className = '' }) {
+export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDeleted, actions = null, showAudio = true, share = true, className = '' }) {
   const [note, setNote] = useState(attempt.self_note ?? '')
   const [noteState, setNoteState] = useState('idle') // idle | saving | saved | error
   const [rating, setRating] = useState(attempt.rating ?? null)
@@ -253,6 +255,7 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
         <span className="attempt-row__hint">No recording kept.</span>
       )}
 
+      {share && <AttemptShare supabase={supabase} attempt={attempt} />}
       <label className="attempt-row__note">
         <span className="attempt-row__note-label">
           Note to self {noteHint && <em className={`attempt-row__note-state attempt-row__note-state--${noteState}`}>{noteHint}</em>}

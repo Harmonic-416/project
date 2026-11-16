@@ -63,7 +63,7 @@ function AttemptHistory({ attempt, viewerId, supabase, onOpenAttempt }) {
             Your notes on this attempt
           </h3>
           <ol className="attempt-history__list">
-            <AttemptRow attempt={attempt} supabase={supabase} showAudio={false} onChange={() => {}} />
+            <AttemptRow attempt={attempt} supabase={supabase} showAudio={false} share={false} onChange={() => {}} />
           </ol>
         </section>
       )}

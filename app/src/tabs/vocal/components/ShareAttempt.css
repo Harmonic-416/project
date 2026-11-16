@@ -226,3 +226,6 @@
 .share-attempt__name { font-weight: 700; }
 .share-attempt__tag { color: var(--v-muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .share-attempt__picker-actions { display: flex; gap: var(--v-s2); }
+
+/* Sharing a saved attempt from its row: the same buttons, a size down. */
+.attempt-share .share-attempt__button { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; }
