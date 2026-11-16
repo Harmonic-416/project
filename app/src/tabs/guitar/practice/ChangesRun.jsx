@@ -1,3 +1,4 @@
+import { finishGuitarPractice } from './guitarProgress.js'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useGuitarListener } from '../song/follow/useGuitarListener.js'
 import ChordTransition from './ChordTransition.jsx'
@@ -64,12 +65,13 @@ function ChangesRun({ unlocked, onLearnChord }) {
     const id = setTimeout(() => {
       if (last) {
         stopListening()
+        if (tappedRef.current) finishGuitarPractice({ sound: !useMic })
         setBests((current) => recordBest(current, a.id, b.id, tappedRef.current))
       }
       dispatch({ type: 'tick' })
     }, 1000)
     return () => clearTimeout(id)
-  }, [state.status, state.count, state.left, a.id, b.id, stopListening])
+  }, [state.status, state.count, state.left, a.id, b.id, stopListening, useMic])
 
   // Space bar taps while running, like the button.
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { finishGuitarPractice } from '../../practice/guitarProgress.js'
 import GuitarModeFeedback from './GuitarModeFeedback.jsx'
 import * as alphaTab from '@coderline/alphatab'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -241,6 +242,7 @@ function GuitarTroubleMode({
       if (finished && tracker) settle(tracker.collect(end + 1))
       const recording = await stopListening()
       if (generation !== generationRef.current) return
+      if (finished && verdictsRef.current.some((verdict) => verdict === 'hit' || verdict === 'close')) finishGuitarPractice()
       setFinishing(false)
       setSummary({
         historyEligible: run.historyEligible,

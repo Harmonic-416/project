@@ -1,3 +1,4 @@
+import { finishGuitarPractice } from './guitarProgress.js'
 import LessonFocus from './LessonFocus.jsx'
 import LessonModes from './LessonModes.jsx'
 import ChordPicker from './ChordPicker.jsx'
@@ -115,7 +116,12 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
     showHeard(verdict, extra, advice)
     if (isPlay) playDispatch({ type: 'result', verdict })
     else if (isPractice) practiceResult(verdict)
-    else dispatch({ type: 'result', verdict, strings: strings ?? undefined })
+    else {
+      dispatch({ type: 'result', verdict, strings: strings ?? undefined })
+      if (verdict === 'verified' && state.verdict !== 'verified') {
+        finishGuitarPractice({ sound: listening.status === 'idle' })
+      }
+    }
   }
 
   const listening = useLessonListening({
@@ -175,9 +181,17 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
   }, [cancelHint, clearHeard, restartListening, startListening, stopListening])
   const runDispatchWithMic = useCallback((action) => controlRun(action, runDispatch), [controlRun])
   const playDispatchWithMic = useCallback((action) => controlRun(action, playDispatch), [controlRun])
+  const practiceFinished = isPractice && ['passed', 'failed'].includes(run.status)
+  const practiceHadInput = run.turn > 0 || run.verdict === 'wrong'
+  const playFinished = isPlay && play.status === 'done'
+  const playHadInput = play.results.some((verdict) => verdict === 'verified' || verdict === 'wrong')
   useEffect(() => {
-    if ((isPractice && ['passed', 'failed'].includes(run.status)) || (isPlay && play.status === 'done')) stopListening()
-  }, [isPractice, isPlay, run.status, play.status, stopListening])
+    if (!practiceFinished && !playFinished) return
+    stopListening()
+    if ((practiceFinished && practiceHadInput) || (playFinished && playHadInput)) {
+      finishGuitarPractice({ sound: false })
+    }
+  }, [practiceFinished, practiceHadInput, playFinished, playHadInput, stopListening])
   useEffect(() => () => {
     launchVersion.current += 1
     hintVersion.current += 1

@@ -1,6 +1,8 @@
 import GuitarFeedback from './practice/GuitarFeedback.jsx'
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState, useSyncExternalStore } from 'react'
 import './GuitarTab.css'
+import PracticeHeaderControls from '../shared/PracticeHeaderControls.jsx'
+import { guitarProgress } from './practice/guitarProgress.js'
 import Tuner from './tuner/Tuner.jsx'
 import AccountChip from '../../auth/AccountChip.jsx'
 import Exercises from './exercises/Exercises.jsx'
@@ -42,6 +44,7 @@ function GuitarTab({
   learnProgressVersion,
   myFilesVersion,
 }) {
+  const progress = useSyncExternalStore(guitarProgress.subscribe, guitarProgress.loadProgress, guitarProgress.loadProgress)
   const [view, setView] = useState('song')
   const [returnTo, setReturnTo] = useState(null) // the view "Tune now" came from
   const [tuned, setTuned] = useState(isTunedThisSession)
@@ -95,7 +98,14 @@ function GuitarTab({
             </button>
           ))}
         </nav>
-        <AccountChip auth={auth} onNavigate={onNavigate} />
+        <div className="guitar-tab__end">
+          <PracticeHeaderControls
+            streak={guitarProgress.currentStreak(progress)}
+            practisedToday={guitarProgress.practisedToday(progress)}
+            startHint="Finish a Guitar lesson, exercise or practice run to start a streak"
+          />
+          <AccountChip auth={auth} onNavigate={onNavigate} />
+        </div>
       </div>
       {showPrompt && <TuneUpPrompt drift={drift} onTune={tuneNow} onDismiss={alreadyTuned} />}
       <div className="guitar-tab__body">
