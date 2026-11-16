@@ -117,7 +117,7 @@
   padding: 8px 12px;
   border-radius: 8px;
   background: var(--v-gold-soft, #fbeccc);
-  color: var(--v-gold-dark, #7a5300) !important;
+  color: var(--v-gold-text, #7a5300) !important;
 }
 
 /* "Send to friends" (ShareAttempt): a quieter button and the friend picker. */

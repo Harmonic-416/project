@@ -29,10 +29,12 @@ function SocialTab({ auth, onNavigate, inviteCode, onInviteDone }) {
   return (
     <div className="home-page social-page">
       <div className="home-tab social-tab">
-        <header className="social-tab__header">
-          <span className="social-tab__eyebrow">Social</span>
-          <h1>Friends</h1>
-          <p>Send your attempts to friends and get feedback on them.</p>
+        <header className="hm-hero social-tab__header">
+          <span className="hm-hero__badge" aria-hidden="true"><PeopleIcon /></span>
+          <div>
+            <h1 className="hm-hero__title">Friends</h1>
+            <p className="hm-hero__subtitle">Send your attempts to friends and get feedback on them.</p>
+          </div>
         </header>
 
         {inviteShown && configured && (
@@ -46,7 +48,11 @@ function SocialTab({ auth, onNavigate, inviteCode, onInviteDone }) {
         )}
 
         {!configured ? (
-          <p className="home-tab__hint">Sign-in is off on this copy of the app, so friends aren’t available.</p>
+          <div className="social-card social-signed-out">
+            <span className="social-empty__icon" aria-hidden="true"><PeopleIcon /></span>
+            <h2>Friends are unavailable</h2>
+            <p>Sign-in is turned off for this copy of Harmonic.</p>
+          </div>
         ) : !ready ? (
           <p className="home-tab__hint">Checking your sign-in…</p>
         ) : signedIn ? (

@@ -18,7 +18,7 @@
 }
 
 .pitch-meter--in-tune { --pm-tone: var(--v-good); --pm-tone-soft: var(--v-good-soft); }
-.pitch-meter--close { --pm-tone: var(--v-gold-dark); --pm-tone-soft: var(--v-gold-soft); }
+.pitch-meter--close { --pm-tone: var(--v-gold-text); --pm-tone-soft: var(--v-gold-soft); }
 .pitch-meter--wrong { --pm-tone: var(--v-bad); --pm-tone-soft: var(--v-bad-soft); }
 .pitch-meter--octave { --pm-tone: var(--v-sky); --pm-tone-soft: var(--v-sky-soft); }
 .pitch-meter--idle,

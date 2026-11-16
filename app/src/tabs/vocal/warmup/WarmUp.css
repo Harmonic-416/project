@@ -152,7 +152,7 @@
 
 .pitch-test__move--on {
   background: var(--v-gold-soft, #fff3d6);
-  color: var(--v-gold-dark, #8a5a00);
+  color: var(--v-gold-text, #8a5a00);
   font-weight: 700;
 }
 

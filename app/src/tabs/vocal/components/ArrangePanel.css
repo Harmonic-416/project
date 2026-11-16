@@ -19,7 +19,6 @@
   border-radius: 8px;
   background: var(--v-card, #ffffff);
   color: var(--v-text, #1f1d1a); /* follows the theme, light or dark (theme/vocalTheme.css) */
-  color-scheme: light dark;
   font: inherit;
 }
 

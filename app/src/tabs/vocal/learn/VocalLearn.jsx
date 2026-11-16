@@ -101,13 +101,13 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
 
   return (
     <div className="vocal-learn">
-      <header className="vocal-hero">
-        <span className="vocal-hero__badge" aria-hidden="true">
+      <header className="hm-hero">
+        <span className="hm-hero__badge" aria-hidden="true">
           📖
         </span>
         <div className="vlearn-hero__text">
-          <h1 className="vocal-hero__title">Learn to sing, one song at a time</h1>
-          <p className="vocal-hero__subtitle">
+          <h1 className="hm-hero__title">Learn to sing, one song at a time</h1>
+          <p className="hm-hero__subtitle">
             Every level is a song. The warm-ups and lessons beside it are there to help, so use the ones you need.
           </p>
           <ProgressBar value={doneCount} max={LEVELS.length} label="Songs sung" />

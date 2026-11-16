@@ -65,19 +65,22 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, 
     <div className="home-page">
       <div className="home-tab hp">
         <header className="hp-header">
-          <div>
-            <h1 className="hp-title">
-              {user ? (
-                <>
-                  Welcome back, <span className="hp-accent">{firstNameFor(user)}</span>
-                </>
-              ) : (
-                <>
-                  Welcome to <span className="hp-accent">Harmonic</span>
-                </>
-              )}
-            </h1>
-            <p className="hp-subtitle">Keep learning guitar and vocal. Small steps make great music.</p>
+          <div className="hm-hero">
+            <span className="hm-hero__badge" aria-hidden="true">♫</span>
+            <div>
+              <h1 className="hm-hero__title">
+                {user ? (
+                  <>
+                    Welcome back, <span className="hp-accent">{firstNameFor(user)}</span>
+                  </>
+                ) : (
+                  <>
+                    Welcome to <span className="hp-accent">Harmonic</span>
+                  </>
+                )}
+              </h1>
+              <p className="hm-hero__subtitle">Keep learning guitar and vocal. Small steps make great music.</p>
+            </div>
           </div>
           {signedIn && (
             <button
@@ -126,8 +129,7 @@ function SignedOutHome({ auth, notice, onNavigate, onOpenFile, myFilesVersion })
         <h2 className="hp-card__title">Sign in</h2>
         {!configured ? (
           <p className="hp-muted">
-            Sign-in is off on this copy of the app: copy <code>app/.env.example</code> to <code>app/.env.local</code> and add
-            the Supabase key. Everything else works with local files.
+            Sign-in is turned off for this copy of Harmonic. You can still practise with built-in songs and your own files.
           </p>
         ) : !ready ? (
           <p className="hp-muted">Checking your sign-in…</p>
@@ -286,7 +288,6 @@ function QuickPractice({ onNavigate }) {
           </span>
           Quick Practice
         </h2>
-        <span className="hp-pill hp-small">Jump into a focused practice session</span>
       </div>
       <div className="hp-quick">
         <button type="button" className="hp-card hp-quick__card hp-quick__card--guitar" onClick={() => onNavigate('guitar')}>

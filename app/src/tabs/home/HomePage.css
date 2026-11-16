@@ -1,27 +1,21 @@
-/*
- * Home's look: dark navy with cyan (guitar) and purple (vocal) when the
- * device is in dark mode, a light version otherwise. The --hm-* colours are
- * remapped here so the shared pieces Home uses (comments, people, buttons
- * from HomeTab.css) match.
- */
+/* Home and Social share the instrument palette. */
 .home-page {
-  --hp-bg: #f3f6fb;
-  --hp-card: #ffffff;
-  --hp-card-2: #f5f8fc;
-  --hp-border: #dbe3ee;
-  --hp-cyan: #0891b2;
-  --hp-cyan-soft: rgba(8, 145, 178, 0.12);
-  --hp-on-cyan: #ffffff;
-  --hp-purple: #7c3aed;
-  --hp-purple-soft: rgba(124, 58, 237, 0.12);
-  --hp-text: #0f172a;
-  --hp-muted: #5b6b80;
-  --hp-hit: #059669;
-  --hp-close: #b45309;
-  --hp-miss: #e11d48;
-  --hp-glow: 0 0 0 1px rgba(8, 145, 178, 0.25), 0 8px 30px -12px rgba(8, 145, 178, 0.35);
+  --hp-bg: var(--v-bg);
+  --hp-card: var(--v-card);
+  --hp-card-2: var(--v-subtle);
+  --hp-border: var(--v-border);
+  --hp-cyan: var(--v-primary);
+  --hp-cyan-soft: var(--v-primary-soft);
+  --hp-on-cyan: var(--v-on-accent);
+  --hp-purple: var(--v-learn);
+  --hp-purple-soft: color-mix(in srgb, var(--hp-purple) 16%, var(--hp-card));
+  --hp-text: var(--v-text);
+  --hp-muted: var(--v-muted);
+  --hp-hit: var(--v-good);
+  --hp-close: var(--v-gold-text);
+  --hp-miss: var(--v-bad);
+  --hp-glow: 0 var(--v-lip) 0 var(--hp-border);
 
-  --hm-accent: var(--hp-cyan);
   --hm-surface: var(--hp-card);
   --hm-border: var(--hp-border);
   --hm-text: var(--hp-text);
@@ -32,24 +26,8 @@
   color: var(--hp-text);
 }
 
-@media (prefers-color-scheme: dark) {
-  .home-page {
-    --hp-bg: #070d1a;
-    --hp-card: #0d1729;
-    --hp-card-2: #111e33;
-    --hp-border: #1d2d47;
-    --hp-cyan: #22d3ee;
-    --hp-cyan-soft: rgba(34, 211, 238, 0.12);
-    --hp-on-cyan: #04252c;
-    --hp-purple: #a78bfa;
-    --hp-purple-soft: rgba(139, 92, 246, 0.18);
-    --hp-text: #eef2f8;
-    --hp-muted: #93a2ba;
-    --hp-hit: #34d399;
-    --hp-close: #fbbf24;
-    --hp-miss: #fb7185;
-    --hp-glow: 0 0 0 1px rgba(34, 211, 238, 0.35), 0 10px 40px -14px rgba(34, 211, 238, 0.45);
-  }
+.home-page :is(h1, h2, h3, button strong, .social-hero__name) {
+  font-family: var(--v-font-display);
 }
 
 /* wider than the old single column; sections use a grid on laptops */
@@ -83,21 +61,8 @@
   gap: 16px;
 }
 
-.hp-title {
-  margin: 0 0 6px;
-  font-size: clamp(1.7rem, 4vw, 2.4rem);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
 .hp-accent {
   color: var(--hp-cyan);
-}
-
-.hp-subtitle {
-  margin: 0;
-  color: var(--hp-muted);
 }
 
 .hp-account {
@@ -869,5 +834,54 @@
   .hp-stat {
     flex: 1;
     min-width: 0;
+  }
+}
+.hp-header .hm-hero {
+  min-width: 0;
+}
+
+.hp-card {
+  border-width: 2px;
+  border-radius: var(--v-radius-lg);
+  box-shadow: var(--hp-glow);
+}
+
+.hp-button:not(.hp-button--ghost) {
+  box-shadow: 0 var(--v-lip) 0 var(--v-primary-dark);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.hp-quick__card {
+  --cover-start: #47dfc3;
+  --cover-end: #2495e8;
+  transition: transform var(--v-fast) var(--v-ease-out), border-color var(--v-fast);
+}
+
+.hp-quick__card--vocal {
+  --cover-start: #a893ff;
+  --cover-end: #eb43c4;
+}
+
+.hp-quick__card .hp-art {
+  background: linear-gradient(135deg, var(--cover-start), var(--cover-end));
+  border: 0;
+  color: #261943;
+  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 12%);
+}
+
+.hp-quick__card:hover {
+  border-color: var(--cover-end);
+}
+
+.hp-quick__card:active,
+.hp-button:not(.hp-button--ghost):active {
+  transform: translateY(var(--v-lip));
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-quick__card {
+    transition: none;
   }
 }

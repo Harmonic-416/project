@@ -88,7 +88,7 @@
   padding: 3px 12px;
   border-radius: var(--v-radius-pill);
   background: var(--v-gold-soft);
-  color: var(--v-gold-dark);
+  color: var(--v-gold-text);
   font-family: var(--v-font-display);
   font-size: 0.85rem;
   font-weight: 800;

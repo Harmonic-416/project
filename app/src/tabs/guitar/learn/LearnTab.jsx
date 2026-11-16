@@ -68,7 +68,10 @@ export default function LearnTab({ auth, progressVersion = 0 }) {
       ) : (
         <section aria-labelledby="learn-title">
           <header className="learn__course-heading">
-            <h1 ref={heading} id="learn-title" tabIndex={-1}>Chord lessons</h1>
+            <div className="hm-hero">
+              <span className="hm-hero__badge" aria-hidden="true">📖</span>
+              <h1 className="hm-hero__title" ref={heading} id="learn-title" tabIndex={-1}>Chord lessons</h1>
+            </div>
             {allUnlocked ? <span className="learn__unlocked" role="status">All lessons unlocked</span> : (
               <button type="button" className="learn__browse" onClick={() => {
                 confirmation.current.showModal()

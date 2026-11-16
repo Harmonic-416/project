@@ -168,37 +168,6 @@
 }
 
 /* ── Songs home ── */
-.vocal-hero {
-  display: flex;
-  align-items: center;
-  gap: var(--v-s4);
-}
-
-.vocal-hero__badge {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--v-radius-lg);
-  background: color-mix(in srgb, var(--v-accent) 14%, var(--v-card));
-  box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--v-accent) 22%, transparent);
-  font-size: 1.8rem;
-}
-
-.vocal-hero__title {
-  margin: 0;
-  font-size: 1.6rem;
-  font-weight: 800;
-  line-height: 1.15;
-}
-
-.vocal-hero__subtitle {
-  margin: 4px 0 0;
-  color: var(--v-muted);
-  font-size: 0.95rem;
-}
-
 .vocal-quick {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -252,54 +221,6 @@
   color: var(--v-text);
 }
 
-/* The song cards (SongLibrary is shared with Guitar, so the grid is styled from here). */
-.vocal-frame .song-library {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--v-s3);
-}
-
-.vocal-frame .song-library__item {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  height: 100%;
-  padding: 0;
-  overflow: hidden;
-  border: 2px solid var(--v-border);
-  border-radius: var(--v-radius-lg);
-  box-shadow: 0 var(--v-lip) 0 var(--v-border);
-  transition:
-    transform var(--v-fast) var(--v-ease-out),
-    box-shadow var(--v-fast) var(--v-ease-out),
-    border-color var(--v-fast);
-}
-
-.vocal-frame .song-library__item:hover {
-  border-color: var(--v-accent);
-}
-
-.vocal-frame .song-library__item:active {
-  transform: translateY(var(--v-lip));
-  box-shadow: 0 0 0 var(--v-border);
-}
-
-.vocal-frame .song-library__icon {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 16 / 10;
-  background: linear-gradient(135deg, hsl(var(--hue, 180) 75% 62%), hsl(calc(var(--hue, 180) + 40) 80% 52%));
-  font-size: 2rem;
-  filter: saturate(1.05);
-}
-
-.vocal-frame .song-library__item > span:last-child {
-  padding: 10px 12px 12px;
-  font-family: var(--v-font-display);
-  font-weight: 800;
-  line-height: 1.25;
-}
-
 .vocal-upload {
   display: flex;
   flex-direction: column;
@@ -342,7 +263,7 @@
     grid-template-columns: 1fr;
   }
 
-  .vocal-hero__title {
+  .hm-hero__title {
     font-size: 1.35rem;
   }
 }
@@ -551,7 +472,7 @@
 .vocal-frame__streak--lit {
   border-color: color-mix(in srgb, var(--v-gold) 60%, transparent);
   background: var(--v-gold-soft);
-  color: var(--v-gold-dark);
+  color: var(--v-gold-text);
 }
 
 .vocal-frame__streak--lit > span {

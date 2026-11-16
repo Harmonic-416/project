@@ -1,15 +1,10 @@
-.exercise-studio { width: 100%; max-width: 1120px; padding: var(--gs-space-5); }
-.exercise-studio__hero { padding: var(--gs-space-3) 0 var(--gs-space-4); max-width: 680px; }
-.exercise-studio__hero h1 { font-size: clamp(2rem,4vw,3rem); line-height: 1.12; letter-spacing: -.04em; margin: var(--gs-space-3) 0; }
-.exercise-studio__hero p { color: var(--gs-muted); line-height: 1.6; max-width: 580px; }
+.exercise-studio { width: 100%; max-width: 1120px; padding: var(--gs-space-5); min-width: 0; }
 .workout__eyebrow { color: var(--gs-lilac); font-size: .7rem; font-weight: 800; letter-spacing: .1em; }
-.exercise-studio__skills { display: flex; flex-wrap: wrap; gap: var(--gs-space-2); margin-bottom: var(--gs-space-5); }
-.exercise-studio__skills span { color: var(--gs-muted); font-size: .75rem; border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); padding: var(--gs-space-2) var(--gs-space-3); }
 .exercise-studio__cards { padding: 0; margin: 0; list-style: none; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--gs-space-5); }
 .exercise-card { --workout-color: var(--gs-lilac); display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: var(--gs-space-2) var(--gs-space-4); width: 100%; height: 100%; text-align: left; padding: var(--gs-space-5); border: 2px solid var(--gs-border); border-radius: var(--gs-radius-card); background: var(--gs-surface); color: var(--gs-text); box-shadow: 0 5px 0 var(--gs-border); font: inherit; cursor: pointer; }
 .exercise-card--orange { --workout-color: var(--gs-orange); }
 .exercise-card--blue { --workout-color: var(--gs-blue); }
-.exercise-card--teal { --workout-color: var(--gs-accent); }
+.exercise-card--teal { --workout-color: var(--v-primary); }
 .exercise-card__icon { grid-column: 1; grid-row: 1 / 3; width: 64px; height: 64px; display: grid; place-items: center; border-radius: var(--gs-radius-control); background: color-mix(in srgb,var(--workout-color) 14%,var(--gs-raised)); color: var(--workout-color); font-size: 2rem; }
 .exercise-card__category { color: var(--workout-color); font-size: .65rem; font-weight: 800; letter-spacing: .08em; }
 .exercise-card > strong { font-size: 1.4rem; line-height: 1.2; }
@@ -18,7 +13,7 @@
 .exercise-card > small { color: var(--gs-muted); font-size: .75rem; }
 .exercise-card__action { margin-top: var(--gs-space-3); color: var(--workout-color); font-weight: 800; display: flex; justify-content: space-between; }
 .exercise-studio__footnote { color: var(--gs-muted); font-size: .75rem; line-height: 1.6; margin: var(--gs-space-5) 0 0; }
-.exercise-studio__toolbar { display: flex; align-items: center; gap: var(--gs-space-3); margin-bottom: var(--gs-space-3); }
+.exercise-studio__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gs-space-3); margin-bottom: var(--gs-space-3); }
 .exercise-studio__toolbar > span { font-size: .65rem; font-weight: 800; letter-spacing: .08em; color: var(--gs-lilac); }
 .exercise-studio__toolbar > small { margin-left: auto; color: var(--gs-muted); font-size: .7rem; }
 .exercise-studio button:not(.exercise-card), .workout__pool summary { min-height: var(--gs-control-height); }
@@ -34,7 +29,7 @@
 .workout__pool summary { display: flex; align-items: center; color: var(--gs-accent); font-size: .85rem; font-weight: 750; cursor: pointer; }
 .workout__presets, .workout__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gs-space-2); }
 .workout__presets { margin: var(--gs-space-2) 0; }
-.workout__chord-picks { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: var(--gs-space-2); }
+.workout__chord-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr)); gap: var(--gs-space-2); }
 .workout button[aria-pressed="true"] { border-color: var(--gs-lilac); color: var(--gs-lilac); background: color-mix(in srgb,var(--gs-lilac) 10%,var(--gs-raised)); }
 .workout .workout__primary { background: var(--gs-accent); border-color: var(--gs-accent); color: var(--gs-on-solid); justify-self: start; }
 .workout__progress { display: flex; align-items: center; gap: var(--gs-space-3); font-size: .75rem; color: var(--gs-muted); }
@@ -66,7 +61,7 @@
 .chord-builder fieldset.is-wrong { outline: 1px solid var(--gs-warning); border-radius: var(--gs-radius-control); }
 .chord-builder fieldset.is-correct { outline: 1px solid var(--gs-hit); border-radius: var(--gs-radius-control); }
 .rhythm-studio__settings { display: flex; flex-wrap: wrap; gap: var(--gs-space-3); }
-.rhythm-studio__settings label { flex: 1 1 160px; display: grid; gap: var(--gs-space-1); font-size: .75rem; color: var(--gs-muted); }
+.rhythm-studio__settings label { flex: 1 1 160px; min-width: 0; display: grid; gap: var(--gs-space-1); font-size: .75rem; color: var(--gs-muted); }
 .rhythm-studio select { border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); padding: var(--gs-space-2); background: var(--gs-raised); color: var(--gs-text); font: inherit; font-size: .85rem; min-width: 0; }
 .rhythm-studio__stage { padding: var(--gs-space-4); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-card); background: var(--gs-raised); text-align: center; }
 .rhythm-studio__stage h3 { font-size: 1.4rem; margin: var(--gs-space-2) 0; }
@@ -83,3 +78,41 @@
 .rhythm-studio__marks span { min-width: 24px; padding: var(--gs-space-1); text-align: center; border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); color: var(--gs-muted); }
 .rhythm-studio__marks .is-on { color: var(--gs-hit); border-color: var(--gs-hit); }
 .rhythm-studio__marks :is(.is-early,.is-late) { color: var(--gs-warning); }
+
+.workout > *,
+.chord-workout__challenge > * {
+  min-width: 0;
+}
+
+@media (max-width: 420px) {
+  .rhythm-studio__lane {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .guitar-tab .chord-builder__board button {
+    padding-inline: var(--gs-space-1);
+  }
+}
+
+.exercise-studio__intro {
+  margin-bottom: var(--v-s5);
+}
+
+.guitar-tab .exercise-card {
+  background: linear-gradient(155deg, color-mix(in srgb, var(--workout-color) 16%, var(--v-card)), var(--v-card) 64%);
+  border-color: color-mix(in srgb, var(--workout-color) 32%, var(--v-border));
+  box-shadow: 0 var(--v-lip) 0 color-mix(in srgb, var(--workout-color) 25%, var(--v-border));
+  transition: transform var(--v-fast) var(--v-ease-out), border-color var(--v-fast);
+}
+
+.guitar-tab .exercise-card__icon {
+  background: color-mix(in srgb, var(--workout-color) 24%, var(--v-card));
+}
+
+.guitar-tab .exercise-card:hover {
+  border-color: var(--workout-color);
+}
+
+.guitar-tab .exercise-card:active {
+  transform: translateY(var(--v-lip));
+}

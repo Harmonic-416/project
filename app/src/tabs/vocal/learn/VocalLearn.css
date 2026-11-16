@@ -823,7 +823,7 @@
 
 .vlevel__badge--done {
   background: var(--v-gold-soft);
-  color: var(--v-gold-dark);
+  color: var(--v-gold-text);
 }
 
 .vlevel__title {
@@ -946,7 +946,7 @@
    eyebrow already says "Level 2", and "Sung" marks a done one), and so does
    the hero's badge, so the heading stays on one or two short lines. */
 @media (max-width: 560px) {
-  .vocal-learn > .vocal-hero .vocal-hero__badge {
+  .vocal-learn > .hm-hero .hm-hero__badge {
     display: none;
   }
 

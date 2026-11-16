@@ -1,7 +1,4 @@
-/*
- * Social: Home's colours (HomePage.css: navy + cyan/purple in dark mode,
- * light otherwise), a profile header, an invite card, then the friends lists.
- */
+/* Social uses Harmonic's violet, pink and gold accents. */
 .social-page {
   --social-pink: #db2777;
   --social-orange: #ea580c;
@@ -19,25 +16,6 @@
   max-width: 640px;
   gap: 18px;
   padding: 28px 18px 48px;
-}
-
-.social-tab__header h1 {
-  margin: 2px 0 6px;
-  font-size: 2rem;
-  letter-spacing: -0.02em;
-}
-
-.social-tab__header p {
-  margin: 0;
-  color: var(--hp-muted);
-}
-
-.social-tab__eyebrow {
-  color: var(--hp-purple);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 /* ── shared bits ─────────────────────────────────────────────── */
@@ -599,4 +577,31 @@
     width: 100%;
     padding-left: 60px;
   }
+}
+
+.social-tab__header {
+  --hero-accent: var(--v-learn);
+}
+
+.social-card,
+.social-hero {
+  border-width: 2px;
+  border-radius: var(--v-radius-lg);
+  box-shadow: var(--hp-glow);
+}
+
+.social-signed-out,
+.social-invite {
+  background: linear-gradient(145deg, var(--hp-purple-soft), var(--hp-card) 65%);
+}
+
+.social-button {
+  box-shadow: 0 var(--v-lip) 0 var(--v-primary-dark);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.social-button:enabled:active {
+  transform: translateY(var(--v-lip));
+  box-shadow: none;
 }

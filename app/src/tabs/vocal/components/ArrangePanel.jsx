@@ -203,13 +203,13 @@ function ArrangePanel({ onArranged, auth, supabase }) {
 
   return (
     <section className="transcribe arrange">
-      <header className="vocal-hero">
-        <span className="vocal-hero__badge" aria-hidden="true">
+      <header className="hm-hero">
+        <span className="hm-hero__badge" aria-hidden="true">
           ✍️
         </span>
         <div>
-          <h1 className="vocal-hero__title">Arrange a song for voices</h1>
-          <p className="vocal-hero__subtitle">Turn a song into parts your group can sing, in three steps.</p>
+          <h1 className="hm-hero__title">Arrange a song for voices</h1>
+          <p className="hm-hero__subtitle">Turn a song into parts your group can sing, in three steps.</p>
         </div>
       </header>
       <details className="v-howto">

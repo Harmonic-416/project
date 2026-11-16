@@ -51,3 +51,57 @@
   border-radius: 4px;
   padding: 1px 5px;
 }
+
+/* Illustrated covers for the instrument song libraries. */
+.song-library.song-library--covers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  gap: var(--v-s3);
+}
+
+.song-library--covers .song-library__item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-lg);
+  box-shadow: 0 var(--v-lip) 0 var(--v-border);
+  transition:
+    transform var(--v-fast) var(--v-ease-out),
+    box-shadow var(--v-fast) var(--v-ease-out),
+    border-color var(--v-fast);
+}
+
+.song-library--covers .song-library__item:not(:disabled):hover {
+  border-color: var(--v-accent);
+}
+
+.song-library--covers .song-library__item:not(:disabled):active {
+  transform: translateY(var(--v-lip));
+  box-shadow: 0 0 0 var(--v-border);
+}
+
+.song-library--covers .song-library__icon {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(135deg, hsl(var(--hue, 180) 75% 62%), hsl(calc(var(--hue, 180) + 40) 80% 52%));
+  font-size: 2rem;
+  filter: saturate(1.05);
+}
+
+.song-library--covers .song-library__item > span:last-child {
+  padding: 10px 12px 12px;
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .song-library--covers .song-library__item {
+    transition: none;
+  }
+}

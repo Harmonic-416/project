@@ -669,13 +669,13 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     if (view === 'library') {
       return (
         <div className="vocal-tab">
-          <header className="vocal-hero">
-            <span className="vocal-hero__badge" aria-hidden="true">
+          <header className="hm-hero">
+            <span className="hm-hero__badge" aria-hidden="true">
               🎤
             </span>
             <div>
-              <h1 className="vocal-hero__title">What do you want to sing today?</h1>
-              <p className="vocal-hero__subtitle">Pick a song, or bring your own MIDI, MusicXML or MuseScore file.</p>
+              <h1 className="hm-hero__title">What do you want to sing today?</h1>
+              <p className="hm-hero__subtitle">Pick a song, or bring your own MIDI, MusicXML or MuseScore file.</p>
             </div>
           </header>
 

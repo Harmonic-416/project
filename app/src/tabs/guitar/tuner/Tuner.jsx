@@ -72,9 +72,12 @@ function Tuner() {
   return (
     <>
       <section className={`tuner tuner--${state}`}>
-        <header className="tuner__header">
-          <h2>Tuner</h2>
-          <p>Standard tuning · E A D G B E</p>
+        <header className="tuner__header hm-hero">
+          <span className="hm-hero__badge" aria-hidden="true">♮</span>
+          <div>
+            <h2 className="hm-hero__title">Tuner</h2>
+            <p className="hm-hero__subtitle">Standard tuning · E A D G B E</p>
+          </div>
         </header>
 
         <div className="tuner__dial-card">
@@ -135,26 +138,27 @@ function Tuner() {
             {status === 'requesting' && <span className="tuner__hint">Starting microphone…</span>}
             {status === 'error' && <span className="tuner__error">{tuner.error}</span>}
           </div>
+          {listening ? (
+            <button type="button" className="tuner__button tuner__button--stop" onClick={tuner.stop}>
+              Stop
+            </button>
+          ) : (
+            <button type="button" className="tuner__button" disabled={status === 'requesting'} onClick={tuner.start}>
+              Start
+            </button>
+          )}
         </div>
 
-        <div className="tuner__headstock" role="group" aria-label="Strings (tap one to lock it)">
-          <div className="tuner__pegs tuner__pegs--left">{LEFT_PEGS.map(stringButton)}</div>
-          <Headstock activeId={reading?.string.id} />
-          <div className="tuner__pegs tuner__pegs--right">{RIGHT_PEGS.map(stringButton)}</div>
+        <div className="tuner__controls">
+          <div className="tuner__headstock" role="group" aria-label="Strings (tap one to lock it)">
+            <div className="tuner__pegs tuner__pegs--left">{LEFT_PEGS.map(stringButton)}</div>
+            <Headstock activeId={reading?.string.id} />
+            <div className="tuner__pegs tuner__pegs--right">{RIGHT_PEGS.map(stringButton)}</div>
+          </div>
+          <p className="tuner__mode">
+            {tuner.lockedId ? `Locked to ${tuner.lockedId} · tap it again for auto` : 'Auto · play any string'}
+          </p>
         </div>
-        <p className="tuner__mode">
-          {tuner.lockedId ? `Locked to ${tuner.lockedId} · tap it again for auto` : 'Auto · play any string'}
-        </p>
-
-        {listening ? (
-          <button type="button" className="tuner__button tuner__button--stop" onClick={tuner.stop}>
-            Stop
-          </button>
-        ) : (
-          <button type="button" className="tuner__button" disabled={status === 'requesting'} onClick={tuner.start}>
-            Start
-          </button>
-        )}
       </section>
 
       <FretboardDrawer />
