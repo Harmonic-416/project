@@ -4,7 +4,7 @@ import { hueFor } from './songHue.js'
 
 /**
  * The built-in songs as cards. `renderMeta(song)` (optional; Vocal passes
- * SongCardMeta) adds a line of facts under the title — Guitar leaves it out.
+ * SongCardMeta) adds a line of facts under the title.
  */
 function SongLibrary({ songs, onSelectSong, renderMeta = null }) {
   if (songs.length === 0) {
@@ -26,14 +26,10 @@ function SongLibrary({ songs, onSelectSong, renderMeta = null }) {
             onClick={() => onSelectSong(song)}
           >
             <span className="song-library__icon" aria-hidden="true"><Music size="1.1em" aria-hidden="true" /></span>
-            {renderMeta ? (
-              <span className="song-library__body">
-                <span className="song-library__title">{song.title}</span>
-                {renderMeta(song)}
-              </span>
-            ) : (
-              <span>{song.title}</span>
-            )}
+            <span className="song-library__body">
+              <span className="song-library__title">{song.title}</span>
+              {renderMeta?.(song)}
+            </span>
           </button>
         </li>
       ))}

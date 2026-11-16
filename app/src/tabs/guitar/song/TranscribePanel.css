@@ -51,51 +51,6 @@
   cursor: pointer;
 }
 
-/* "My transcriptions" in the song list. */
-.my-transcriptions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.my-transcriptions h3 {
-  margin: 4px 0 0;
-  font-size: 1rem;
-}
-
-.my-transcriptions__row {
-  display: flex;
-  gap: 8px;
-}
-
-.my-transcriptions__row .song-library__item {
-  flex: 1;
-  min-width: 0;
-}
-
-.my-transcriptions__row .song-library__item span:last-child {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.my-transcriptions__row small {
-  color: var(--gs-muted);
-  font-size: 0.75rem;
-  font-weight: 400;
-}
-
-.my-transcriptions__delete {
-  border: 1px solid var(--gs-border);
-  border-radius: 8px;
-  padding: 0 12px;
-  background: var(--gs-surface);
-  color: var(--gs-muted);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
 /* "Guitar doesn't seem to be part of this song." */
 .transcribe__verdict {
   margin: 0;

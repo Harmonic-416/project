@@ -1,7 +1,8 @@
-import GuitarFeedback from '../practice/GuitarFeedback.jsx'
+import SongCardMeta from '../../vocal/components/SongCardMeta.jsx'
+import { titleFromFilename } from '../../vocal/notation/loadNotation.js'
 import MySongs from '../../../ui/MySongs.jsx'
 
-const feedback = ({ children, ...props }) => <GuitarFeedback {...props}>{children}</GuitarFeedback>
+export const guitarSongMeta = (song) => <SongCardMeta song={song} instrument="guitar" />
 
 /**
  * "My songs" on Guitar's Songs page: the guitar files this person has
@@ -14,15 +15,15 @@ export default function LocalSongs({ onOpen, onBeginOpen, userId = null, version
   const open = (file, request) => (request ? onOpen(file.bytes, file.name, { request }) : onOpen(file.bytes, file.name))
   return (
     <section className="guitar-song__local" aria-labelledby="local-songs-title">
-      <h3 id="local-songs-title">My songs <span>{userId ? 'On this device and your account' : 'On this device'}</span></h3>
+      <h2 id="local-songs-title" className="song-library-heading">My songs</h2>
       <MySongs
         instrument="guitar"
         userId={userId}
         version={version}
         onOpen={open}
         onBeginOpen={onBeginOpen}
-        renderNote={feedback}
-        icon="♪"
+        renderMeta={guitarSongMeta}
+        titleOf={titleFromFilename}
         emptyText="Scores you open are kept here. Use Open a score to add your first."
       />
     </section>

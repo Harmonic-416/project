@@ -1,0 +1,113 @@
+/* ── Songs home ── */
+.song-quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--v-s3);
+}
+
+.song-quick__item {
+  display: flex;
+  align-items: center;
+  gap: var(--v-s3);
+  min-width: 0;
+  padding: var(--v-s3) var(--v-s4);
+  color: var(--v-text);
+  font: inherit;
+  text-align: left;
+}
+
+.song-quick__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--v-radius);
+  font-size: 1.25rem;
+}
+
+.song-quick__item--search .song-quick__icon { background: var(--v-sky-soft); }
+.song-quick__item--sessions .song-quick__icon { background: var(--v-gold-soft); }
+
+.song-quick__item strong {
+  display: block;
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.song-quick__item small {
+  display: block;
+  color: var(--v-muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.song-library-heading,
+.vocal-tab__section-title {
+  margin: var(--v-s2) 0 0;
+  font-family: var(--v-font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--v-text);
+}
+
+.song-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--v-s2);
+  padding: var(--v-s5) var(--v-s4);
+  border: 2px dashed var(--v-border-strong);
+  border-radius: var(--v-radius-lg);
+  color: var(--v-muted);
+  text-align: center;
+}
+
+.song-upload__plus {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.song-upload p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.song-upload .notation-uploader {
+  align-self: center;
+  border: 2px solid transparent;
+  border-radius: var(--v-radius);
+  box-shadow: 0 var(--v-lip) 0 var(--v-primary-dark);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  transition: transform var(--v-fast) var(--v-ease-out), box-shadow var(--v-fast) var(--v-ease-out);
+}
+
+.song-upload .notation-uploader:active {
+  transform: translateY(var(--v-lip));
+  box-shadow: 0 0 0 var(--v-primary-dark);
+}
+
+
+.song-library-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--v-s4);
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--v-s5) var(--v-s4) var(--v-s6);
+}
+
+.song-library-page section > .song-library-heading {
+  margin-bottom: var(--v-s3);
+}
+
+.song-quick__item--transcribe .song-quick__icon {
+  background: color-mix(in srgb, var(--v-compose) 16%, var(--v-card));
+}
+
+@media (max-width: 480px) {
+  .song-quick { grid-template-columns: 1fr; }
+}

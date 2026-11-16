@@ -1,3 +1,4 @@
+import SongQuickAction from '../../ui/SongQuickAction.jsx'
 import { BookOpen, CalendarDays, Mic, Music, PenLine, Repeat, Search, Settings, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './theme/vocalTheme.css'
@@ -691,7 +692,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const renderSongs = () => {
     if (view === 'library') {
       return (
-        <div className="vocal-tab">
+        <div className="song-library-page">
           <header className="hm-hero">
             <span className="hm-hero__badge" aria-hidden="true">
               <Mic size="1.1em" aria-hidden="true" />
@@ -702,41 +703,22 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             </div>
           </header>
 
-          <div className="vocal-quick">
-            <button
-              type="button"
-              className="vocal-quick__item vocal-quick__item--search v-card v-card--pressable"
-              onClick={() => setView('search')}
-            >
-              <span className="vocal-quick__icon" aria-hidden="true">
-                <Search size="1.1em" aria-hidden="true" />
-              </span>
-              <span>
-                <strong>Search songs</strong>
-                <small>Browse the online song catalog</small>
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="vocal-quick__item vocal-quick__item--sessions v-card v-card--pressable"
+          <div className="song-quick">
+            <SongQuickAction kind="search" icon={Search} label="Search songs" description="Browse the online song catalog" onClick={() => setView('search')} />
+            <SongQuickAction
+              kind="sessions"
+              icon={CalendarDays}
+              label="Practice sessions"
+              description="Your previous sittings, attempts and notes"
               onClick={() => {
                 setSessionsFor(null)
                 setSessionsReturnTo('library')
                 setView('sessions')
               }}
-            >
-              <span className="vocal-quick__icon" aria-hidden="true">
-                <CalendarDays size="1.1em" aria-hidden="true" />
-              </span>
-              <span>
-                <strong>Practice sessions</strong>
-                <small>Your previous sittings, attempts and notes</small>
-              </span>
-            </button>
+            />
           </div>
 
-          <h2 className="vocal-tab__section-title">My songs</h2>
+          <h2 className="song-library-heading">My songs</h2>
           <MySongs
             instrument="voice"
             userId={userId}
@@ -747,10 +729,10 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             emptyText="Songs you open from a file are kept here. Add your first with the box at the bottom of this page."
           />
 
-          <h2 className="vocal-tab__section-title">Built-in songs</h2>
+          <h2 className="song-library-heading">Built-in songs</h2>
           <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} renderMeta={renderSongMeta} />
-          <div className="vocal-upload">
-            <span className="vocal-upload__plus" aria-hidden="true">
+          <div className="song-upload">
+            <span className="song-upload__plus" aria-hidden="true">
               ＋
             </span>
             <p>

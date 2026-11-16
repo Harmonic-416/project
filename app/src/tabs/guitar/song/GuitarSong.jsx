@@ -1,3 +1,6 @@
+import { AudioLines, CalendarDays, Guitar, Search, Settings } from 'lucide-react'
+import SongQuickAction from '../../../ui/SongQuickAction.jsx'
+import NotationUploader from '../../vocal/components/NotationUploader.jsx'
 import { useLatestSongRequest } from './useLatestSongRequest.js'
 import { useDraftLibrary } from './useDraftLibrary.js'
 import SongHeading from './SongHeading.jsx'
@@ -9,7 +12,7 @@ import AccompanimentToggle from '../../vocal/components/AccompanimentToggle.jsx'
 import OnlineSongs from '../../vocal/components/OnlineSongs.jsx'
 import PartTabs from '../../vocal/components/PartTabs.jsx'
 import PlaybackControls from './follow/GuitarPlaybackControls.jsx'
-import PracticeModeToggle from '../../vocal/components/PracticeModeToggle.jsx'
+import ModeCards from '../../vocal/ui/ModeCards.jsx'
 import PracticeSessions from '../../vocal/components/PracticeSessions.jsx'
 import SharedAttemptGate from '../../vocal/components/SharedAttemptGate.jsx'
 import SongLibrary from '../../vocal/components/SongLibrary.jsx'
@@ -24,7 +27,7 @@ import { GUITAR_NOTATION_ACCEPT, loadGuitarNotation } from '../notation/loadGuit
 import { chordNamesOf, saveSongChords } from '../practice/chordNames.js'
 import GuitarScore from './GuitarScore.jsx'
 import MyTranscriptions from './MyTranscriptions.jsx'
-import LocalSongs from './LocalSongs.jsx'
+import LocalSongs, { guitarSongMeta } from './LocalSongs.jsx'
 import SessionAttempts from '../../vocal/components/SessionAttempts.jsx'
 import TranscribePanel from './TranscribePanel.jsx'
 import { loadDraft } from './drafts.js'
@@ -630,57 +633,40 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
       )
     }
     return (
-      <div ref={pageRef} className="guitar-song guitar-song--library">
+      <div ref={pageRef} className="song-library-page">
         <header className="hm-hero">
-          <span className="hm-hero__badge" aria-hidden="true">🎸</span>
+          <span className="hm-hero__badge" aria-hidden="true"><Guitar /></span>
           <div>
-            <h2 className="hm-hero__title">Songs</h2>
-            <p className="hm-hero__subtitle">Pick a song, read the tab and play along.</p>
+            <h1 className="hm-hero__title">What do you want to play today?</h1>
+            <p className="hm-hero__subtitle">Pick a song, or bring your own Guitar Pro, MusicXML, MIDI or MuseScore file.</p>
           </div>
         </header>
-        <div className="guitar-song__library-actions">
-          <label className={`notation-uploader ${status === 'loading' ? 'notation-uploader--disabled' : ''}`}>
-            <input
-              type="file"
-              accept={GUITAR_NOTATION_ACCEPT}
-              disabled={status === 'loading'}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) openUpload(file)
-                event.target.value = ''
-              }}
-            />
-            <span className="guitar-song__action-icon" aria-hidden="true">↥</span>
-            <span>Open a score <small>Guitar Pro, MusicXML, MIDI or MuseScore</small></span>
-          </label>
+
+        <div className="song-quick">
           {auth?.configured && (
-            <button type="button" className="guitar-song__search" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('search') }}>
-              <span className="guitar-song__action-icon" aria-hidden="true">🔎</span>
-              <span>Search songs</span>
-            </button>
+            <>
+              <SongQuickAction kind="search" icon={Search} label="Search songs" description="Browse the online song catalog" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('search') }} />
+              <SongQuickAction kind="sessions" icon={CalendarDays} label="Practice sessions" description="Your previous sittings, attempts and notes" onClick={() => openSessions(null, 'library')} />
+            </>
           )}
-          <button type="button" className="guitar-song__search guitar-song__action--transcribe" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('transcribe') }}>
-            <span className="guitar-song__action-icon" aria-hidden="true">♫</span>
-            <span>Tab the guitar from a song</span>
-          </button>
-          {auth?.configured && (
-            <button type="button" className="guitar-song__search guitar-song__action--sessions" onClick={() => openSessions(null, 'library')}>
-              <span className="guitar-song__action-icon" aria-hidden="true">▤</span>
-              <span>Practice sessions</span>
-            </button>
-          )}
+          <SongQuickAction kind="transcribe" icon={AudioLines} label="Tab the guitar from a song" description="Turn a recording into guitar tab" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('transcribe') }} />
         </div>
+
         {status === 'loading' && <GuitarFeedback>Opening your score...</GuitarFeedback>}
         {status === 'error' && <GuitarFeedback kind="error">{error} Choose another score to try again.</GuitarFeedback>}
+        <LocalSongs onOpen={open} onBeginOpen={requests.begin} userId={userId} version={myFilesVersion} />
         {BUILT_IN_SONGS.length > 0 && (
           <section aria-labelledby="built-in-guitar-songs">
-            <h3 id="built-in-guitar-songs">Built-in songs</h3>
-            <SongLibrary songs={BUILT_IN_SONGS} onSelectSong={openBuiltIn} />
+            <h2 id="built-in-guitar-songs" className="song-library-heading">Built-in songs</h2>
+            <SongLibrary songs={BUILT_IN_SONGS} onSelectSong={openBuiltIn} renderMeta={guitarSongMeta} />
           </section>
         )}
-        <div className="guitar-song__saved">
-          <LocalSongs onOpen={open} onBeginOpen={requests.begin} userId={userId} version={myFilesVersion} />
-          <MyTranscriptions phase={draftLibrary.phase} error={draftLibrary.error} deleting={draftLibrary.deleting} onRetry={draftLibrary.retry} onCreate={() => setBrowse('transcribe')} drafts={drafts} onOpen={openDraft} onDelete={removeDraft} />
+        <MyTranscriptions phase={draftLibrary.phase} error={draftLibrary.error} deleting={draftLibrary.deleting} onRetry={draftLibrary.retry} onCreate={() => setBrowse('transcribe')} drafts={drafts} onOpen={openDraft} onDelete={removeDraft} />
+
+        <div className="song-upload">
+          <span className="song-upload__plus" aria-hidden="true">＋</span>
+          <p>Have your own score? Open it here. {userId ? 'It’s kept under My songs, on your account, private to you.' : 'It’s kept under My songs on this device.'}</p>
+          <NotationUploader onFileSelected={openUpload} accept={GUITAR_NOTATION_ACCEPT} disabled={status === 'loading'} label="Open a score" />
         </div>
       </div>
     )
@@ -709,13 +695,13 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
     <div ref={pageRef} className={`guitar-song guitar-song--open guitar-follow${section && !viewingShared ? ' guitar-song--section' : ''}${optionsOpen ? ' guitar-song--options-open' : ''}`}>
       <header className="song-workspace__heading">
       <SongHeading infoHost={infoHost} notation={notation} viewingShared={viewingShared} showSessions={!viewingShared && Boolean(auth?.user && supabase)} onSessions={() => openSessions(sessionSong, 'song')} onBack={() => { requests.cancel(); if (viewingShared) closeShared(); else setNotation(null) }} exportScore={exportScore} exportError={exportError} storageNotice={storageNotice} />
-      <button type="button" className="song-workspace__options-button" aria-controls="song-practice-options" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((open) => !open)}>Options</button>
+      <button type="button" className="song-workspace__options-button" aria-controls="song-practice-options" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((open) => !open)}><Settings size="1em" aria-hidden="true" /> Settings</button>
       </header>
       <div className="song-workspace">
         <section className="song-workspace__main" aria-label="Score workspace">
           {!viewingShared && (
             <div className="song-workspace__practice">
-              <PracticeModeToggle mode={mode} onChange={changeMode} disabled={!ready} modes={modes} />
+              <ModeCards mode={mode} onChange={changeMode} disabled={!ready} modes={modes} playFeedback={false} />
               {score.masterBars?.length > 1 && (
                 <SongSectionPicker api={api} barCount={score.masterBars.length} section={section} onChange={changeSection} disabled={!ready} />
               )}
