@@ -40,6 +40,7 @@ function GuitarTab({
   sessionsToOpen,
   onSessionsOpened,
   learnProgressVersion,
+  myFilesVersion,
 }) {
   const [view, setView] = useState('song')
   const [returnTo, setReturnTo] = useState(null) // the view "Tune now" came from
@@ -123,6 +124,7 @@ function GuitarTab({
                 onFileOpened={onFileOpened}
                 sessionsToOpen={sessionsToOpen}
                 onSessionsOpened={onSessionsOpened}
+                myFilesVersion={myFilesVersion}
               />
             </Suspense>
           )}

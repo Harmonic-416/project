@@ -36,7 +36,7 @@ import TempoControl from '../../audio/tempo/TempoControl.jsx'
 import { useSongTempo } from '../../audio/tempo/useSongTempo.js'
 import SharedAttemptGate from './components/SharedAttemptGate.jsx'
 import SharedAttemptPanel from './components/SharedAttemptPanel.jsx'
-import { loadNotation } from './notation/loadNotation.js'
+import { loadNotation, titleFromFilename } from './notation/loadNotation.js'
 import { useMidiPlayback } from './playback/useMidiPlayback.js'
 import { LISTEN_MIXES, melodyLine, mixSchedule, scheduleFor } from './practice/practiceLogic.js'
 import { fromRemote, runsKey } from './practice/sessionRuns.js'
@@ -49,6 +49,8 @@ import { fingerprintBytes } from './share/sharedAttempt.js'
 import { getSharedAttempt } from '@backend/attempts'
 import { supabase } from '../../lib/supabaseClient.js'
 import { loadMyFile, rememberMyFile } from '../home/myFiles.js'
+import { fetchSongOfAttempt } from '../home/songSharing.js'
+import MySongs from '../../ui/MySongs.jsx'
 import { VOICINGS } from './arrange/arrange.js'
 import { readPartNotes, songKey, transposeMusicXml } from './transpose/transposeXml.js'
 import { useSongTranspose } from './transpose/useSongTranspose.js'
@@ -70,19 +72,22 @@ const SECTIONS = [
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
 // playback, export, the online catalog (Supabase, via the shared backend
-// layer), recording a sung attempt, and shared attempts. Songs are never
-// uploaded (copyright): your own files stay on your device, and a shared
-// attempt names its song by catalog id or by the file's fingerprint.
+// layer), recording a sung attempt, and shared attempts. Your own files are
+// kept on your device and, signed in, on your account, private to you
+// (home/myFiles.js); the Songs page lists them under "My songs". A shared
+// attempt names its song by catalog id or by the file's fingerprint, and a
+// friend it is sent to gets the sender's file with it (home/songSharing.js).
 //
 // `sharedAttemptId` comes from a share link (App.jsx); `onSharedAttemptDone`
 // tells App it has been opened or dismissed. `fileToOpenId` is a file from
 // Home's "My files" (kept on this device, myFiles.js) to open straight away.
 // `sessionsToOpen` ({ songId, songFingerprint, songTitle }, from Home's
 // "Working on") opens the Practice sessions view for that song;
-// `onSessionsOpened` tells App it has.
+// `onSessionsOpened` tells App it has. `myFilesVersion` (useMyFilesSync)
+// moves when the person's files changed, so "My songs" reads them again.
 const renderSongMeta = (song) => <SongCardMeta song={song} />
 
-function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
+function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened, myFilesVersion = 0 }) {
   const [section, setSection] = useState('songs') // songs | learn | compose (the capsule bar)
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
   // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
@@ -235,6 +240,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     [loadFromArrayBuffer],
   )
 
+  // One of "My songs" on the Songs page (ui/MySongs.jsx hands over the file).
+  const openMySong = useCallback(
+    async (file) => {
+      setReturnTo('library')
+      rememberMyFile(file).catch(() => {}) // moves it to the top of the list
+      await loadFromArrayBuffer(file.bytes, file.name)
+    },
+    [loadFromArrayBuffer],
+  )
+
   // A file picked from Home's "My files".
   useEffect(() => {
     if (!fileToOpenId) return undefined
@@ -326,7 +341,15 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
           if (!cancelled) await openShared(attempt, mine.bytes, mine.name)
           return
         }
-        if (!cancelled) setShared({ phase: 'need-file', attempt })
+        // The sender's own copy, kept on their account for the friends it was sent to;
+        // it becomes one of this person's songs too.
+        const theirs = await fetchSongOfAttempt(supabase, attempt)
+        if (cancelled) return
+        if (theirs) {
+          await openShared(attempt, theirs.bytes, theirs.name)
+          return
+        }
+        setShared({ phase: 'need-file', attempt })
       } catch (err) {
         console.error(err)
         if (!cancelled) setShared({ phase: 'error', error: err.message || 'Could not open this shared attempt.' })
@@ -714,13 +737,27 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             </button>
           </div>
 
+          <h2 className="vocal-tab__section-title">My songs</h2>
+          <MySongs
+            instrument="voice"
+            userId={userId}
+            version={myFilesVersion}
+            onOpen={openMySong}
+            renderMeta={renderSongMeta}
+            titleOf={titleFromFilename}
+            emptyText="Songs you open from a file are kept here. Add your first with the box at the bottom of this page."
+          />
+
           <h2 className="vocal-tab__section-title">Built-in songs</h2>
           <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} renderMeta={renderSongMeta} />
           <div className="vocal-upload">
             <span className="vocal-upload__plus" aria-hidden="true">
               ＋
             </span>
-            <p>Have your own sheet music? Open it here. It stays on your device.</p>
+            <p>
+              Have your own sheet music? Open it here.{' '}
+              {userId ? 'It’s kept under My songs, on your account, private to you.' : 'It’s kept under My songs on this device.'}
+            </p>
             <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
           </div>
         </div>

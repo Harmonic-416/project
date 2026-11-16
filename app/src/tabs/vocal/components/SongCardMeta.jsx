@@ -5,7 +5,8 @@ import { bestStars } from '../feedback/progress.js'
 import { useVocalProgress } from '../feedback/useProgress.js'
 
 /**
- * The facts on a built-in song card: solo or how many parts, length, the
+ * The facts on a song card (a built-in song, or one of the person's own
+ * files under "My songs"): solo or how many parts, length, the
  * tune's range and who can sing it as written, and the best stars sung so
  * far on this device. Read from the file once (songs/songInfo.js); until
  * then — or for a file it can't read — just the stars, if any.

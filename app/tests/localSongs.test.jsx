@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import LocalSongs from '../src/tabs/guitar/song/LocalSongs.jsx'
 import { listMyFiles, loadMyFile } from '../src/tabs/home/myFiles.js'
-vi.mock('../src/tabs/home/myFiles.js', () => ({ listMyFiles: vi.fn(), loadMyFile: vi.fn(), fileKind: () => 'MusicXML' }))
+vi.mock('../src/tabs/home/myFiles.js', () => ({ listMyFiles: vi.fn(), loadMyFile: vi.fn(), fileKind: () => 'MusicXML', myFilesAvailable: () => true, deleteMyFile: vi.fn(), rememberMyFile: vi.fn() }))
 afterEach(() => { cleanup(); vi.resetAllMocks() })
 describe('Guitar saved files', () => {
   it('shows only guitar files and loads bytes on selection', async () => {
@@ -13,7 +13,7 @@ describe('Guitar saved files', () => {
     loadMyFile.mockResolvedValue({ bytes, name: 'My song.musicxml' })
     const open = vi.fn()
     render(<LocalSongs onOpen={open} />)
-    fireEvent.click(await screen.findByRole('button', { name: /My song/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^My song/ }))
     await waitFor(() => expect(open).toHaveBeenCalledWith(bytes, 'My song.musicxml'))
     expect(screen.queryByText('Voice')).toBe(null)
   })
@@ -21,7 +21,7 @@ describe('Guitar saved files', () => {
     listMyFiles.mockRejectedValueOnce(new Error('blocked')).mockResolvedValueOnce([])
     render(<LocalSongs onOpen={vi.fn()} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
-    await screen.findByText(/Your music stays on this device/)
+    await screen.findByText(/Use Open a score to add your first/)
   })
 })
 
@@ -31,7 +31,7 @@ it('does not reopen a delayed saved file after another source was selected', asy
   loadMyFile.mockReturnValue(new Promise((done) => {resolve = done}))
   const open = vi.fn()
   render(<LocalSongs onOpen={open} onBeginOpen={() => ({isCurrent: () => current})} />)
-  fireEvent.click(await screen.findByRole('button', {name:/Delayed.musicxml/}))
+  fireEvent.click(await screen.findByRole('button', {name:/^Delayed/}))
   current = false
   await act(async () => resolve({bytes:new ArrayBuffer(1),name:'Delayed.musicxml'}))
   expect(open).not.toHaveBeenCalled()

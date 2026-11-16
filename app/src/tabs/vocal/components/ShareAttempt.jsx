@@ -8,6 +8,7 @@ import { displayNameFor } from '../../../auth/authHelpers.js'
 import { shareUrlFor, toTrace } from '../share/sharedAttempt.js'
 import { formatBytes, keepByDefault } from '../practice/practiceSession.js'
 import { namesList } from '../../home/homeFormat.js'
+import { keepSongOnAccount } from '../../home/songSharing.js'
 
 /**
  * Shown under a finished attempt (Vocal: a recorded run; Guitar: a Wait for
@@ -19,9 +20,12 @@ import { namesList } from '../../home/homeFormat.js'
  *   - Send to friends: it shows up on their Home page, where they can comment.
  *
  * Only the pitch trace (or, for guitar, the verdict on every note), the
- * score and optionally the recording are stored, never the song: the person
- * opening it uses a catalog or built-in song, or their own copy of the file,
- * matched by its fingerprint.
+ * score and optionally the recording are stored with the attempt. The song
+ * is named, not copied: a catalog or built-in song both people have, or a
+ * file by its fingerprint. A file of the sender's own is kept on their
+ * account (migration 0019), and the friends an attempt is sent to may read
+ * it there (0020), so it opens for them; sending makes sure it is there
+ * first. Someone with only the link opens their own copy of the file.
  *
  * `song` is { songId, title, format, fingerprint, builtin, partId, partName, withOthers }.
  *
@@ -320,8 +324,15 @@ function ShareAttempt({
           supabase={supabase}
           onSend={async (friends) => {
             const row = await ready()
+            // A file of the sender's own: on their account before it's sent, so it opens for the friend.
+            const ownFile = !song.songId && !song.builtin
+            const songKept = ownFile ? await keepSongOnAccount(supabase, song.fingerprint) : true
             await sendAttemptToFriends(supabase, row.id, friends.map((f) => f.user_id))
-            setMessage(`Sent to ${namesList(friends.map((f) => f.display_name))}. It’s on their Home page.`)
+            setMessage(
+              `Sent to ${namesList(friends.map((f) => f.display_name))}. It’s on their Home page.${
+                songKept ? '' : ` ${song.title} couldn’t be kept on your account, so they’ll need their own copy of the file.`
+              }`,
+            )
             setState('idle')
             setPicking(false)
           }}
@@ -330,7 +341,8 @@ function ShareAttempt({
       )}
       {state === 'shared' && !song.songId && !song.builtin && (
         <p className="share-attempt__hint">
-          They open their own copy of {song.title} to see it; the song itself isn’t uploaded.
+          Someone with the link opens their own copy of {song.title} to see it. Friends you send it to get the song with
+          it.
         </p>
       )}
     </div>

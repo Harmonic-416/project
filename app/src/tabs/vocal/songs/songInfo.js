@@ -72,20 +72,26 @@ export function lengthLabel(info) {
 
 const cache = new Map()
 
-/** Fetch and read one built-in song (cached for the visit); null if it can't be read. */
+/**
+ * Read one song for its card (cached for the visit); null if it can't be
+ * read. A built-in song is fetched from `song.url`; one of the person's own
+ * files (ui/MySongs.jsx) has no url and hands over its bytes with
+ * `song.load()`, cached by its `id` (the file's fingerprint).
+ */
 export async function fetchSongInfo(song) {
-  if (cache.has(song.url)) return cache.get(song.url)
+  const key = song.url ?? song.id
+  if (cache.has(key)) return cache.get(key)
   const pending = (async () => {
     try {
-      const response = await fetch(song.url)
-      if (!response.ok) return null
-      if (/\.midi?$/i.test(song.filename)) return infoFromMidi(await response.arrayBuffer())
-      if (/\.(musicxml|xml)$/i.test(song.filename)) return infoFromMusicXml(await response.text())
+      const bytes = await (song.load ? song.load() : fetch(song.url).then((response) => (response.ok ? response.arrayBuffer() : null)))
+      if (!bytes) return null
+      if (/\.midi?$/i.test(song.filename)) return infoFromMidi(bytes)
+      if (/\.(musicxml|xml)$/i.test(song.filename)) return infoFromMusicXml(new TextDecoder().decode(bytes))
       return null
     } catch {
       return null
     }
   })()
-  cache.set(song.url, pending)
+  cache.set(key, pending)
   return pending
 }
