@@ -168,3 +168,61 @@
     border-color: var(--v-border, #3a3a42);
   }
 }
+/* ── Sharing a take, tidied: one primary action, quiet seconds, friends as rows ── */
+.share-attempt__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: var(--v-radius);
+  box-shadow: 0 3px 0 var(--v-primary-dark);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.share-attempt__button--quiet {
+  border: 2px solid var(--v-border);
+  box-shadow: 0 3px 0 var(--v-border);
+  background: var(--v-card);
+  color: var(--v-text);
+}
+
+.share-attempt__send { order: -1; } /* sending to a friend leads; the link is the fallback */
+
+.share-attempt__picker {
+  gap: var(--v-s3);
+  padding: var(--v-s3);
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+}
+
+.share-attempt__friends { gap: 4px; max-height: 220px; overflow-y: auto; padding: 0; list-style: none; }
+
+.share-attempt__friend {
+  display: flex;
+  align-items: center;
+  gap: var(--v-s3);
+  padding: 6px 10px;
+  border: 2px solid transparent;
+  border-radius: var(--v-radius);
+  cursor: pointer;
+}
+.share-attempt__friend:hover { background: var(--v-subtle); }
+.share-attempt__friend.is-chosen { border-color: var(--v-primary); background: var(--v-primary-soft); }
+.share-attempt__friend input { width: 18px; height: 18px; accent-color: var(--v-primary); }
+.share-attempt__initial {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--v-subtle);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.share-attempt__friend.is-chosen .share-attempt__initial { background: var(--v-primary); color: var(--v-on-accent); }
+.share-attempt__name { font-weight: 700; }
+.share-attempt__tag { color: var(--v-muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.share-attempt__picker-actions { display: flex; gap: var(--v-s2); }
