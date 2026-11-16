@@ -215,6 +215,12 @@
   gap: var(--v-s4);
 }
 
+.warm-up__intro {
+  margin: 0;
+  color: var(--v-muted);
+  font-size: 0.95rem;
+}
+
 .warm-up__voices {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));

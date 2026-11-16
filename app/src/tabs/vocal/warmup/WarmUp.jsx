@@ -62,11 +62,13 @@ function Instructions() {
  * start that suits the chosen voice part until it reaches the edge of the
  * part's range or the singer stops it. It doesn't listen. The tempo dial
  * slows it to 50–100%; a change is heard from the next time through.
- * `show` picks what's on offer: 'warmups' (the Warm Up section) or 'tests',
- * the pitch and harmony tests (the Exercises section). Both ask for the
- * voice part, which is kept between them.
+ * `show` picks what's on offer: 'warmups', or 'tests' (the pitch and
+ * harmony tests). Both open from a level in Learn, which supplies the
+ * heading, and both ask for the voice part, which is kept between them.
+ * `only` ('pitch' or 'harmony') narrows the tests to the one a level asked
+ * for, so the screen holds what its heading names.
  */
-export default function WarmUp({ show = 'warmups' }) {
+export default function WarmUp({ show = 'warmups', only = null }) {
   const [patterns, setPatterns] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const [harmony, setHarmony] = useState(null)
@@ -270,72 +272,60 @@ export default function WarmUp({ show = 'warmups' }) {
   if (show === 'tests') {
     return (
       <div className="warm-up">
-        <header className="vocal-hero">
-          <span className="vocal-hero__badge" aria-hidden="true">
-            🎯
-          </span>
-          <div>
-            <h1 className="vocal-hero__title">Test your ear and voice</h1>
-            <p className="vocal-hero__subtitle">These listen through your microphone. Headphones help.</p>
-          </div>
-        </header>
+        <p className="warm-up__intro">These listen through your microphone. Headphones help.</p>
         {voicePicker}
-        <h2 className="vocal-tab__section-title">Tests</h2>
-        {harmonyError && <p className="warm-up__error">{harmonyError}</p>}
-        <button
-          type="button"
-          className="vocal-tab__search-songs"
-          disabled={!harmony || !part}
-          onClick={() => setTest('harmony')}
-        >
-          <span className="vocal-tab__search-icon" aria-hidden="true">
-            🎶
-          </span>
-          <span>
-            <strong>
-              Harmony test <BestStars id="harmony-test" />
-            </strong>
-            <small>
-              {!part
-                ? 'Choose your voice part first'
-                : harmony
-                  ? `Hold the middle note of each chord, starting on ${noteName(TEST_NOTES[part.id].harmony)}`
-                  : 'Loading…'}
-            </small>
-          </span>
-        </button>
-        <button type="button" className="vocal-tab__search-songs" disabled={!part} onClick={() => setTest('pitch')}>
-          <span className="vocal-tab__search-icon" aria-hidden="true">
-            👂
-          </span>
-          <span>
-            <strong>
-              Pitch test <BestStars id="pitch-test" />
-            </strong>
-            <small>
-              {part
-                ? `Sing back random notes from ${noteName(TEST_NOTES[part.id].low)}–${noteName(TEST_NOTES[part.id].low + 12)}`
-                : 'Choose your voice part first'}
-            </small>
-          </span>
-        </button>
+        <h2 className="vocal-tab__section-title">{only ? 'Ready when you are' : 'Tests'}</h2>
+        {only !== 'pitch' && harmonyError && <p className="warm-up__error">{harmonyError}</p>}
+        {only !== 'pitch' && (
+          <button
+            type="button"
+            className="vocal-tab__search-songs"
+            disabled={!harmony || !part}
+            onClick={() => setTest('harmony')}
+          >
+            <span className="vocal-tab__search-icon" aria-hidden="true">
+              🎶
+            </span>
+            <span>
+              <strong>
+                Harmony test <BestStars id="harmony-test" />
+              </strong>
+              <small>
+                {!part
+                  ? 'Choose your voice part first'
+                  : harmony
+                    ? `Hold the middle note of each chord, starting on ${noteName(TEST_NOTES[part.id].harmony)}`
+                    : 'Loading…'}
+              </small>
+            </span>
+          </button>
+        )}
+        {only !== 'harmony' && (
+          <button type="button" className="vocal-tab__search-songs" disabled={!part} onClick={() => setTest('pitch')}>
+            <span className="vocal-tab__search-icon" aria-hidden="true">
+              👂
+            </span>
+            <span>
+              <strong>
+                Pitch test <BestStars id="pitch-test" />
+              </strong>
+              <small>
+                {part
+                  ? `Sing back random notes from ${noteName(TEST_NOTES[part.id].low)}–${noteName(TEST_NOTES[part.id].low + 12)}`
+                  : 'Choose your voice part first'}
+              </small>
+            </span>
+          </button>
+        )}
       </div>
     )
   }
 
   return (
     <div className="warm-up">
-      <header className="vocal-hero">
-        <span className="vocal-hero__badge" aria-hidden="true">
-          🔥
-        </span>
-        <div>
-          <h1 className="vocal-hero__title">Warm up your voice</h1>
-          <p className="vocal-hero__subtitle">
-            The piano plays a short exercise, a half step further each time. Just sing along; it won’t listen.
-          </p>
-        </div>
-      </header>
+      <p className="warm-up__intro">
+        The piano plays a short exercise, a half step further each time. Just sing along; it won’t listen.
+      </p>
       <Instructions />
 
       {voicePicker}
