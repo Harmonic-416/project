@@ -1,13 +1,28 @@
+/* Tuner: dial + headstock, in the Guitar tab's colours (styles/tokens.css). */
 .tuner {
+  --tuner-needle: var(--gs-muted);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   width: 100%;
-  max-width: 440px;
+  max-width: 460px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 20px 16px 8px;
   box-sizing: border-box;
+  color: var(--gs-text);
+}
+
+.tuner--off {
+  --tuner-needle: var(--gs-orange);
+}
+
+.tuner--close {
+  --tuner-needle: var(--gs-close);
+}
+
+.tuner--in-tune {
+  --tuner-needle: var(--gs-hit);
 }
 
 .tuner__header {
@@ -16,164 +31,388 @@
 
 .tuner__header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 }
 
 .tuner__header p {
   margin: 4px 0 0;
-  color: #6c6a72;
-  font-size: 0.9rem;
+  color: var(--gs-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
 }
 
-.tuner__strings {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-
-.tuner__string {
+/* ── dial ─────────────────────────────────────────────────────── */
+.tuner__dial-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 0;
-  border: 2px solid #e2dfd8;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #24242c;
-  font: inherit;
-  cursor: pointer;
-}
-
-.tuner__string-label {
-  font-size: 1.2rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.tuner__string-sub {
-  font-size: 0.75rem;
-  color: #6c6a72;
-}
-
-.tuner__string--active {
-  border-color: #128789;
-  background: #e3f3f3;
-}
-
-.tuner__string--locked {
-  border-color: #24242c;
-}
-
-.tuner__string--done .tuner__string-sub {
-  color: #1d6b3d;
-  font-weight: 700;
-}
-
-.tuner__mode {
-  margin: -8px 0 0;
-  font-size: 0.8rem;
-  color: #6c6a72;
-}
-
-.tuner__meter {
   width: 100%;
+  padding: 18px 16px 16px;
+  border: 1px solid var(--gs-border);
+  border-radius: var(--gs-radius-card);
+  background: var(--gs-surface);
+  box-sizing: border-box;
+}
+
+.tuner__note {
+  display: flex;
+  align-items: flex-end;
+  line-height: 1;
+}
+
+.tuner__note-name {
+  font-size: 3.6rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.tuner__note-octave {
+  margin: 0 0 6px 2px;
+  color: var(--gs-muted);
+  font-size: 1.1rem;
+}
+
+.tuner__dial {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  overflow: visible;
+}
+
+.tuner__zone {
+  fill: none;
+  stroke: var(--gs-hit);
+  stroke-width: 24;
+  opacity: 0.18;
+}
+
+.tuner__tick {
+  stroke: var(--gs-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.tuner__tick--major {
+  stroke-width: 3;
+  opacity: 0.9;
+}
+
+.tuner__tick--center {
+  stroke: var(--gs-hit);
+  stroke-width: 4;
+  opacity: 1;
 }
 
 .tuner__scale {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.7rem;
-  color: #6c6a72;
-  font-variant-numeric: tabular-nums;
-}
-
-.tuner__track {
-  position: relative;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(90deg, #f8d9d3, #fbeccc 38%, #d5f0df 45%, #d5f0df 55%, #fbeccc 62%, #f8d9d3);
-}
-
-.tuner__center {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-  background: #1d6b3d;
+  fill: var(--gs-muted);
+  font-size: 11px;
+  text-anchor: middle;
 }
 
 .tuner__needle {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 4px;
-  margin-left: -2px;
-  border-radius: 2px;
-  background: #24242c;
-  transition: left 60ms linear;
+  transform-box: view-box;
+  transform-origin: 150px 150px;
+  transition: transform 90ms linear;
 }
 
-.tuner__meter--in-tune .tuner__needle {
-  background: #1d6b3d;
+.tuner__needle line {
+  stroke: var(--tuner-needle);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.tuner__hub {
+  fill: var(--tuner-needle);
+  stroke: var(--gs-surface);
+  stroke-width: 3;
 }
 
 .tuner__readout {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 72px;
   justify-content: center;
-}
-
-.tuner__note {
-  font-size: 2.2rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.tuner__cents {
-  font-variant-numeric: tabular-nums;
-  color: #6c6a72;
-}
-
-.tuner__readout--in-tune .tuner__cents {
-  color: #1d6b3d;
-  font-weight: 600;
-}
-
-.tuner__readout--off .tuner__cents {
-  color: #8f2c1c;
-}
-
-.tuner__hint {
-  color: #6c6a72;
-}
-
-.tuner__error {
-  color: #cf4b36;
-  font-size: 0.9rem;
+  gap: 2px;
+  min-height: 52px;
+  margin-top: 4px;
   text-align: center;
 }
 
-.tuner__button {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 32px;
-  background: #128789;
-  color: #ffffff;
+.tuner__hz {
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tuner__advice {
+  color: var(--tuner-needle);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.tuner__cents {
+  color: var(--gs-muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tuner__hint {
+  color: var(--gs-muted);
+}
+
+.tuner__error {
+  color: var(--gs-danger);
+  font-size: 0.9rem;
+}
+
+/* ── headstock + string buttons ──────────────────────────────── */
+.tuner__headstock {
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr;
+  align-items: start;
+  gap: 6px;
+  width: 100%;
+  max-width: 340px;
+}
+
+/* three buttons per side, lined up with the tuning pegs */
+.tuner__pegs {
+  display: grid;
+  grid-template-rows: repeat(3, 44px);
+  align-items: center;
+  padding-top: 25px;
+}
+
+.tuner__pegs--left {
+  justify-items: end;
+}
+
+.tuner__pegs--right {
+  justify-items: start;
+}
+
+.tuner__peg-button {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  width: 64px;
+  height: 38px;
+  border: 1px solid var(--gs-border);
+  border-radius: var(--gs-radius-control);
+  background: var(--gs-raised);
+  color: var(--gs-text);
   font: inherit;
-  font-weight: 600;
+  line-height: 36px;
+  cursor: pointer;
+  transition:
+    background-color var(--gs-motion-duration),
+    border-color var(--gs-motion-duration),
+    color var(--gs-motion-duration);
+}
+
+.tuner__peg-button:hover {
+  border-color: var(--gs-accent);
+}
+
+.tuner__peg-button:focus-visible {
+  outline: var(--gs-focus-width) solid var(--gs-accent);
+  outline-offset: 2px;
+}
+
+.tuner__peg-note {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.tuner__peg-number {
+  color: var(--gs-muted);
+  font-size: 0.72rem;
+}
+
+.tuner__peg-button--active {
+  border-color: var(--tuner-needle);
+  background: var(--tuner-needle);
+  color: var(--gs-on-solid);
+}
+
+.tuner__peg-button--active .tuner__peg-number {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.tuner__peg-button--locked {
+  box-shadow:
+    0 0 0 2px var(--gs-surface),
+    0 0 0 4px var(--gs-accent);
+}
+
+.tuner__peg-done {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gs-hit);
+  color: var(--gs-on-solid);
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.tuner__headstock-art {
+  width: 120px;
+  height: auto;
+}
+
+.tuner__wood {
+  fill: var(--gs-header);
+  stroke: var(--gs-border);
+  stroke-width: 1.5;
+}
+
+.tuner__knob {
+  fill: var(--gs-muted);
+}
+
+.tuner__neck {
+  fill: var(--gs-raised);
+}
+
+.tuner__nut {
+  fill: #e9e4da;
+}
+
+.tuner__fret {
+  stroke: var(--gs-muted);
+  stroke-width: 2;
+  opacity: 0.6;
+}
+
+.tuner__string polyline {
+  fill: none;
+  stroke: #c9c4bb;
+  stroke-width: var(--string-width, 1.4px);
+  transition: stroke var(--gs-motion-duration);
+}
+
+.tuner__post {
+  fill: #d8d3ca;
+  stroke: var(--gs-header);
+  stroke-width: 2;
+}
+
+.tuner__string--on polyline {
+  stroke: var(--tuner-needle);
+  stroke-width: calc(var(--string-width, 1.4px) + 1px);
+}
+
+.tuner__string--on .tuner__post {
+  fill: var(--tuner-needle);
+}
+
+.tuner__mode {
+  margin: -6px 0 0;
+  color: var(--gs-muted);
+  font-size: 0.8rem;
+}
+
+.tuner__button {
+  min-width: 160px;
+  min-height: var(--gs-control-height);
+  border: none;
+  border-radius: 22px;
+  background: var(--gs-accent);
+  color: var(--gs-on-solid);
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .tuner__button--stop {
-  background: #24242c;
+  border: 1px solid var(--gs-border);
+  background: var(--gs-raised);
+  color: var(--gs-text);
 }
 
 .tuner__button:disabled {
-  opacity: 0.5;
+  opacity: var(--gs-disabled-opacity);
   cursor: not-allowed;
+}
+
+/* ── fretboard map (opens under the tuner) ───────────────────── */
+.tuner-fretboard {
+  width: 100%;
+  max-width: 980px;
+  margin: 18px auto 24px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+.tuner-fretboard summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 14px 18px;
+  border: 1px solid var(--gs-border);
+  border-radius: var(--gs-radius-control);
+  background: var(--gs-surface);
+  color: var(--gs-text);
+  cursor: pointer;
+  list-style: none;
+  box-sizing: border-box;
+}
+
+.tuner-fretboard summary::-webkit-details-marker {
+  display: none;
+}
+
+.tuner-fretboard summary:hover {
+  border-color: var(--gs-accent);
+}
+
+.tuner-fretboard summary:focus-visible {
+  outline: var(--gs-focus-width) solid var(--gs-accent);
+  outline-offset: 2px;
+}
+
+.tuner-fretboard__title {
+  font-weight: 700;
+}
+
+.tuner-fretboard__text {
+  grid-row: 2;
+  color: var(--gs-muted);
+  font-size: 0.85rem;
+}
+
+.tuner-fretboard__chevron {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  color: var(--gs-accent);
+  font-size: 1.2rem;
+  transition: transform var(--gs-motion-duration);
+}
+
+.tuner-fretboard[open] .tuner-fretboard__chevron {
+  transform: rotate(180deg);
+}
+
+.tuner-fretboard[open] summary {
+  margin-bottom: 16px;
+  border-color: var(--gs-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tuner__needle,
+  .tuner-fretboard__chevron {
+    transition: none;
+  }
 }
