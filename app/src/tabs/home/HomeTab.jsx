@@ -36,13 +36,14 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, 
   // A failed sign-in or "Connect" comes back to the app with the reason in
   // the address bar. Read it once, then tidy the address so a refresh
   // doesn't show the same message again.
-  const [notice] = useState(() => {
+  const [urlNotice] = useState(() => {
     const raw = readOAuthError(window.location.href)
     return raw ? friendlyAuthError(raw) : null
   })
+  const notice = urlNotice ?? (auth.signInError ? friendlyAuthError(auth.signInError) : null)
   useEffect(() => {
-    if (notice) window.history.replaceState(null, '', window.location.pathname)
-  }, [notice])
+    if (urlNotice) window.history.replaceState(null, '', window.location.pathname)
+  }, [urlNotice])
 
   const signedIn = Boolean(configured && ready && user)
   const [accountOpen, setAccountOpen] = useState(Boolean(notice))

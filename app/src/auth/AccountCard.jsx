@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient.js'
 import Avatar from './Avatar.jsx'
 import ProviderIcon from './ProviderIcon.jsx'
 import { PROVIDERS, displayNameFor, friendlyAuthError, linkedProviders, providerName } from './authHelpers.js'
+import { googleClientId, startGoogleSignIn } from './googleSignIn.js'
 import './AccountCard.css'
 
 /**
@@ -38,6 +39,10 @@ function AccountCard({ user, onSignOut, notice }) {
   const connect = async (provider) => {
     setPending(provider)
     setError(null)
+    if (provider === 'google' && googleClientId) {
+      await startGoogleSignIn('link')
+      return
+    }
     const { error: linkError } = await supabase.auth.linkIdentity({
       provider,
       options: { redirectTo: window.location.origin },
