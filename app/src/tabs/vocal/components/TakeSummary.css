@@ -94,3 +94,26 @@
 
 /* The summary is the card: the record panel around it steps back instead of drawing a second border. */
 .record-panel:has(.take-summary) { padding: 0; border: 0; background: none; }
+
+/* A neutral card in every tier (the tinted fill went muddy in dark mode); the border carries the tier. */
+.take-summary { --ts-soft: var(--v-card); }
+
+.take-summary__actions {
+  padding-top: var(--v-s3);
+  border-top: 2px solid var(--v-border);
+}
+
+/* Download / Clear marks: quiet buttons, pushed to the end of the row. */
+.take-summary__actions .record-panel__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: var(--v-radius);
+  color: var(--v-muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+.take-summary__actions .record-panel__link:hover { background: var(--v-subtle); color: var(--v-text); }
+.take-summary__actions .share-attempt { order: -1; }

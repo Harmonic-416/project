@@ -1,3 +1,4 @@
+import { Music } from 'lucide-react'
 import './SongLibrary.css'
 import { hueFor } from './songHue.js'
 
@@ -24,7 +25,7 @@ function SongLibrary({ songs, onSelectSong, renderMeta = null }) {
             style={{ '--hue': hueFor(song.title) }}
             onClick={() => onSelectSong(song)}
           >
-            <span className="song-library__icon" aria-hidden="true">🎵</span>
+            <span className="song-library__icon" aria-hidden="true"><Music size="1.1em" aria-hidden="true" /></span>
             {renderMeta ? (
               <span className="song-library__body">
                 <span className="song-library__title">{song.title}</span>

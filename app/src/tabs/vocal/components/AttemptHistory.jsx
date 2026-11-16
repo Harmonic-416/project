@@ -1,3 +1,4 @@
+import { MessageCircle } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './AttemptHistory.css'
 import '../../home/HomeTab.css'
@@ -62,7 +63,7 @@ function AttemptHistory({ attempt, viewerId, supabase, onOpenAttempt }) {
             Your notes on this attempt
           </h3>
           <ol className="attempt-history__list">
-            <AttemptRow attempt={attempt} supabase={supabase} showAudio={false} onChange={() => {}} />
+            <AttemptRow attempt={attempt} supabase={supabase} showAudio={false} share={false} onChange={() => {}} />
           </ol>
         </section>
       )}
@@ -127,7 +128,7 @@ function TryActions({ row, current, onOpen }) {
       {row.best && <span className="attempt-history__best">best</span>}
       {row.comment_count > 0 && (
         <span className="attempt-history__comments">
-          💬 {row.comment_count}
+          <MessageCircle size="1.1em" aria-hidden="true" /> {row.comment_count}
         </span>
       )}
       {current ? (

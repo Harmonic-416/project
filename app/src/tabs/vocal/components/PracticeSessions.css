@@ -260,3 +260,43 @@
 .practice-runs__notes {
   flex-basis: 100%;
 }
+
+/* ── Tidied (2026-11): one card per song; sittings are rows inside it, not boxes in boxes ── */
+.vocal-frame .practice-song {
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-lg);
+  background: var(--v-card);
+  overflow: hidden;
+}
+.vocal-frame .practice-song__head { padding: var(--v-s4); gap: var(--v-s2) var(--v-s4); }
+.vocal-frame .practice-song__title { font-family: var(--v-font-display); font-weight: 800; color: var(--v-text); }
+.vocal-frame .practice-song__summary,
+.vocal-frame .practice-session__summary { color: var(--v-muted); font-size: 0.85rem; }
+.vocal-frame .practice-song__actions { padding: 0 var(--v-s4) var(--v-s4); gap: var(--v-s2); }
+.vocal-frame .practice-song__button {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+  box-shadow: 0 3px 0 var(--v-border);
+  color: var(--v-text);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+.vocal-frame .practice-song__button--new {
+  border-color: var(--v-primary);
+  background: var(--v-primary);
+  box-shadow: 0 3px 0 var(--v-primary-dark);
+  color: var(--v-on-accent);
+}
+.vocal-frame .practice-song__sessions { padding: 0; gap: 0; border-top: 2px solid var(--v-border); }
+.vocal-frame .practice-session { border: 0; border-radius: 0; background: none; }
+.vocal-frame .practice-session + .practice-session { border-top: 2px solid var(--v-border); }
+.vocal-frame .practice-session__head { padding: var(--v-s3) var(--v-s4); }
+.vocal-frame .practice-session__head:hover,
+.vocal-frame .practice-song__head:hover { background: var(--v-subtle); }
+.vocal-frame .practice-session__body { padding: 0 var(--v-s4) var(--v-s4); border: 0; }
+.vocal-frame .practice-session__chevron { display: grid; color: var(--v-muted); }
+.vocal-frame .practice-session__chevron svg { transition: transform var(--v-fast) var(--v-ease-out); }
+.vocal-frame .practice-session__chevron svg.is-open { transform: rotate(180deg); }
