@@ -1,3 +1,4 @@
+import { finishGuitarPractice } from '../practice/guitarProgress.js'
 import EarRoundSummary from './EarRoundSummary.jsx'
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { useEffect, useReducer, useRef, useState } from 'react'
@@ -114,8 +115,10 @@ function EarTraining() {
   const next = () => {
     if (actionLock.current || status !== 'answered') return
     actionLock.current = true
-    if (lastQuestion) player.stop()
-    else listen(questions[index + 1].answer)
+    if (lastQuestion) {
+      player.stop()
+      finishGuitarPractice()
+    } else listen(questions[index + 1].answer)
     dispatch({ type: 'next' })
   }
 

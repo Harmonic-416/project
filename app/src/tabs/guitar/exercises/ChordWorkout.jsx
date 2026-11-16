@@ -1,4 +1,6 @@
+import { finishGuitarPractice } from '../practice/guitarProgress.js'
 import { useEffect, useReducer, useState } from 'react'
+import { sfx } from '../../vocal/feedback/sfx.js'
 import { CHORDS, STRING_NAMES } from '../practice/chords.js'
 import { loadCleared, unlockedCount } from '../practice/unlocks.js'
 import ChordDiagram from '../practice/ChordDiagram.jsx'
@@ -15,7 +17,16 @@ export default function ChordWorkout({ kind }) {
   const send = (action) => {setSoundError(null); dispatch(action)}
   const question = state.questions[state.index]
   const asking = state.phase === 'asking'
+  const roundDone = state.phase === 'done'
+  const playedRound = state.results.some((result) => !result.skipped)
   useEffect(() => {stop()}, [state.index,state.phase,stop])
+  useEffect(() => {
+    if (state.feedback === 'correct') void sfx.correct()
+    if (state.feedback === 'wrong') void sfx.wrong()
+  }, [state.feedback, state.attempts])
+  useEffect(() => {
+    if (roundDone && playedRound) finishGuitarPractice()
+  }, [roundDone, playedRound])
   const hear = async () => {try {setSoundError(null); await strum(question.answer)} catch {setSoundError('Sound could not start. You can still finish the visual exercise. Try Hear it again.')}}
   const start = () => send({type:'start',questions:shapeRound(picks,missWeights(state.stats))})
   const currentName = CHORDS.find((chord) => chord.id === question?.answer.id)?.name

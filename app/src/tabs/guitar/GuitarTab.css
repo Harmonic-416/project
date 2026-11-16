@@ -232,3 +232,19 @@
     display: none;
   }
 }
+
+.guitar-tab__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--v-s2);
+  margin-inline-start: auto;
+}
+
+.guitar-tab__end .practice-header__sound {
+  width: var(--gs-control-height);
+}
+
+.guitar-tab__end .account-chip {
+  max-width: min(160px, 28vw);
+}

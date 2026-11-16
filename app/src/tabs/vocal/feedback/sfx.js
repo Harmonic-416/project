@@ -1,6 +1,6 @@
 import * as Tone from 'tone'
 
-// The Vocal tab's little feedback sounds: synthesised, so there are no files to
+// Practice feedback sounds: synthesised, so there are no files to
 // ship. Each is a few short notes on a soft bell-like synth, quieter than the
 // music. Muting is remembered in this browser.
 
@@ -70,6 +70,7 @@ async function chime(notes) {
   if (muted || micLive) return
   try {
     await Tone.start()
+    if (muted || micLive) return
     const { bell } = voices()
     const t0 = Tone.now() + 0.01
     notes.forEach(([note, at, len = 0.12]) => bell.triggerAttackRelease(note, len, t0 + at))
@@ -93,6 +94,7 @@ export const sfx = {
     if (muted || micLive) return
     try {
       await Tone.start()
+      if (muted || micLive) return
       const { thud } = voices()
       const t0 = Tone.now() + 0.01
       thud.triggerAttackRelease('A2', 0.1, t0)
