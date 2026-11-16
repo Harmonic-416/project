@@ -1,6 +1,7 @@
 import { useLatestSongRequest } from './useLatestSongRequest.js'
 import { useDraftLibrary } from './useDraftLibrary.js'
 import SongHeading from './SongHeading.jsx'
+import SongSectionPicker from './SongSectionPicker.jsx'
 import { BUILT_IN_SONGS, findSongFile } from './songSources.js'
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -36,7 +37,8 @@ import SongTransportExtras from './follow/SongTransportExtras.jsx'
 import { loadEasy, saveEasy, withEasy } from './follow/easyMode.js'
 import { lastAndBestLine } from './follow/runHistory.js'
 import { GUITAR_ACCOMPANIMENTS, GUITAR_MODES, applyMix } from './follow/modes.js'
-import { seekToTick } from './follow/playerControls.js'
+import { clearLoop, playRange, seekToTick } from './follow/playerControls.js'
+import { sectionTimeline } from './follow/songSection.js'
 import { createSongClock, loadLatency } from './follow/songClock.js'
 import { buildTimeline, practiceableTracks, secondsToTicks, ticksToSeconds } from './follow/songTimeline.js'
 import { useAlphaTabPlayer } from './follow/useAlphaTabPlayer.js'
@@ -92,6 +94,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   const [exportError, setExportError] = useState(null)
   const [api, setApi] = useState(null)
   const [mode, setMode] = useState('listen')
+  const [section, setSection] = useState(null)
   const [trackIndex, setTrackIndex] = useState(null) // null = the first practiceable track
   const [accompaniment, setAccompaniment] = useState('solo')
   const [latencyMs, setLatencyMs] = useState(loadLatency)
@@ -114,6 +117,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   const [optionsOpen, setOptionsOpen] = useState(false)
   const scoreRef = useRef(null)
   const enableScoreFollow = useCallback(() => scoreRef.current?.enableFollow(), [])
+  const revealScoreBar = useCallback((index) => scoreRef.current?.revealBar(index), [])
   const pageRef = useRef(null)
   useEffect(() => {
     pageRef.current?.closest('.guitar-tab__body')?.scrollTo?.({ top: 0 })
@@ -138,6 +142,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
       setTrackIndex(part?.index ?? null)
       if (part) setAccompaniment(part.withOthers ? 'all' : 'solo')
       setMode('listen')
+      setSection(null)
       setEasy(loadEasy(fingerprint))
       saveSongChords(loaded.title, chordNamesOf(loaded.score)) // for ear training's "Chords from my song"
       setNotation({ ...loaded, fingerprint, catalogSongId, builtin, draft })
@@ -371,9 +376,13 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
     () => (score ? buildTimeline(score, { trackIndex: practised?.index ?? 0 }) : null),
     [score, practised],
   )
-  const entries = timeline && practised ? timeline.entries : []
+  const practiceTimeline = useMemo(() => sectionTimeline(timeline, section), [timeline, section])
+  const entries = practiceTimeline && practised ? practiceTimeline.entries : []
   // What the practice modes score: everything, or the Easy version's notes.
-  const scoredTimeline = useMemo(() => withEasy(timeline, easy), [timeline, easy])
+  const scoredTimeline = useMemo(
+    () => (easy ? sectionTimeline(withEasy(timeline, true), section) : practiceTimeline),
+    [timeline, easy, section, practiceTimeline],
+  )
   const clock = useMemo(() => (timeline ? createSongClock(timeline.tempoMap) : null), [timeline])
 
   const onPosition = useCallback(
@@ -383,6 +392,28 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   const player = useAlphaTabPlayer(api, { onPosition })
   const getHost = useCallback(() => scoreRef.current?.getHost() ?? null, [])
   const overlay = useTabOverlay(api, getHost, entries)
+  const sectionStart = practiceTimeline?.startTick
+  const sectionEnd = practiceTimeline?.endTick
+
+  useEffect(() => {
+    if (!api || !player.ready || sectionStart == null || mode === 'wait') return
+    playRange(api, sectionStart, sectionEnd)
+    api.scrollToCursor()
+  }, [api, player.ready, sectionStart, sectionEnd, mode, practised, easy, accompaniment])
+
+  const changeSection = (next) => {
+    api?.stop()
+    if (api) clearLoop(api)
+    setSection(next)
+  }
+
+  const playSelection = () => {
+    if (!api) return
+    if (sectionStart != null && (api.tickPosition < sectionStart || api.tickPosition >= sectionEnd)) {
+      seekToTick(api, sectionStart)
+    }
+    api.play()
+  }
 
   // Track mute/solo for the mode: your own part never plays while you're judged.
   const restoreMix = useCallback(() => {
@@ -599,58 +630,48 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
       )
     }
     return (
-      <div ref={pageRef} className="guitar-song">
-        <header className="guitar-song__header">
-          <span className="guitar-song__eyebrow">YOUR DAILY PRACTICE</span>
-          <h2>What do you want to play today?</h2>
-          <p>Tab and standard notation, with playback — and the app listens while you play.</p>
-        </header>
-        {auth?.configured && (
-          <button type="button" className="guitar-song__search" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('search') }}>
-            <span aria-hidden="true">🔍</span>
-            <span>
-              <strong>Search songs</strong>
-              <small>Browse the online guitar catalog</small>
-            </span>
+      <div ref={pageRef} className="guitar-song guitar-song--library">
+        <h2 className="guitar-song__library-title">Songs</h2>
+        <div className="guitar-song__library-actions">
+          <label className={`notation-uploader ${status === 'loading' ? 'notation-uploader--disabled' : ''}`}>
+            <input
+              type="file"
+              accept={GUITAR_NOTATION_ACCEPT}
+              disabled={status === 'loading'}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) openUpload(file)
+                event.target.value = ''
+              }}
+            />
+            <span>Open a score <small>Guitar Pro, MusicXML, MIDI or MuseScore</small></span>
+          </label>
+          {auth?.configured && (
+            <button type="button" className="guitar-song__search" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('search') }}>
+              Search songs
+            </button>
+          )}
+          <button type="button" className="guitar-song__search" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('transcribe') }}>
+            Tab the guitar from a song
           </button>
-        )}
-        {auth?.configured && (
-          <button type="button" className="guitar-song__search" onClick={() => openSessions(null, 'library')}>
-            <span aria-hidden="true">🗓</span>
-            <span>
-              <strong>Practice sessions</strong>
-              <small>Your previous sittings, runs and notes</small>
-            </span>
-          </button>
-        )}
-        <button type="button" className="guitar-song__search" onClick={() => { requests.cancel(); setStatus('idle'); setBrowse('transcribe') }}>
-          <span aria-hidden="true">🎙️</span>
-          <span>
-            <strong>Tab the guitar from a song</strong>
-            <small>
-              Upload an MP3 or WAV: Harmonic isolates its guitar part and tabs it, on this device
-            </small>
-          </span>
-        </button>
-        <h3 className="guitar-song__section-title">Ready to play <span>Built-in songs</span></h3>
-        {BUILT_IN_SONGS.length ? <SongLibrary songs={BUILT_IN_SONGS} onSelectSong={openBuiltIn} /> : <p>Open a score below to start playing.</p>}
-        <LocalSongs onOpen={open} onBeginOpen={requests.begin} />
-        <MyTranscriptions phase={draftLibrary.phase} error={draftLibrary.error} deleting={draftLibrary.deleting} onRetry={draftLibrary.retry} onCreate={() => setBrowse('transcribe')} drafts={drafts} onOpen={openDraft} onDelete={removeDraft} />
-        <label className={`notation-uploader ${status === 'loading' ? 'notation-uploader--disabled' : ''}`}>
-          <input
-            type="file"
-            accept={GUITAR_NOTATION_ACCEPT}
-            disabled={status === 'loading'}
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) openUpload(file)
-              event.target.value = ''
-            }}
-          />
-          <span>Open a score: Guitar Pro, MusicXML, MIDI or MuseScore</span>
-        </label>
+          {auth?.configured && (
+            <button type="button" className="guitar-song__search" onClick={() => openSessions(null, 'library')}>
+              Practice sessions
+            </button>
+          )}
+        </div>
         {status === 'loading' && <GuitarFeedback>Opening your score...</GuitarFeedback>}
         {status === 'error' && <GuitarFeedback kind="error">{error} Choose another score to try again.</GuitarFeedback>}
+        {BUILT_IN_SONGS.length > 0 && (
+          <section aria-labelledby="built-in-guitar-songs">
+            <h3 id="built-in-guitar-songs">Built-in songs</h3>
+            <SongLibrary songs={BUILT_IN_SONGS} onSelectSong={openBuiltIn} />
+          </section>
+        )}
+        <div className="guitar-song__saved">
+          <LocalSongs onOpen={open} onBeginOpen={requests.begin} />
+          <MyTranscriptions phase={draftLibrary.phase} error={draftLibrary.error} deleting={draftLibrary.deleting} onRetry={draftLibrary.retry} onCreate={() => setBrowse('transcribe')} drafts={drafts} onOpen={openDraft} onDelete={removeDraft} />
+        </div>
       </div>
     )
   }
@@ -675,18 +696,27 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   }
 
   return (
-    <div ref={pageRef} className={`guitar-song guitar-song--open guitar-follow${optionsOpen ? ' guitar-song--options-open' : ''}`}>
+    <div ref={pageRef} className={`guitar-song guitar-song--open guitar-follow${section && !viewingShared ? ' guitar-song--section' : ''}${optionsOpen ? ' guitar-song--options-open' : ''}`}>
       <header className="song-workspace__heading">
       <SongHeading infoHost={infoHost} notation={notation} viewingShared={viewingShared} showSessions={!viewingShared && Boolean(auth?.user && supabase)} onSessions={() => openSessions(sessionSong, 'song')} onBack={() => { requests.cancel(); if (viewingShared) closeShared(); else setNotation(null) }} exportScore={exportScore} exportError={exportError} storageNotice={storageNotice} />
       <button type="button" className="song-workspace__options-button" aria-controls="song-practice-options" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((open) => !open)}>Options</button>
       </header>
       <div className="song-workspace">
         <section className="song-workspace__main" aria-label="Score workspace">
+          {!viewingShared && (
+            <div className="song-workspace__practice">
+              <PracticeModeToggle mode={mode} onChange={changeMode} disabled={!ready} modes={modes} />
+              {score.masterBars?.length > 1 && (
+                <SongSectionPicker api={api} barCount={score.masterBars.length} section={section} onChange={changeSection} disabled={!ready} />
+              )}
+            </div>
+          )}
           {!viewingShared && <div ref={setTransportHost} className="guitar-song__transport-slot" />}
       <GuitarScore
         ref={scoreRef}
         settingsHost={settingsHost}
         hideControls={viewingShared}
+        sectionFocused={Boolean(section) && !viewingShared}
         score={score}
         songKey={notation.fingerprint}
         userId={userId}
@@ -697,11 +727,11 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         onSpeedChange={setSpeed}
         controlsDisabled={viewingShared || (mode === 'trouble' && player.state === 'playing')}
       />
-          <div ref={setFeedbackHost} className="song-workspace__feedback" />
         </section>
-        <aside id="song-practice-options" className="song-workspace__sidebar" aria-label="Practice options">
+        <div className="song-workspace__side">
+          <div ref={setFeedbackHost} className="song-workspace__feedback" />
+          <aside id="song-practice-options" className="song-workspace__sidebar" aria-label="Practice options">
           <div className="song-workspace__sidebar-heading"><h2>Practice options</h2><button type="button" onClick={() => setOptionsOpen(false)} className="song-workspace__close" aria-label="Close practice options">✕</button></div>
-      {!viewingShared && <PracticeModeToggle mode={mode} onChange={changeMode} disabled={!ready} modes={modes} />}
       {!viewingShared && <details className="guitar-song__settings"><summary>Practice settings · part, accompaniment and version</summary><div className="guitar-song__settings-body">
       <PartTabs
         parts={tracks.map((t) => ({ id: t.index, name: t.name }))}
@@ -745,14 +775,19 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           <small>Compared within this mode, part and version. Partial or looped practice does not set a best.</small>
         </section>
       )}
-      {timeline && !viewingShared && mode === 'wait' && entries.length > 0 ? (
+      {section && !viewingShared && !practiceTimeline ? (
+        <GuitarFeedback kind="empty">These bars aren’t played by the score. Choose another section.</GuitarFeedback>
+      ) : section && !viewingShared && mode !== 'listen' && !entries.length ? (
+        <GuitarFeedback kind="empty">There are no notes for this track in the selected bars.</GuitarFeedback>
+      ) : timeline && !viewingShared && mode === 'wait' && entries.length > 0 ? (
         // Keyed by track and version so switching either starts the mode fresh.
         <GuitarWaitMode
-          key={`${practised.index}-${easy}`}
+          key={`${practised.index}-${easy}-${sectionStart}-${sectionEnd}`}
           api={api}
           transportHost={transportHost}
           feedbackHost={feedbackHost}
           onTransportStart={enableScoreFollow}
+          onTargetBar={revealScoreBar}
           timeline={scoredTimeline}
           overlay={overlay}
           ready={ready}
@@ -766,7 +801,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
       ) : timeline && !viewingShared && mode === 'trouble' && entries.length > 0 ? (
         <>
           <GuitarTroubleMode
-            key={`${practised.index}-${easy}`}
+            key={`${practised.index}-${easy}-${sectionStart}-${sectionEnd}`}
             api={api}
             transportHost={transportHost}
             feedbackHost={feedbackHost}
@@ -788,7 +823,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
             onSaved={runSaved}
             speed={speed}
           />
-          <SongTransportExtras api={api} disabled={!ready || player.state === 'playing'} />
+          {!section && <SongTransportExtras api={api} disabled={!ready || player.state === 'playing'} />}
         </>
       ) : (
         // Someone's shared run plays their recording (GuitarSharedPanel), never the song's MIDI.
@@ -800,9 +835,10 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           onTransportStart={enableScoreFollow}
               state={player.state}
               position={ticksToSeconds(timeline.tempoMap, player.tick)}
-              duration={timeline.duration}
+              duration={practiceTimeline.duration}
+              startTime={practiceTimeline.startTime}
               rate={speed}
-              onPlay={() => api?.play()}
+              onPlay={playSelection}
               onPause={() => api?.pause()}
               onStop={() => api?.stop()}
               onSeek={(seconds) => {
@@ -810,7 +846,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
               }}
               disabled={!ready}
             />
-            <SongTransportExtras api={api} disabled={!ready} />
+            {!section && <SongTransportExtras api={api} disabled={!ready} />}
           </>
         )
       )}
@@ -821,7 +857,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         </section>
       )}
         <div ref={setInfoHost} className="song-workspace__info" />
-        </aside>
+          </aside>
+        </div>
       </div>
     </div>
   )

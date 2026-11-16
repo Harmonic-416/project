@@ -22,12 +22,12 @@ describe('lesson controls and microphone fallback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start without microphone' }))
     expect(screen.getByText('Get ready…')).toBeTruthy()
   })
-  it('distinguishes unused, unheard, clean and wrong strings accessibly', () => {
+  it('distinguishes unused, unchecked, heard and unclear pitches accessibly', () => {
     render(<StringStates chord={CHORDS.find((c) => c.id === 'Am')} strings={['good', 'good', 'bad']} />)
     expect(screen.getByLabelText("String 6 (E): don't play")).toBeTruthy()
-    expect(screen.getByLabelText('String 5 (A): rang clean')).toBeTruthy()
-    expect(screen.getByLabelText('String 4 (D): buzzed or wrong')).toBeTruthy()
-    expect(screen.getByLabelText('String 1 (E): not heard yet')).toBeTruthy()
+    expect(screen.getByLabelText('String 5 (A): expected pitch heard')).toBeTruthy()
+    expect(screen.getByLabelText('String 4 (D): expected pitch unclear')).toBeTruthy()
+    expect(screen.getByLabelText('String 1 (E): not checked yet')).toBeTruthy()
   })
 })
 

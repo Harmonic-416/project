@@ -21,20 +21,18 @@ import { isScored } from './songTimeline.js'
  * it) — otherwise an arpeggio's ringing bass string would read as a wrong
  * note.
  *
- * Known limit: a chord tone whose lower octave also sounds (E4 over E3)
- * can't be told apart from that octave's overtones, so a missing top
- * string can still read as played.
+ * Octave-shared peaks can be ambiguous. Report that as limited evidence
+ * for the string so feedback can suggest an isolated check.
  */
 
 // Tuning knobs: loosen or tighten by ear against real recordings.
 export const PRESENT = 0.25 // share of the loudest peak an expected note's partials need, to count as sounding
 export const STRUCK_GAIN = 1.4 // how much louder than just before the onset a newly played note is
-export const CHORD_HIT = 0.8 // share of a chord's notes that must sound for a hit
+export const CHORD_HIT = 1 // a recognizable incomplete chord is close
 export const CHORD_CLOSE = 0.5 // … and for a close
 export const CHROMA_MATCH = 0.7 // how closely the whole sound must match the chord for a hit
 
-// Wait for me: the player can always strum again, so a chord is a hit only
-// when every one of its notes sounds, nothing else does, and each note above
+// Wait for me and lessons can inspect a longer window. Each note above
 // `fundamentalAbove` Hz is heard at its own pitch rather than only through
 // its octave. Without these, E major passes for E minor
 // (one fret on the G string), A7 for A (its G hides nothing, but A's top A
@@ -196,6 +194,17 @@ function median(values) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
+/** A pitch needs agreeing frames. Averaging notes a tone apart can invent a semitone between them. */
+function stablePitch(pitches) {
+  const sorted = pitches.filter(Number.isFinite).sort((a, b) => a - b)
+  const required = Math.max(2, Math.floor(sorted.length / 2) + 1)
+  for (let i = 0; i + required <= sorted.length; i += 1) {
+    const cluster = sorted.slice(i, i + required)
+    if (cluster.at(-1) - cluster[0] <= 0.45) return median(cluster)
+  }
+  return null
+}
+
 /** Pitch error in cents → 'in-tune' (±50), 'octave' (right note, other octave), 'close' (a semitone), or 'wrong'. */
 export function classifyGuitarCents(cents) {
   const abs = Math.abs(cents)
@@ -207,16 +216,20 @@ export function classifyGuitarCents(cents) {
 }
 
 function judgeSingle(after, before, pitches, target) {
-  const detected = pitches.length >= 2 ? median(pitches) : null
+  const detected = stablePitch(pitches)
   const cents = detected === null ? null : centsOff(detected, target)
   const pitchVerdict = cents === null ? null : classifyGuitarCents(cents)
   const struck = noteEvidence(after, target) >= PRESENT && (!before || noteGain(after, before, target) >= STRUCK_GAIN)
   const detectedStruck = detected !== null && (!before || noteGain(after, before, Math.round(detected)) >= STRUCK_GAIN)
   const result = { detected, cents }
 
-  if (pitchVerdict === 'in-tune') return { ...result, verdict: 'hit' }
+  if (pitchVerdict === 'in-tune') {
+    return detectedStruck ? { ...result, verdict: 'hit' } : { verdict: 'miss', detected: null, cents: null }
+  }
   // The tracker locked onto a string that was already ringing; the expected note is the new one.
-  if (struck && !detectedStruck) return { ...result, verdict: 'hit' }
+  if (struck && !detectedStruck && (detected !== null || pitches.length < 2)) {
+    return { verdict: 'hit', detected: null, cents: null }
+  }
   if (struck || pitchVerdict === 'octave' || pitchVerdict === 'close') return { ...result, verdict: 'close' }
   return { ...result, verdict: 'miss' }
 }
@@ -246,11 +259,19 @@ const EXTRA_FRESH = 1.3
  * hit. `fresh`: the window's usual spectrum and the one from before the
  * strum, both at the same frame length, to tell played from still ringing.
  */
-function judgeChord(after, notes, { chordPresent = PRESENT, chordHit = CHORD_HIT, fundamentalAbove, extraPeak } = {}, fresh = null) {
+function judgeChord(after, notes, { chordPresent = PRESENT, chordHit = CHORD_HIT, fundamentalAbove, extraPeak = 0.2 } = {}, fresh = null) {
   const strings = {}
+  const uncertain = []
   let sounding = 0
   for (const { midi, string } of notes) {
     const present = noteEvidence(after, midi, { fundamentalAbove }) >= chordPresent
+    // The lower note's second harmonic may account for the upper pitch.
+    // Preserve the chord assessment but expose the ambiguous string.
+    const lower = notes.find((note) => note.midi === midi - 12)
+    const fundamental = present && lower ? peakNear(after, midiToFrequency(lower.midi)) : 0
+    const ambiguous = fundamental >= after.loudest * 0.2
+      && peakNear(after, midiToFrequency(midi)) < 0.7 * fundamental
+    if (ambiguous) uncertain.push(string)
     if (present) sounding += 1
     strings[string] = present ? 'good' : 'bad'
   }
@@ -262,7 +283,7 @@ function judgeChord(after, notes, { chordPresent = PRESENT, chordHit = CHORD_HIT
   const share = sounding / notes.length
   const full = share >= chordHit && match >= CHROMA_MATCH && !extra.length
   const verdict = full ? 'hit' : share >= CHORD_CLOSE ? 'close' : 'miss'
-  return { verdict, strings, sounding, total: notes.length, match, extra }
+  return { verdict, strings, sounding, total: notes.length, match, extra, uncertain }
 }
 
 /**

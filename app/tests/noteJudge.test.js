@@ -133,6 +133,15 @@ describe('judging single notes', () => {
     expect(judge(window, single(64))).toBe('hit')
   })
 
+  it('does not turn two disagreeing pitch frames into a note between them', () => {
+    expect(judgeWindow({ ...window, sampleRate: RATE, pitches: [63, 65] }, single(64)).verdict).not.toBe('hit')
+  })
+
+  it('does not award another hit for an unchanged ringing note', () => {
+    const after = averageSpectrum(window.spectra)
+    expect(judgeWindow({ spectra: [after], beforeSpectrum: after, sampleRate: RATE, pitches: [64, 64] }, single(64)).verdict).toBe('miss')
+  })
+
   it('calls a semitone off or the wrong octave close, and another note a miss', () => {
     expect(judge(window, single(65))).toBe('close')
     expect(judge(window, single(52))).toBe('close')
@@ -177,6 +186,24 @@ describe('judging chords', () => {
     expect(judge(d, chord(E_MINOR))).toBe('miss')
     const [g] = listen(place(1.2, [strum(G_MAJOR), 0.1]))
     expect(judge(g, chord(E_MINOR))).not.toBe('hit')
+  })
+
+  it('flags a missing octave string for an isolated check when its overtone overlaps', () => {
+    const [window] = listen(place(1.2, [strum([50, 57, 66]), 0.1]))
+    const result = judgeWindow({ ...window, sampleRate: RATE }, chord(D_MAJOR), EVERY_STRING)
+    expect(result.uncertain).toContain(2)
+  })
+
+  it('does not give a full hit to a timed chord with one missing note', () => {
+    const [window] = listen(place(1.2, [strum(E_MINOR.filter((midi) => midi !== 55)), 0.1]))
+    expect(judge(window, chord(E_MINOR))).toBe('close')
+  })
+
+  it('keeps a timed chord with a freshly struck extra note below a hit', () => {
+    const [window] = listen(place(1.2, [strum([...D_MAJOR, 56]), 0.1]))
+    const result = judgeWindow({ ...window, sampleRate: RATE }, chord(D_MAJOR))
+    expect(result.verdict).toBe('close')
+    expect(result.extra).toContain(56)
   })
 })
 

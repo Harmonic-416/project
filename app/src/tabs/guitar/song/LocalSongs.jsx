@@ -18,7 +18,7 @@ export default function LocalSongs({ onOpen, onBeginOpen }) {
     let live = true
     listMyFiles().then(
       (rows) => { if (live) setFiles(rows.filter((row) => row.instrument === 'guitar')) },
-      () => { if (live) setError('Your saved files could not be read. You can still upload a file below.') },
+      () => { if (live) setError('Your saved files could not be read. You can still open a score.') },
     )
     return () => { live = false }
   }, [revision])
@@ -32,7 +32,7 @@ export default function LocalSongs({ onOpen, onBeginOpen }) {
     try {
       const saved = await loadMyFile(file.id)
       if (!current()) return
-      if (!saved) throw new Error('This file is no longer on this device. Upload it again below.')
+      if (!saved) throw new Error('This file is no longer on this device. Open the original score again.')
       if (request) await onOpen(saved.bytes, saved.name, { request })
       else await onOpen(saved.bytes, saved.name)
     } catch (err) {
@@ -47,7 +47,7 @@ export default function LocalSongs({ onOpen, onBeginOpen }) {
       <h3 id="local-songs-title">Your files <span>On this device</span></h3>
       {error && <GuitarFeedback kind="error" onRetry={() => { setError(null); setRevision((v) => v + 1) }}>{error}</GuitarFeedback>}
       {!files && !error && <GuitarFeedback>Loading your saved files...</GuitarFeedback>}
-      {files?.length === 0 && <GuitarFeedback kind="empty">Your saved scores will appear here. Open a Guitar Pro, MusicXML or MIDI file below to add your first score. Your music stays on this device.</GuitarFeedback>}
+      {files?.length === 0 && <GuitarFeedback kind="empty">Use Open a score to add your first file. Your music stays on this device.</GuitarFeedback>}
       {files?.length > 0 && <ul className="song-library">{files.map((file) => (
         <li key={file.id}><button className="song-library__item" type="button" disabled={opening !== null} onClick={() => open(file)}>
           <span className="song-library__icon" aria-hidden="true">♪</span>

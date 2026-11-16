@@ -54,10 +54,10 @@ it('opens a saved file requested from Home and acknowledges it only after parsin
 
 it('offers catalog browsing and file import without signing in', () => {
   const {container} = render(<GuitarSong auth={{configured:true,ready:true,user:null}} />)
-  expect(screen.getByRole('button', {name:/Search songs Browse the online guitar catalog/})).toBeTruthy()
+  expect(screen.getByRole('button', {name:'Search songs'})).toBeTruthy()
   expect(container.querySelector('input[type="file"]').disabled).toBe(false)
 })
-it('puts the score and transport in the main workspace and secondary controls in the side panel', async () => {
+it('puts the score, transport and practice modes in the main workspace', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => ({ok:true,arrayBuffer:async () => new ArrayBuffer(1)})))
   loadGuitarNotation.mockResolvedValue(parsed('Score workspace test'))
   const {container}=render(<GuitarSong />)
@@ -67,9 +67,10 @@ it('puts the score and transport in the main workspace and secondary controls in
   const options=screen.getByRole('complementary',{name:'Practice options'})
   expect(main.contains(screen.getByRole('heading',{name:'Score workspace test'}))).toBe(true)
   expect(main.querySelector('.guitar-song__transport-slot')).toBeTruthy()
-  expect(options.contains(screen.getByRole('group',{name:'Practice mode'}))).toBe(true)
+  expect(main.contains(screen.getByRole('group',{name:'Practice mode'}))).toBe(true)
   expect(options.querySelector('.guitar-song__tempo-slot')).toBeTruthy()
   expect(container.querySelector('.song-workspace').children[0]).toBe(main)
+  expect(main.nextElementSibling.querySelector('.song-workspace__feedback')).toBeTruthy()
   fireEvent.click(screen.getByRole('button',{name:'Options',exact:true}))
   expect(screen.getByRole('button',{name:'Options',exact:true}).getAttribute('aria-expanded')).toBe('true')
   fireEvent.click(screen.getByRole('button',{name:'Close practice options'}))

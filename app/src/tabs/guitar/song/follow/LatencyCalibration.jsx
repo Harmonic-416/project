@@ -20,14 +20,25 @@ function LatencyCalibration({ api, score, onDone, onCancel, restoreMix }) {
   const clicksRef = useRef([])
   const onsetsRef = useRef([])
   const cleanupRef = useRef(null)
+  const attemptRef = useRef(0)
   const listener = useGuitarListener({ onWindow: (w) => onsetsRef.current.push(w.wall) })
 
-  useEffect(() => () => cleanupRef.current?.(), [])
+  useEffect(() => () => {
+    attemptRef.current += 1
+    cleanupRef.current?.()
+  }, [])
 
   const start = async () => {
+    const attempt = ++attemptRef.current
+    setPhase('starting')
     clicksRef.current = []
     onsetsRef.current = []
-    if (!(await listener.start())) return
+    const listening = await listener.start()
+    if (attempt !== attemptRef.current) return
+    if (!listening) {
+      setPhase('failed')
+      return
+    }
     const saved = {
       metronome: api.metronomeVolume,
       countIn: api.countInVolume,
@@ -35,6 +46,7 @@ function LatencyCalibration({ api, score, onDone, onCancel, restoreMix }) {
       range: api.playbackRange,
       looping: api.isLooping,
       speed: api.playbackSpeed,
+      tick: api.tickPosition,
     }
     api.stop()
     api.changeTrackMute(score.tracks, true)
@@ -48,8 +60,9 @@ function LatencyCalibration({ api, score, onDone, onCancel, restoreMix }) {
     })
 
     let finished = false
-    const finish = async () => {
-      if (finished) return
+    let settleTimer
+    const restore = () => {
+      if (finished) return false
       finished = true
       clearTimeout(timer)
       offClicks()
@@ -62,17 +75,24 @@ function LatencyCalibration({ api, score, onDone, onCancel, restoreMix }) {
         playbackRange: saved.range,
         isLooping: saved.looping,
       })
+      seekToTick(api, saved.tick)
       restoreMix()
-      cleanupRef.current = null
-      await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
-      await listener.stop()
-      const ms = estimateLatency(clicksRef.current, onsetsRef.current)
-      if (ms === null) {
-        setPhase('failed')
-        return
-      }
-      saveLatency(ms)
-      onDone(ms)
+      return true
+    }
+    const finish = () => {
+      if (!restore()) return
+      settleTimer = setTimeout(async () => {
+        await listener.stop()
+        if (attempt !== attemptRef.current) return
+        cleanupRef.current = null
+        const ms = estimateLatency(clicksRef.current, onsetsRef.current)
+        if (ms === null) {
+          setPhase('failed')
+          return
+        }
+        saveLatency(ms)
+        onDone(ms)
+      }, SETTLE_MS)
     }
 
     const offClicks = api.midiEventsPlayed.on((e) => {
@@ -82,7 +102,10 @@ function LatencyCalibration({ api, score, onDone, onCancel, restoreMix }) {
       if (clicksRef.current.length >= CLICKS) finish()
     })
     const timer = setTimeout(finish, TIMEOUT_MS)
-    cleanupRef.current = finish
+    cleanupRef.current = () => {
+      clearTimeout(settleTimer)
+      restore()
+    }
     setPhase('running')
     seekToTick(api, 0)
     api.play()
@@ -95,13 +118,13 @@ function LatencyCalibration({ api, score, onDone, onCancel, restoreMix }) {
         clicks. Without headphones, stay quiet so the mic hears them; with headphones, strum along with each click.
       </p>
       {phase === 'failed' && (
-        <p className="practice-status__error">Couldn’t hear the clicks. Turn the volume up, or strum along with each click.</p>
+        <p className="practice-status__error">The clicks didn’t produce a consistent delay. Try a quiet room and let the microphone hear the speaker.</p>
       )}
       <div className="latency-calibration__actions">
-        <button type="button" className="song-extras__button" onClick={start} disabled={phase === 'running'}>
-          {phase === 'running' ? 'Listening…' : phase === 'failed' ? 'Try again' : 'Start'}
+        <button type="button" className="song-extras__button" onClick={start} disabled={phase === 'starting' || phase === 'running'}>
+          {phase === 'starting' || phase === 'running' ? 'Listening…' : phase === 'failed' ? 'Try again' : 'Start'}
         </button>
-        <button type="button" className="song-extras__link" onClick={onCancel} disabled={phase === 'running'}>
+        <button type="button" className="song-extras__link" onClick={onCancel}>
           Cancel
         </button>
       </div>

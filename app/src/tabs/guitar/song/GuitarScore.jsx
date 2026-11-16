@@ -35,7 +35,7 @@ const SOUND_FONT = `${import.meta.env.BASE_URL}soundfont/sonivox.sf3`
  * tempo marks show the tempo being played. `controlsDisabled` locks both
  * (a Trouble spots run keeps the speed it started with).
  */
-const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndexes = [0], onApi, onSpeedChange, controlsDisabled, userId, catalogSongId, client, settingsHost, hideControls = false }, ref) {
+const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndexes = [0], onApi, onSpeedChange, controlsDisabled, userId, catalogSongId, client, settingsHost, hideControls = false, sectionFocused = false }, ref) {
   const followEnabledRef = useRef(false)
   const scrollRef = useRef(null)
   const surfaceRef = useRef(null)
@@ -80,6 +80,18 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     onSpeedChangeRef.current = onSpeedChange
   }, [onApi, onSpeedChange])
 
+  const revealBar = useCallback((bar) => {
+    const outer = scrollRef.current
+    const surface = surfaceRef.current?.querySelector('.at-surface')
+    if (!bar || !outer || !surface) return
+    const region = outer.getBoundingClientRect()
+    const { y, h } = bar.realBounds
+    const top = surface.getBoundingClientRect().top + y
+    if (top >= region.top && top + h <= region.bottom) return
+    const nextTop = Math.max(0, outer.scrollTop + top - region.top - 16)
+    outer.scrollTo({ top: nextTop, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }, [])
+
   useEffect(() => {
     const api = new alphaTab.AlphaTabApi(surfaceRef.current, {
       core: { fontDirectory: FONT_DIRECTORY, includeNoteBounds: true },
@@ -98,20 +110,7 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     })
     apiRef.current = api
     api.customScrollHandler = createBarScrollHandler((bar) => {
-      if (!followEnabledRef.current) return
-      const host = surfaceRef.current
-      const outer = scrollRef.current
-      const surface = host?.querySelector('.at-surface')
-      if (!outer || !surface) return
-      const region = outer.getBoundingClientRect()
-      const origin = surface.getBoundingClientRect()
-      const bounds = bar.realBounds
-      const top = origin.top + bounds.y
-      const bottom = top + bounds.h
-      // Bars on the same visible staff system stay still; the next row comes
-      // into view when a new bar would otherwise be below the visible page.
-      if (top >= region.top + 16 && bottom <= region.bottom - 16) return
-      outer.scrollTo({ top: Math.max(0, outer.scrollTop + top - region.top - 24), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+      if (followEnabledRef.current) revealBar(bar)
     })
     let previousWidth = scrollRef.current.clientWidth
     const resize = new ResizeObserver(() => {
@@ -153,7 +152,7 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
       api.destroy()
       apiRef.current = null
     }
-  }, [drawTempoMarks, retry]) // stable: the API is still created once
+  }, [drawTempoMarks, revealBar, retry])
 
   const trackKey = trackIndexes.join(',')
   useEffect(() => {
@@ -183,7 +182,15 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     onSpeedChangeRef.current?.(speed)
   }, [tempo, drawTempoMarks, retry])
 
-  useImperativeHandle(ref, () => ({ getApi: () => apiRef.current, getHost: () => surfaceRef.current, enableFollow: () => { followEnabledRef.current = true; apiRef.current?.scrollToCursor() } }), [])
+  useImperativeHandle(ref, () => ({
+    getApi: () => apiRef.current,
+    getHost: () => surfaceRef.current,
+    enableFollow: () => {
+      followEnabledRef.current = true
+      apiRef.current?.scrollToCursor()
+    },
+    revealBar: (index) => revealBar(apiRef.current?.boundsLookup?.findMasterBarByIndex(index)),
+  }), [revealBar])
 
   const settings = <>
       <details className="guitar-score__settings"><summary>Tempo {tempo}% · Metronome {metronome.on ? 'on' : 'off'} · Count-in {metronome.countIn ? 'on' : 'off'}</summary><div className="guitar-score__settings-body">
@@ -200,7 +207,7 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
         <div className="guitar-score__surface" ref={surfaceRef} />
       </div>
       {error && <GuitarFeedback kind="error" onRetry={() => { setError(null); drawnRef.current = false; setRetry((n) => n + 1) }} retryLabel="Retry player">The guitar player could not load. Check your connection and try again.</GuitarFeedback>}
-      <p className="guitar-score__status">Click a note to seek. Drag across the score to select a passage.</p>
+      <p className="guitar-score__status">{sectionFocused ? 'Use the transport to move within the selected bars.' : 'Click a note to seek. Drag across the score to select a passage.'}</p>
 
     </div>
   )

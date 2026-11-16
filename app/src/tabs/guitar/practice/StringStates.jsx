@@ -1,7 +1,7 @@
 import { STRING_NAMES } from './chords.js'
 import './StringStates.css'
 
-const STATE_TEXT = { good: 'rang clean', bad: 'buzzed or wrong', idle: 'not heard yet', muted: "don't play" }
+const STATE_TEXT = { good: 'expected pitch heard', bad: 'expected pitch unclear', idle: 'not checked yet', muted: "don't play" }
 
 /**
  * Six circles, low E to high e, lit by what was heard on each string (F34):

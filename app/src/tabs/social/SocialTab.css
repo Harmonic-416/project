@@ -1,4 +1,602 @@
-/* Social reuses Home's cards and lists (HomeTab.css). */
-.social-tab {
-  padding-bottom: 40px;
+/*
+ * Social: Home's colours (HomePage.css: navy + cyan/purple in dark mode,
+ * light otherwise), a profile header, an invite card, then the friends lists.
+ */
+.social-page {
+  --social-pink: #db2777;
+  --social-orange: #ea580c;
+  --social-green: var(--hp-hit);
+}
+
+@media (prefers-color-scheme: dark) {
+  .social-page {
+    --social-pink: #f472b6;
+    --social-orange: #fb923c;
+  }
+}
+
+.home-tab.social-tab {
+  max-width: 640px;
+  gap: 18px;
+  padding: 28px 18px 48px;
+}
+
+.social-tab__header h1 {
+  margin: 2px 0 6px;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.social-tab__header p {
+  margin: 0;
+  color: var(--hp-muted);
+}
+
+.social-tab__eyebrow {
+  color: var(--hp-purple);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── shared bits ─────────────────────────────────────────────── */
+.social-card {
+  border: 1px solid var(--hp-border);
+  border-radius: 20px;
+  background: var(--hp-card);
+}
+
+.social-hint {
+  color: var(--hp-muted);
+  font-size: 0.85rem;
+}
+
+.social-hint--ok {
+  color: var(--hp-hit);
+}
+
+.social-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 12px;
+  background: var(--hp-cyan);
+  color: var(--hp-on-cyan);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.social-button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.social-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.social-button--small {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.social-ghost {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--hp-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--hp-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.social-ghost:hover:not(:disabled) {
+  border-color: var(--hp-cyan);
+  color: var(--hp-text);
+}
+
+.social-ghost--danger:hover:not(:disabled) {
+  border-color: var(--hp-miss);
+  color: var(--hp-miss);
+}
+
+.social-link-button {
+  align-self: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--hp-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.social-link-button:hover {
+  color: var(--hp-text);
+}
+
+.social-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--hp-border);
+  border-radius: 999px;
+  background: var(--hp-card-2);
+  color: var(--hp-text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.social-chip:hover {
+  border-color: var(--hp-cyan);
+}
+
+.social-chip--quiet {
+  background: transparent;
+  color: var(--hp-muted);
+}
+
+.social-field {
+  display: flex;
+  gap: 8px;
+}
+
+.social-field__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--hp-border);
+  border-radius: 12px;
+  background: var(--hp-card-2);
+  color: var(--hp-text);
+  font: inherit;
+}
+
+.social-field__input::placeholder {
+  color: var(--hp-muted);
+}
+
+.social-field__input:focus-visible,
+.social-button:focus-visible,
+.social-ghost:focus-visible,
+.social-chip:focus-visible,
+.social-tabs__tab:focus-visible {
+  outline: 2px solid var(--hp-cyan);
+  outline-offset: 2px;
+}
+
+/* ── profile header ──────────────────────────────────────────── */
+.social-hero {
+  overflow: hidden;
+  border: 1px solid var(--hp-border);
+  border-radius: 24px;
+  background: var(--hp-card);
+  box-shadow: var(--hp-glow);
+}
+
+.social-hero--loading {
+  padding: 24px;
+  color: var(--hp-muted);
+}
+
+.social-hero__banner {
+  height: 76px;
+  background:
+    radial-gradient(circle at 12% 130%, rgb(255 255 255 / 18%) 0 42%, transparent 43%),
+    radial-gradient(circle at 92% -40%, rgb(255 255 255 / 14%) 0 38%, transparent 39%),
+    linear-gradient(120deg, var(--hp-cyan), var(--hp-purple));
+}
+
+.social-hero__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 20px;
+  text-align: center;
+}
+
+.social-hero__avatar {
+  margin-top: -40px;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--hp-card);
+  line-height: 0;
+}
+
+.social-hero__who {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.social-hero__name {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+}
+
+.social-hero__tag {
+  margin-left: 2px;
+  color: var(--hp-muted);
+  font-weight: 500;
+}
+
+.social-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.social-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  max-width: 360px;
+  margin: 4px 0 0;
+  border: 1px solid var(--hp-border);
+  border-radius: 16px;
+  background: var(--hp-card-2);
+}
+
+.social-hero__stats div {
+  padding: 10px 0;
+}
+
+.social-hero__stats div + div {
+  border-left: 1px solid var(--hp-border);
+}
+
+.social-hero__stats dt {
+  color: var(--hp-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.social-hero__stats dd {
+  margin: 2px 0 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.social-hero__stat--alert {
+  color: var(--social-orange);
+}
+
+.social-hero__message {
+  margin: 0;
+  padding: 0 20px 18px;
+  color: var(--hp-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.social-name-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 380px;
+  text-align: left;
+}
+
+.social-name-form__label {
+  font-weight: 700;
+}
+
+/* ── invite link ─────────────────────────────────────────────── */
+.social-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 16px 16px;
+  padding: 14px;
+  border: 1px dashed var(--hp-border);
+  border-radius: 16px;
+  background: var(--hp-card-2);
+}
+
+.social-invite__text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.social-invite__text div {
+  display: flex;
+  flex-direction: column;
+}
+
+.social-invite__text div span {
+  color: var(--hp-muted);
+  font-size: 0.82rem;
+}
+
+.social-invite__icon,
+.social-add__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--hp-purple-soft);
+  color: var(--hp-purple);
+}
+
+.social-invite__row {
+  display: flex;
+  gap: 8px;
+}
+
+.social-invite__url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 12px;
+  border: 1px solid var(--hp-border);
+  border-radius: 12px;
+  background: var(--hp-card);
+  color: var(--hp-muted);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 40px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── add a friend ────────────────────────────────────────────── */
+.social-add {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.social-add__label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.social-add__icon {
+  background: var(--hp-cyan-soft);
+  color: var(--hp-cyan);
+}
+
+.social-friends {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── friends / requests / sent ───────────────────────────────── */
+.social-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin: 10px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--hp-card-2);
+}
+
+.social-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--hp-muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.social-tabs__tab.is-active {
+  background: var(--hp-card);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 8%),
+    0 0 0 1px var(--hp-border);
+  color: var(--hp-text);
+}
+
+.social-tabs__count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--hp-cyan-soft);
+  color: var(--hp-cyan);
+  font-size: 0.72rem;
+  line-height: 20px;
+}
+
+.social-tabs__count--alert {
+  background: var(--social-orange);
+  color: #ffffff;
+}
+
+.social-card__error {
+  margin: 0 16px;
+}
+
+.social-card__pad {
+  margin: 8px 18px 18px;
+}
+
+.social-list {
+  margin: 0;
+  padding: 0 8px 8px;
+  list-style: none;
+}
+
+.social-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.social-person + .social-person {
+  margin-top: 2px;
+}
+
+.social-person:hover {
+  background: var(--hp-card-2);
+}
+
+.social-person--highlight {
+  background: color-mix(in srgb, var(--social-orange) 8%, transparent);
+}
+
+.social-person__avatar {
+  flex: none;
+  padding: 2px;
+  border: 2px solid var(--ring);
+  border-radius: 50%;
+  line-height: 0;
+}
+
+.social-ring--cyan {
+  --ring: var(--hp-cyan);
+}
+
+.social-ring--purple {
+  --ring: var(--hp-purple);
+}
+
+.social-ring--orange {
+  --ring: var(--social-orange);
+}
+
+.social-ring--pink {
+  --ring: var(--social-pink);
+}
+
+.social-ring--green {
+  --ring: var(--social-green);
+}
+
+.social-person__avatar .hm-avatar {
+  background: var(--ring);
+}
+
+.social-person__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.social-person__name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-person__tag {
+  color: var(--hp-muted);
+  font-weight: 500;
+}
+
+.social-person__text small {
+  color: var(--hp-muted);
+  font-size: 0.8rem;
+}
+
+.social-person__actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+.social-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 24px 28px;
+  color: var(--hp-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.social-empty p {
+  max-width: 300px;
+  margin: 0;
+}
+
+.social-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--hp-cyan-soft);
+  color: var(--hp-cyan);
+}
+
+/* ── signed out ──────────────────────────────────────────────── */
+.social-signed-out {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.social-signed-out h2 {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+}
+
+.social-signed-out p {
+  max-width: 320px;
+  margin: 0 0 6px;
+  color: var(--hp-muted);
+}
+
+/* Phones: a request's Accept / Decline go under the name. */
+@media (max-width: 420px) {
+  .social-person--highlight {
+    flex-wrap: wrap;
+  }
+
+  .social-person--highlight .social-person__actions {
+    width: 100%;
+    padding-left: 60px;
+  }
 }

@@ -15,6 +15,13 @@ import { ticksToSeconds } from './songTimeline.js'
  */
 const MAX_EXTRAPOLATION_MS = 300 // past the last anchor, assume the audio stalled
 
+/** During finalization, use the end of playback even if the player has rewound. */
+export function finishedOnsetTime(finish, onsetWall, latencyMs, speed) {
+  const corrected = onsetWall - latencyMs
+  if (corrected > finish.wall) return null
+  return finish.seconds + ((corrected - finish.wall) / 1000) * speed
+}
+
 export function createSongClock(tempoMap) {
   let anchor = null // { wall, seconds, speed, playing }
   return {
@@ -70,16 +77,29 @@ const LATENCY_KEY = 'harmonic.guitar.latencyMs'
  * onset is matched to the click just before it. Median of the offsets in
  * ms, or null with too few matches.
  */
-export function estimateLatency(clicks, onsets, { maxMs = 400, minMatches = 4 } = {}) {
-  const offsets = []
-  let o = 0
-  const sortedOnsets = [...onsets].sort((a, b) => a - b)
-  for (const click of [...clicks].sort((a, b) => a - b)) {
-    while (o < sortedOnsets.length && sortedOnsets[o] < click) o += 1
-    if (o < sortedOnsets.length && sortedOnsets[o] - click <= maxMs) {
-      offsets.push(sortedOnsets[o] - click)
-      o += 1
+export function estimateLatency(clicks, onsets, { maxMs = 400, minMatches = 4, jitterMs = 25 } = {}) {
+  const pulses = [...new Set(clicks)].sort((a, b) => a - b)
+  const heard = [...new Set(onsets)]
+  const options = pulses.map((click) => heard
+    .map((wall) => ({ wall, delay: wall - click }))
+    .filter(({ delay }) => delay >= 0 && delay <= maxMs))
+  const seeds = options.flat().map(({ delay }) => delay).sort((a, b) => a - b)
+  let offsets = []
+  for (const seed of seeds) {
+    const used = new Set()
+    const cluster = []
+    for (const candidates of options) {
+      let best
+      for (const candidate of candidates) {
+        if (used.has(candidate.wall) || Math.abs(candidate.delay - seed) > jitterMs) continue
+        if (!best || Math.abs(candidate.delay - seed) < Math.abs(best.delay - seed)) best = candidate
+      }
+      if (best) {
+        used.add(best.wall)
+        cluster.push(best.delay)
+      }
     }
+    if (cluster.length > offsets.length) offsets = cluster
   }
   if (offsets.length < minMatches) return null
   offsets.sort((a, b) => a - b)

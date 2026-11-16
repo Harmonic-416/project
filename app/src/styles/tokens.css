@@ -177,6 +177,7 @@
 }
 @media (max-width: 900px) {
   .guitar-tab .song-workspace { grid-template-columns: minmax(0, 1fr); }
+  .guitar-tab .song-workspace__side:has(.song-workspace__feedback:empty) { display: contents; }
   .guitar-tab .song-workspace__sidebar { display: none; }
   .guitar-tab .guitar-song--options-open .song-workspace__sidebar { display: flex; position: absolute; inset: 0; z-index: 5; box-shadow: 0 4px 0 var(--gs-border); }
   .guitar-tab :is(.song-workspace__options-button, .song-workspace__close) { display: block; flex: none; min-height: var(--gs-control-height); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); background: var(--gs-surface); color: var(--gs-accent); padding: var(--gs-space-2); font: inherit; font-size: .8rem; cursor: pointer; }
@@ -186,6 +187,20 @@
   .guitar-tab .guitar-song--options-open .song-workspace__heading .guitar-song__actions { display: flex; flex-basis: 100%; }
   .guitar-tab .song-workspace__main .playback-controls { flex-wrap: wrap; }
   .guitar-tab .song-workspace__main .playback-controls__time { flex: none; }
+}
+
+@media (600px <= width <= 900px) {
+  .guitar-tab .song-workspace:has(.song-workspace__feedback:not(:empty)) {
+    grid-template-columns: minmax(0, 1fr) clamp(184px, 25vw, 224px);
+  }
+}
+
+@media (width < 600px) {
+  .guitar-tab .song-workspace:has(.song-workspace__feedback:not(:empty)) {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .guitar-tab .song-workspace__side:has(.song-workspace__feedback:not(:empty)) { grid-row: 1; }
+  .guitar-tab .song-workspace__side .song-workspace__feedback { max-height: 35dvh; }
 }
 
 /* A player holding a guitar needs the whole Guided workspace in view. Phones

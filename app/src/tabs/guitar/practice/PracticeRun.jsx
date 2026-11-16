@@ -19,7 +19,7 @@ const STATUS_TEXT = {
  * come from practiceRunReducer (owned by PracticeScreen so the demo buttons
  * and the unlock bookkeeping can reach it).
  */
-function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext, onBackToLearn, onUnlockAnyway, onHint, onSkip }) {
+function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext, onBackToLearn, onUnlockAnyway, onHint, onSkip, advice }) {
   const { status, count, streak, turn, verdict } = state
   const countInError = useLessonCountIn(status, count)
 
@@ -91,6 +91,7 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
             ? 'Detection can be fussy. Move on if you like, and come back to this chord later.'
             : `Time ran out. Play ${chord.name} ${STRUMS_TO_PASS} times in a row to pass.`}
         </p>
+        {advice && <p className="play-run__hint"><strong>What the mic picked up:</strong> {advice}</p>}
         <div className="practice-run__actions">
           <button type="button" className="play-run__primary" onClick={() => dispatch({ type: 'start' })}>
             Try again
@@ -157,6 +158,7 @@ function PracticeRun({ chord, nextChord, state, dispatch, labelMode, onLearnNext
 
       <p className={`practice-run__status practice-run__status--${verdict ?? 'waiting'}`} role="status" aria-live="polite">
         {status === 'countdown' ? 'Get ready…' : (STATUS_TEXT[verdict] ?? `Play ${chord.name}`)}
+        {status === 'running' && advice && <small className="check-banner__advice">{advice}</small>}
       </p>
 
       <button type="button" className="play-run__stop" onClick={() => dispatch({ type: 'reset' })}>

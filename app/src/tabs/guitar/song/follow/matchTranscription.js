@@ -39,6 +39,8 @@ export function toSongNotes(notes, { anchors, recordingStartWall, latencyMs = 0,
  */
 export function matchTranscription(entries, songNotes, { from = 0, to = Infinity, graceSeconds = 0.2, minWindow = 0.15, maxWindow = 0.5 } = {}) {
   const verdicts = new Array(entries.length)
+  const candidates = []
+  const targets = []
   for (const entry of entries) {
     if (entry.time < from - 1e-6 || entry.time > to + 1e-6) continue
     if (entry.technique === 'dead' || entry.technique === 'harmonic' || entry.optional) {
@@ -47,25 +49,66 @@ export function matchTranscription(entries, songNotes, { from = 0, to = Infinity
     }
     const start = entry.time - graceSeconds
     const end = entry.time + Math.min(Math.max(entry.duration, minWindow), maxWindow) + graceSeconds
-    const heard = songNotes.filter((note) => note.time >= start && note.time <= end)
-    const exact = (midi) => heard.filter((note) => note.midi === midi)
-
-    if (entry.kind === 'single') {
-      const target = entry.notes[0].midi
-      const matches = exact(target)
-      if (matches.length) {
-        const bentEnough = matches.some((note) => note.bendSemitones >= HEARD_BEND_SEMITONES)
-        verdicts[entry.index] = entry.technique === 'bend' && !bentEnough ? 'close' : 'hit'
-      } else if (heard.some((note) => note.midi % 12 === target % 12 || Math.abs(note.midi - target) === 1)) {
-        verdicts[entry.index] = 'close'
-      } else {
-        verdicts[entry.index] = 'miss'
+    const slots = [...new Set(entry.notes.map((note) => note.midi))].map((midi) => ({ midi, grade: 0 }))
+    targets.push({ entry, slots })
+    for (const [noteIndex, note] of songNotes.entries()) {
+      if (note.time < start || note.time > end) continue
+      for (const slot of slots) {
+        const difference = Math.abs(note.midi - slot.midi)
+        const exact = difference === 0
+        const close = entry.kind === 'single' && (difference === 1 || difference % 12 === 0)
+        if (!exact && !close) continue
+        const weakBend = entry.technique === 'bend' && !(note.bendSemitones >= HEARD_BEND_SEMITONES)
+        const grade = exact && !weakBend ? 2 : 1
+        candidates.push({ noteIndex, slot, grade, exact, distance: Math.abs(note.time - entry.time) })
       }
+    }
+  }
+
+  // A detected onset can fill just one target. Prefer exact pitches and the
+  // closest onsets within the existing timing windows. If greedy pairing
+  // strands an exact match, try moving an earlier match to another slot.
+  const consumed = new Set()
+  candidates.sort((a, b) => b.grade - a.grade || Number(b.exact) - Number(a.exact) || a.distance - b.distance)
+  const exactOptions = new Map()
+  const owners = new Map()
+  for (const { noteIndex, slot, grade } of candidates) {
+    if (grade !== 2) break
+    if (!exactOptions.has(noteIndex)) exactOptions.set(noteIndex, [])
+    exactOptions.get(noteIndex).push(slot)
+    if (!owners.has(slot) && !consumed.has(noteIndex)) {
+      owners.set(slot, noteIndex)
+      consumed.add(noteIndex)
+    }
+  }
+  function placeExact(noteIndex, visited) {
+    for (const slot of exactOptions.get(noteIndex)) {
+      if (visited.has(slot)) continue
+      visited.add(slot)
+      const owner = owners.get(slot)
+      if (owner !== undefined && !placeExact(owner, visited)) continue
+      owners.set(slot, noteIndex)
+      return true
+    }
+    return false
+  }
+  for (const noteIndex of exactOptions.keys()) {
+    if (!consumed.has(noteIndex) && placeExact(noteIndex, new Set())) consumed.add(noteIndex)
+  }
+  for (const slot of owners.keys()) slot.grade = 2
+  for (const { noteIndex, slot, grade } of candidates) {
+    if (grade !== 1 || slot.grade || consumed.has(noteIndex)) continue
+    slot.grade = 1
+    consumed.add(noteIndex)
+  }
+
+  for (const { entry, slots } of targets) {
+    if (entry.kind === 'single') {
+      verdicts[entry.index] = ['miss', 'close', 'hit'][slots[0].grade]
       continue
     }
-
-    const sounding = entry.notes.filter(({ midi }) => exact(midi).length > 0).length
-    const share = sounding / entry.notes.length
+    const sounding = slots.filter((slot) => slot.grade > 0).length
+    const share = sounding / slots.length
     verdicts[entry.index] = share >= CHORD_HIT ? 'hit' : share >= CHORD_CLOSE ? 'close' : 'miss'
   }
   return verdicts
