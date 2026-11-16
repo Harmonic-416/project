@@ -8,11 +8,9 @@
 /* Each section paints the shared accent with its own colour. */
 .vocal-frame--songs { --v-accent: var(--v-songs); --v-accent-dark: var(--v-primary-dark); }
 .vocal-frame--learn { --v-accent: var(--v-learn); --v-accent-dark: color-mix(in srgb, var(--v-learn) 70%, black); }
-.vocal-frame--exercises { --v-accent: var(--v-practice); --v-accent-dark: color-mix(in srgb, var(--v-practice) 70%, black); }
 .vocal-frame--compose { --v-accent: var(--v-compose); --v-accent-dark: color-mix(in srgb, var(--v-compose) 70%, black); }
-.vocal-frame--warmup { --v-accent: var(--v-warmup); --v-accent-dark: color-mix(in srgb, var(--v-warmup) 70%, black); }
 
-/* Songs | Learn | Practice | Compose | Warm Up: icon tabs, each in its own colour; account button on the right. */
+/* Songs | Learn | Compose: icon tabs, each in its own colour; account button on the right. */
 .vocal-frame__top {
   display: flex;
   align-items: center;
@@ -53,9 +51,7 @@
 }
 
 .vocal-frame__section--learn { --tab-color: var(--v-learn); }
-.vocal-frame__section--exercises { --tab-color: var(--v-practice); }
 .vocal-frame__section--compose { --tab-color: var(--v-compose); }
-.vocal-frame__section--warmup { --tab-color: var(--v-warmup); }
 
 .vocal-frame__section:hover {
   background: var(--v-subtle);
@@ -114,7 +110,7 @@
   overflow-y: auto;
 }
 
-/* Five sections + the account button: on phones the tabs drop their labels to icons, the open one keeps its label. */
+/* Three sections + the end controls: on phones the tabs drop their labels to icons, the open one keeps its label. */
 @media (max-width: 640px) {
   .vocal-frame__top {
     padding: var(--v-s2) var(--v-s3);
@@ -564,9 +560,9 @@
   animation: v-pop var(--v-slow) var(--v-ease-bounce);
 }
 
-/* Phones: every tab is just its icon (the open one stays coloured), the end
-   controls shrink, and if it still doesn't fit the tabs scroll rather than
-   run under the streak. */
+/* Phones: the open tab keeps its label so it's clear where you are (three
+   tabs leave room for one), the end controls shrink, and if it still doesn't
+   fit the tabs scroll rather than run under the streak. */
 @media (max-width: 480px) {
   .vocal-frame__sections {
     flex: 1 1 auto;
@@ -584,7 +580,7 @@
     padding: 7px 6px;
   }
 
-  .vocal-frame__section .vocal-frame__section-label {
+  .vocal-frame__section:not(.vocal-frame__section--active) .vocal-frame__section-label {
     position: absolute;
     width: 1px;
     height: 1px;
