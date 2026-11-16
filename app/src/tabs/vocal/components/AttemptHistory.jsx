@@ -1,3 +1,4 @@
+import { MessageCircle } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './AttemptHistory.css'
 import '../../home/HomeTab.css'
@@ -127,7 +128,7 @@ function TryActions({ row, current, onOpen }) {
       {row.best && <span className="attempt-history__best">best</span>}
       {row.comment_count > 0 && (
         <span className="attempt-history__comments">
-          💬 {row.comment_count}
+          <MessageCircle size="1.1em" aria-hidden="true" /> {row.comment_count}
         </span>
       )}
       {current ? (

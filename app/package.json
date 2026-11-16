@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.109.0",
     "@tonejs/midi": "^2.0.28",
     "jszip": "^3.10.2",
+    "lucide-react": "0.544.0",
     "midi-file": "^1.2.4",
     "onnxruntime-web": "^1.30.0",
     "opensheetmusicdisplay": "^2.1.3",

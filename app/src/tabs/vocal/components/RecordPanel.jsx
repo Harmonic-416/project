@@ -1,3 +1,4 @@
+import { Mic, Music } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as Tone from 'tone'
@@ -207,7 +208,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
       onClick={startAttempt}
       title="Plays the song and listens: you get a score at the end"
     >
-      {mic.status === 'requesting' ? 'Starting mic…' : '🎤 Sing'}
+      {mic.status === 'requesting' ? 'Starting mic…' : <><Mic size="1.1em" aria-hidden="true" /> Sing</>}
     </button>
   )
   // The pitch to start on, before singing: the first note of the part, held long enough to find.
@@ -219,7 +220,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
       onClick={() => tapNote(firstNote.midi, 1.2)}
       title={`Play your first note (${midiToNoteName(firstNote.midi)})`}
     >
-      🎵 <span className="record-panel__first-note-name">{midiToNoteName(firstNote.midi)}</span>
+      <Music size="1.1em" aria-hidden="true" /> <span className="record-panel__first-note-name">{midiToNoteName(firstNote.midi)}</span>
     </button>
   )
   const showRow = !actionSlot || listening || mic.status === 'error'

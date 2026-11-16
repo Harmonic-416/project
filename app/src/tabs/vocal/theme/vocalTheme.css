@@ -249,3 +249,9 @@
   font-weight: 700;
   letter-spacing: 0.02em;
 }
+
+/* Lucide icons sit on the text baseline like the glyphs they replaced. */
+.vocal-frame svg.lucide {
+  flex: none;
+  vertical-align: -0.16em;
+}

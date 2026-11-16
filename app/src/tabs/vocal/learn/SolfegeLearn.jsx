@@ -1,3 +1,4 @@
+import { Flame } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Staff from './Staff.jsx'
 import Celebration from '../ui/Celebration.jsx'
@@ -177,7 +178,7 @@ export default function SolfegeLearn({ playback, lesson = null }) {
                 <ProgressBar value={reading.next - 1} max={reading.melody.length - 1} label="Notes named" />
                 {readCombo.milestone && !readingDone && (
                   <span key={readCombo.combo} className="v-combo">
-                    🔥 {readCombo.combo} in a row!
+                    <Flame size="1.1em" aria-hidden="true" /> {readCombo.combo} in a row!
                   </span>
                 )}
               </div>

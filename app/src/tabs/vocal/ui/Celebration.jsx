@@ -1,3 +1,4 @@
+import { Trophy } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { sfx } from '../feedback/sfx.js'
 import { starsFor } from '../feedback/stars.js'
@@ -81,7 +82,7 @@ export default function Celebration({ id, right, total, detail, headline, childr
         </div>
       ) : (
         <div className="v-celebrate__trophy" aria-hidden="true">
-          🏆
+          <Trophy size="1.1em" aria-hidden="true" />
         </div>
       )}
       <p className="v-celebrate__headline">{headline ?? HEADLINES[stars]}</p>

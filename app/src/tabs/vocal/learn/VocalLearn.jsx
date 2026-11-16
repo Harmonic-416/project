@@ -1,3 +1,4 @@
+import { BookOpen, Ear, Eye, Hand, ListMusic, Lock } from 'lucide-react'
 import { useState } from 'react'
 import './VocalLearn.css'
 import RhythmLearn from './RhythmLearn.jsx'
@@ -14,15 +15,15 @@ const UNITS = [
     title: 'Solfège',
     blurb: 'Give every note a name you can sing',
     lessons: [
-      { id: 'solfege-scale', lesson: 'scale', title: 'The scale', blurb: 'Meet do re mi on the staff', icon: '🎼' },
-      { id: 'solfege-read', lesson: 'read', title: 'Read it', blurb: 'Name the notes you see', icon: '👀' },
-      { id: 'solfege-ear', lesson: 'ear', title: 'Hear it', blurb: 'Name the notes you hear', icon: '👂' },
+      { id: 'solfege-scale', lesson: 'scale', title: 'The scale', blurb: 'Meet do re mi on the staff', icon: ListMusic },
+      { id: 'solfege-read', lesson: 'read', title: 'Read it', blurb: 'Name the notes you see', icon: Eye },
+      { id: 'solfege-ear', lesson: 'ear', title: 'Hear it', blurb: 'Name the notes you hear', icon: Ear },
     ],
   },
   {
     title: 'Rhythm',
     blurb: 'Feel how long each note lasts',
-    lessons: [{ id: 'rhythm', lesson: 'rhythm', title: 'Clap along', blurb: 'Quarter, half, whole and eighth notes', icon: '👏' }],
+    lessons: [{ id: 'rhythm', lesson: 'rhythm', title: 'Clap along', blurb: 'Quarter, half, whole and eighth notes', icon: Hand }],
   },
 ]
 const LESSONS = UNITS.flatMap((u) => u.lessons)
@@ -82,7 +83,7 @@ export default function VocalLearn() {
     <div className="vocal-learn">
       <header className="vocal-hero">
         <span className="vocal-hero__badge" aria-hidden="true">
-          📖
+          <BookOpen size="1.1em" aria-hidden="true" />
         </span>
         <div>
           <h1 className="vocal-hero__title">Learn to read music</h1>
@@ -115,7 +116,7 @@ export default function VocalLearn() {
                     onClick={() => openLesson(lesson)}
                     aria-label={`${lesson.title}: ${state === 'locked' ? 'locked' : state === 'done' ? 'done' : 'start'}`}
                   >
-                    <span aria-hidden="true">{state === 'locked' ? '🔒' : lesson.icon}</span>
+                    <span aria-hidden="true">{state === 'locked' ? <Lock size="1.1em" aria-hidden="true" /> : <lesson.icon size="1.1em" aria-hidden="true" />}</span>
                   </button>
                   {state === 'current' && <span className="learn-node__start">Start</span>}
                   <span className="learn-node__label">

@@ -189,6 +189,27 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessi
     )
   }
 
+  // A brand-new account has nothing to continue or work on: lead with the two
+  // ways in rather than three cards that all say "start".
+  const fresh = data.latest === false && data.recent?.length === 0
+  if (fresh) {
+    return (
+      <>
+        <QuickPractice onNavigate={onNavigate} title="Start practising" hint="Your songs and progress show up here once you play or sing one." />
+        <div className="hp-columns">
+          <section className="hp-card" aria-labelledby="hp-activity">
+            <SectionHead id="hp-activity" Icon={PeopleIcon} title="Recent Activity" onViewAll={() => setPage('activity')} />
+            {activity(ACTIVITY_SHOWN)}
+          </section>
+          <section className="hp-card" aria-labelledby="hp-files">
+            <SectionHead id="hp-files" Icon={FileIcon} title="My Files" onViewAll={() => setPage('files')} />
+            <FilesSummary onViewAll={() => setPage('files')} userId={user.id} version={myFilesVersion} />
+          </section>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <section className="hp-card hp-card--glow" aria-labelledby="hp-continue">
@@ -275,7 +296,7 @@ function Activity({ data, errors, myId, tab, onTab, unseen, limit = null, onOpen
   )
 }
 
-function QuickPractice({ onNavigate }) {
+function QuickPractice({ onNavigate, title = 'Quick Practice', hint = 'Jump straight into an instrument.' }) {
   return (
     <section aria-labelledby="hp-quick">
       <div className="hp-section-head">
@@ -283,9 +304,9 @@ function QuickPractice({ onNavigate }) {
           <span className="hp-card__icon hp-card__icon--bolt">
             <BoltIcon />
           </span>
-          Quick Practice
+          {title}
         </h2>
-        <span className="hp-pill hp-small">Jump into a focused practice session</span>
+        <span className="hp-muted hp-small">{hint}</span>
       </div>
       <div className="hp-quick">
         <button type="button" className="hp-card hp-quick__card hp-quick__card--guitar" onClick={() => onNavigate('guitar')}>

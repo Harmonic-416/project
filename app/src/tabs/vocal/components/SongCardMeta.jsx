@@ -1,3 +1,4 @@
+import { Mic, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { fetchSongInfo, lengthLabel } from '../songs/songInfo.js'
 import { bestStars } from '../feedback/progress.js'
@@ -29,7 +30,7 @@ function SongCardMeta({ song }) {
     <span className="song-meta">
       {info && (
         <span className="song-meta__facts">
-          <span>{info.partCount > 1 ? `👥 ${info.partCount} parts` : '🎤 Solo'}</span>
+          <span>{info.partCount > 1 ? <><Users size="1.1em" aria-hidden="true" /> {info.partCount} parts</> : <><Mic size="1.1em" aria-hidden="true" /> Solo</>}</span>
           {length && <span>{length}</span>}
         </span>
       )}

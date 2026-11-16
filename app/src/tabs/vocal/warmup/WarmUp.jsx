@@ -1,3 +1,4 @@
+import { Ear, Flame, Music2, Target } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import TempoControl from '../../../audio/tempo/TempoControl.jsx'
@@ -200,7 +201,7 @@ export default function WarmUp({ show = 'warmups' }) {
           </span>
           {run.done ? (
             <Celebration
-              headline="Warm-up complete! 🔥"
+              headline="Warm-up complete!"
               detail={`${run.shifts.length} rounds, ${startNote(0)} to ${startNote(run.shifts.length - 1)}. That’s the ${run.direction === 'upper' ? 'top' : 'bottom'} of a typical ${part.name.toLowerCase()} range.`}
             />
           ) : (
@@ -272,7 +273,7 @@ export default function WarmUp({ show = 'warmups' }) {
       <div className="warm-up">
         <header className="vocal-hero">
           <span className="vocal-hero__badge" aria-hidden="true">
-            🎯
+            <Target size="1.1em" aria-hidden="true" />
           </span>
           <div>
             <h1 className="vocal-hero__title">Test your ear and voice</h1>
@@ -289,7 +290,7 @@ export default function WarmUp({ show = 'warmups' }) {
           onClick={() => setTest('harmony')}
         >
           <span className="vocal-tab__search-icon" aria-hidden="true">
-            🎶
+            <Music2 size="1.1em" aria-hidden="true" />
           </span>
           <span>
             <strong>
@@ -306,7 +307,7 @@ export default function WarmUp({ show = 'warmups' }) {
         </button>
         <button type="button" className="vocal-tab__search-songs" disabled={!part} onClick={() => setTest('pitch')}>
           <span className="vocal-tab__search-icon" aria-hidden="true">
-            👂
+            <Ear size="1.1em" aria-hidden="true" />
           </span>
           <span>
             <strong>
@@ -327,7 +328,7 @@ export default function WarmUp({ show = 'warmups' }) {
     <div className="warm-up">
       <header className="vocal-hero">
         <span className="vocal-hero__badge" aria-hidden="true">
-          🔥
+          <Flame size="1.1em" aria-hidden="true" />
         </span>
         <div>
           <h1 className="vocal-hero__title">Warm up your voice</h1>
