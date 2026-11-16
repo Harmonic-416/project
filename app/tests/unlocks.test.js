@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { CHORDS } from '../src/tabs/guitar/practice/chords.js'
-import { chordStatuses, loadCleared, saveCleared, unlockedCount } from '../src/tabs/guitar/practice/unlocks.js'
+import { chordStatuses, loadCleared, saveCleared, unlockedCount, clearClearedMemory } from '../src/tabs/guitar/practice/unlocks.js'
 
 /** Minimal in-memory stand-in for the browser's localStorage. */
 function fakeStorage(initial = {}) {
@@ -12,6 +12,10 @@ function fakeStorage(initial = {}) {
 }
 
 describe('chord unlocks', () => {
+  it('does not open later lessons from invalid or out-of-order completion data', () => {
+    expect(unlockedCount({ Em: 'unknown', Am: 'passed' })).toBe(1)
+    expect(chordStatuses({ Am: 'passed' })).toMatchObject({ Em: 'unlocked', Am: 'locked', C: 'locked' })
+  })
   it('starts with only the first chord (E minor) open', () => {
     const statuses = chordStatuses({})
     expect(CHORDS[0].id).toBe('Em')
@@ -39,6 +43,7 @@ describe('chord unlocks', () => {
 
 describe('saving unlocks', () => {
   afterEach(() => {
+    clearClearedMemory()
     delete globalThis.localStorage
   })
 
@@ -58,5 +63,6 @@ describe('saving unlocks', () => {
 
   it('saving without storage does not throw', () => {
     expect(() => saveCleared({ Em: 'passed' })).not.toThrow()
+    expect(loadCleared()).toEqual({ Em: 'passed' })
   })
 })

@@ -1,5 +1,6 @@
+import GuitarModeFeedback from './GuitarModeFeedback.jsx'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import PlaybackControls from '../../../vocal/components/PlaybackControls.jsx'
+import PlaybackControls from './GuitarPlaybackControls.jsx'
 import ShareAttempt from '../../../vocal/components/ShareAttempt.jsx'
 import StringStates from '../../practice/StringStates.jsx'
 import { midiToNoteName } from '../../../vocal/audio/pitchDetector.js'
@@ -11,6 +12,11 @@ import { createWaitAttempts } from './waitListening.js'
 import { NUDGE_AFTER, initialWait, isDone, waitReducer, waitSummary } from './waitState.js'
 import { isFullRun, waitAccuracy, waitVerdicts } from './runHistory.js'
 import { waitTiming } from './recordingTiming.js'
+import RunReview from './RunReview.jsx'
+import HearingHelp from './HearingHelp.jsx'
+import { CLIPPING_HELP } from './inputQuality.js'
+import { songVerdicts } from './songSection.js'
+import { guitarCoaching } from './guitarCoaching.js'
 
 // How long a Hint rings; the mic ignores it for that long.
 const HINT_MS = 1500
@@ -47,7 +53,7 @@ function lightsOf(result) {
  * Each time the cursor moves on is noted against the recording
  * (recordingTiming.waitTiming), so their cursor moves with it.
  */
-function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
+function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, onTargetBar, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
   const { entries, duration } = timeline
   const reducer = useMemo(() => waitReducer(entries), [entries])
   const [state, dispatch] = useReducer(reducer, entries, initialWait)
@@ -55,6 +61,8 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   const reportTuning = useTuningReport()
   const [lastResult, setLastResult] = useState(null) // { index, result }
   const [take, setTake] = useState(null) // { recording, timing } once a finished run's audio is in
+  const fullRunRef = useRef(true)
+  const takeGenerationRef = useRef(0)
   const finishedRef = useRef(false) // this run's recording is being (or was) collected
   const stepsRef = useRef([]) // { at, time }: when (into the recording) the cursor moved to which note
   const secondsAtRef = useRef(null) // listener.recordingSecondsAt
@@ -90,6 +98,9 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
     (action) => {
       attempts.reset()
       if (action) {
+        if (action.type === 'goto') fullRunRef.current = false
+        if (action.type === 'reset') fullRunRef.current = true
+        takeGenerationRef.current += 1
         setTake(null)
         const from = stateRef.current.index
         apply(action)
@@ -144,8 +155,17 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   useEffect(() => {
     if (!api || !ready || !target) return
     seekToTick(api, target.tick)
-    api.scrollToCursor()
   }, [api, ready, target])
+
+  // The synth applies seeks asynchronously. Follow the target's layout
+  // directly, and look it up again if the score is redrawn or reflows.
+  const targetBar = target?.bar
+  useEffect(() => {
+    if (!api || !ready || targetBar == null || !onTargetBar) return undefined
+    const reveal = () => onTargetBar(targetBar)
+    reveal()
+    return api.postRenderFinished?.on(reveal)
+  }, [api, ready, targetBar, onTargetBar])
 
   // Last note played (or skipped): release the microphone and keep the
   // run's recording for the save below. Once per run.
@@ -157,9 +177,11 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
     }
     if (finishedRef.current) return
     finishedRef.current = true
-    Promise.resolve(micOpen ? stopListening() : null).then((recording) =>
-      setTake({ recording, timing: recording ? waitTiming(stepsRef.current) : null }),
-    )
+    const generation = takeGenerationRef.current
+    const steps = [...stepsRef.current]
+    Promise.resolve(micOpen ? stopListening() : null).then((recording) => {
+      if (takeGenerationRef.current === generation) setTake({ recording, timing: recording ? waitTiming(steps) : null, fullRun: fullRunRef.current })
+    })
   }, [done, micOpen, stopListening])
 
   const play = async () => {
@@ -190,7 +212,7 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   const first = initialWait(entries).index
   const controlState = done ? 'stopped' : listening ? 'playing' : state.index > first ? 'paused' : 'idle'
   const heard = state.heard
-  const chordResult = target && lastResult?.index === target.index ? lastResult.result : null
+  const targetResult = target && lastResult?.index === target.index ? lastResult.result : null
   const summary = done ? waitSummary(state.results) : null
   const savedVerdicts = useMemo(() => (done ? waitVerdicts(entries, state.results) : null), [done, entries, state.results])
   const stuck = state.misses >= NUDGE_AFTER
@@ -199,16 +221,19 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
   return (
     <>
       <PlaybackControls
+        transportHost={transportHost}
+        onTransportStart={onTransportStart}
         state={controlState}
         position={target?.time ?? duration}
         duration={duration}
+        startTime={timeline.startTime}
         onPlay={play}
         onPause={pause}
         onStop={stop}
         onSeek={(time) => restart({ type: 'goto', index: entryIndexAtTime(entries, time) })}
         disabled={!ready || !entries.length || listener.status === 'requesting'}
       />
-      <div className="practice-status" aria-live="polite">
+      <GuitarModeFeedback host={feedbackHost}><div className="practice-status" aria-live="polite">
         {summary ? (
           <strong>
             Done — {summary.firstTry} of {summary.scored} first try
@@ -232,13 +257,13 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
             </span>
           )
         )}
-        {listening && !done && heard && (
+        {listening && !done && listener.clipping && <span>{CLIPPING_HELP}</span>}
+        {listening && !done && !listener.clipping && heard && !listener.quiet && (
           <span className={`practice-status__live practice-status__live--${heard.verdict === 'close' ? 'close' : 'wrong'}`}>
-            {heard.verdict === 'close' ? 'Close' : 'Something else'}
-            {heard.detected != null ? ` (heard ${midiToNoteName(heard.detected)})` : ''} · try {state.misses}
+            {guitarCoaching(targetResult, target) || (heard.verdict === 'close' ? 'Close. Try again.' : 'Try the target note again.')}
           </span>
         )}
-        {listening && !done && !heard && (
+        {listening && !done && !listener.clipping && (!heard || listener.quiet) && (
           <span className="practice-status__live">
             {listener.quiet
               ? 'Couldn’t hear you — play a little louder'
@@ -256,15 +281,15 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
             <button type="button" className={linkClass} onClick={() => restart({ type: 'skip' })}>
               Skip
             </button>
-            {state.misses > 0 && (
               <button type="button" className="practice-status__link" onClick={() => restart({ type: 'retry' })}>
                 Retry
               </button>
-            )}
           </>
         )}
         {listener.status === 'error' && <span className="practice-status__error">{listener.error}</span>}
-      </div>
+      </div></GuitarModeFeedback>
+      {listener.quiet && listening && <HearingHelp />}
+      {summary && <RunReview entries={entries} verdicts={state.results} mode="wait" onSelect={(entry) => { restart({ type: 'goto', index: entry.index }); seekToTick(api, entry.tick) }} />}
       {summary && summary.scored > 0 && take && auth && shareSong && (
         <ShareAttempt
           auth={auth}
@@ -274,18 +299,19 @@ function GuitarWaitMode({ api, timeline, overlay, ready, auth = null, supabase =
           recording={take.recording}
           timing={take.timing}
           instrument="guitar"
-          verdicts={savedVerdicts}
+          recordingChoice
+          verdicts={songVerdicts(timeline, savedVerdicts)}
           session={session}
           mode="wait"
           easy={easy}
-          fullRun={isFullRun(entries, savedVerdicts)}
+          fullRun={timeline.startTick == null && take.fullRun && isFullRun(entries, savedVerdicts)}
           onSaved={onSaved}
         />
       )}
       {target?.kind === 'chord' && (
-        <div className="guitar-follow__strings">
-          <StringStates chord={shapeOf(target)} strings={lightsOf(chordResult)} />
-        </div>
+        <GuitarModeFeedback host={feedbackHost}><div className="guitar-follow__strings">
+          <StringStates chord={shapeOf(target)} strings={lightsOf(targetResult)} />
+        </div></GuitarModeFeedback>
       )}
     </>
   )

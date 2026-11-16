@@ -17,7 +17,7 @@ const HEIGHT = TOP + FRET_GAP * FRETS_SHOWN + 30
  * say (F35); `pulse` makes the dots throb while the Hint is playing, in the
  * order the fingers go down — first finger first (F31).
  */
-function ChordDiagram({ chord, labelMode, pulse = false }) {
+function ChordDiagram({ chord, labelMode, pulse = false, accessibleName }) {
   const x = (i) => LEFT + i * STRING_GAP
   const markerY = TOP - 18
 
@@ -26,8 +26,9 @@ function ChordDiagram({ chord, labelMode, pulse = false }) {
       className={`chord-diagram ${pulse ? 'chord-diagram--pulse' : ''}`}
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       role="img"
-      aria-label={`${chord.name} chord diagram`}
+      aria-label={accessibleName ?? `${chord.name} chord diagram`}
     >
+      <desc>{chord.frets.map((fret, index) => `String ${6 - index} (${STRING_NAMES[index]}): ${fret < 0 ? 'do not play' : fret === 0 ? 'open' : `fret ${fret}, label ${dotLabel(chord, index, labelMode)}`}`).join('; ')}.</desc>
       {/* frets (the first one is the thick nut) */}
       {Array.from({ length: FRETS_SHOWN + 1 }, (_, f) => (
         <line

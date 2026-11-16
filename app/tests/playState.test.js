@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   COUNTDOWN_FROM,
   PROGRESSION,
-  SECONDS_PER_CHORD,
+  BEATS_PER_BAR,
+  LOOP_BPM,
   initialPlay,
   learnedProgression,
   playReducer,
   playScore,
   progressionChords,
+  strummingLoop,
 } from '../src/tabs/guitar/practice/playState.js'
 
 const run = (actions, state = initialPlay()) => actions.reduce(playReducer, state)
@@ -32,27 +34,29 @@ describe('play mode', () => {
     expect(s.results.every((r) => r === null)).toBe(true)
   })
 
-  it('a clean strum moves on at once', () => {
+  it('a clean strum records success without advancing the transport', () => {
     const s = run([{ type: 'start' }, ...ticks, { type: 'result', verdict: 'verified' }])
-    expect(s).toMatchObject({ status: 'running', index: 1, results: ['verified', null, null, null] })
+    expect(s).toMatchObject({ status: 'running', index: 0, results: ['verified', null, null, null] })
   })
 
   it('a wrong or quiet strum waits for the chord’s time to run out', () => {
     let s = run([{ type: 'start' }, ...ticks, { type: 'result', verdict: 'wrong' }, { type: 'result', verdict: 'silent' }])
-    expect(s).toMatchObject({ index: 0, results: ['silent', null, null, null] })
+    expect(s).toMatchObject({ index: 0, results: ['wrong', null, null, null] })
     s = run([{ type: 'result', verdict: 'verified' }], s) // a clean strum before the time is up still counts
-    expect(s).toMatchObject({ index: 1, results: ['verified', null, null, null] })
+    expect(s).toMatchObject({ index: 0, results: ['verified', null, null, null] })
   })
 
   it('keeps going after a wrong chord and scores at the end (F14, F32, F33)', () => {
     const s = run([
       { type: 'start' },
       ...ticks,
-      { type: 'result', verdict: 'verified' }, // moves on by itself
+      { type: 'result', verdict: 'verified' },
+      { type: 'advance' },
       { type: 'result', verdict: 'wrong' },
       { type: 'advance' },
       { type: 'advance' }, // nothing heard on chord 3
-      { type: 'result', verdict: 'verified' }, // the last chord: done
+      { type: 'result', verdict: 'verified' },
+      { type: 'advance' }, // only the transport advances, even for the last chord
     ])
     expect(s.status).toBe('done')
     expect(s.results).toEqual(['verified', 'wrong', null, 'verified'])
@@ -67,14 +71,23 @@ describe('play mode', () => {
 })
 
 describe('play run chords', () => {
-  it('stays on a chord for at most 5 seconds', () => {
-    expect(SECONDS_PER_CHORD).toBe(5)
+  it('starts with four beats per bar at a comfortable 80 BPM', () => {
+    expect(BEATS_PER_BAR).toBe(4)
+    expect(LOOP_BPM).toBe(80)
   })
 
-  it('plays Em C G D until four chords are learned, then the four learned last', () => {
-    expect(learnedProgression({})).toEqual(PROGRESSION)
-    expect(learnedProgression({ Em: 'passed', Am: 'passed', C: 'passed' })).toEqual(PROGRESSION)
+  it('grows from one open chord to the newest four, including the current lesson', () => {
+    expect(learnedProgression({})).toEqual(['Em'])
+    expect(learnedProgression({Em:'passed'})).toEqual(['Em','Am'])
+    expect(learnedProgression({Em:'passed',Am:'skipped'})).toEqual(['Em','Am','C'])
+    expect(learnedProgression({ Em: 'passed', Am: 'passed', C: 'passed' })).toEqual(['Em','Am','C','G'])
     const six = { Em: 'passed', Am: 'passed', C: 'passed', G: 'passed', D: 'skipped', E: 'passed' }
-    expect(learnedProgression(six)).toEqual(['C', 'G', 'D', 'E'])
+    expect(learnedProgression(six)).toEqual(['G', 'D', 'E', 'A'])
+    expect(learnedProgression({Em:'passed', C:'passed', stale:'passed'})).toEqual(['Em','Am'])
+  })
+  it('repeats the selected material for four rounds and resizes the scoring windows', () => {
+    expect(strummingLoop({Em:'passed'})).toEqual(['Em','Am','Em','Am','Em','Am','Em','Am'])
+    expect(strummingLoop({})).toEqual(['Em','Em','Em','Em'])
+    expect(playReducer(initialPlay(), {type:'configure',length:8}).results).toHaveLength(8)
   })
 })

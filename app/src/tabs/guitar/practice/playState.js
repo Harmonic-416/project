@@ -1,10 +1,9 @@
 import { CHORDS } from './chords.js'
+import { unlockedCount } from './unlocks.js'
 
 /**
- * Play mode (F14, F32): the chords go by on their own. A clean strum of
- * the chord that's up moves on to the next at once; otherwise its
- * SECONDS_PER_CHORD run out and the next comes anyway, the app never
- * waiting for you. Each chord gets whatever was heard while it was up; a
+ * Play mode (F14, F32): chords advance at a steady pace regardless of
+ * detection. Each chord keeps the best evidence heard during its window; a
  * chord with nothing heard counts as missed. At the end you get a score (F33).
  * Pure reducer, unit-tested in app/tests/playState.test.js. The component
  * (PlayRun.jsx) owns the timers and dispatches 'tick' / 'advance'.
@@ -15,13 +14,15 @@ import { CHORDS } from './chords.js'
 
 export const PROGRESSION = ['Em', 'C', 'G', 'D']
 
-// The longest a chord stays up; a clean strum moves on sooner.
-export const SECONDS_PER_CHORD = 5
-
-/** The run's chords: the four learned most recently, or Em C G D until four are learned. */
+/** The newest one to four open shapes, including the player's current lesson. */
 export function learnedProgression(cleared = {}) {
-  const learned = CHORDS.filter((chord) => cleared[chord.id]).map((chord) => chord.id)
-  return learned.length >= PROGRESSION.length ? learned.slice(-PROGRESSION.length) : PROGRESSION
+  return CHORDS.slice(0, unlockedCount(cleared)).slice(-4).map((chord) => chord.id)
+}
+export const LOOP_ROUNDS = 4
+export const BEATS_PER_BAR = 4
+export const LOOP_BPM = 80
+export function strummingLoop(cleared = {}) {
+  return Array.from({length: LOOP_ROUNDS}, () => learnedProgression(cleared)).flat()
 }
 export const COUNTDOWN_FROM = 3
 
@@ -39,6 +40,8 @@ const next = (state) =>
 
 export function playReducer(state, action) {
   switch (action.type) {
+    case 'configure':
+      return initialPlay(action.length)
     case 'start':
       return { ...initialPlay(state.results.length), status: 'countdown' }
 
@@ -49,11 +52,13 @@ export function playReducer(state, action) {
         : { ...state, status: 'running', count: 0 }
 
     case 'result': {
-      // Whatever the app heard for the chord that is up right now; a clean strum moves on.
+      // The microphone changes the verdict, never the transport position.
       if (state.status !== 'running') return state
+      const rank = { verified: 3, wrong: 2, silent: 1 }
+      if (!rank[action.verdict]) return state
       const results = [...state.results]
-      results[state.index] = action.verdict
-      return action.verdict === 'verified' ? next({ ...state, results }) : { ...state, results }
+      if (rank[action.verdict] > (rank[results[state.index]] ?? 0)) results[state.index] = action.verdict
+      return { ...state, results }
     }
 
     case 'advance': // the current chord's time is up

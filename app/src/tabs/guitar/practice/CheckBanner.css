@@ -33,13 +33,13 @@
 .check-banner--verified .check-banner__icon {
   border-color: var(--practice-good-strong);
   background: var(--practice-good);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .check-banner--wrong .check-banner__icon {
   border-color: var(--practice-bad);
   background: var(--practice-bad);
-  color: #ffffff;
+  color: var(--gs-on-solid);
 }
 
 .check-banner__actions {
@@ -59,10 +59,6 @@
   cursor: pointer;
 }
 
-.check-banner__actions button:hover:not(:disabled) {
-  border-color: var(--hm-accent);
-}
-
 .check-banner__actions button:disabled {
   opacity: 0.6;
   cursor: progress;
@@ -71,6 +67,12 @@
 .check-banner__actions .check-banner__primary {
   border-color: var(--hm-accent);
   background: var(--hm-accent);
-  color: #ffffff;
+  color: var(--gs-on-solid);
   font-weight: 600;
 }
+.check-banner__advice { display: block; margin-block-start: 4px; font: inherit; font-size: .82rem; font-weight: 500; }
+.chord-library.chord-string-check { max-width: 520px; padding: var(--gs-space-4); }
+.chord-string-check .chord-library__header { padding: 0; }
+.chord-string-check .lesson-coach__strings { margin-block: var(--gs-space-3); }
+.chord-string-check .lesson-coach__strings button[aria-pressed="true"] { border-color: var(--gs-accent); background: var(--gs-accent-soft); color: var(--gs-accent); }
+.chord-string-check > .practice__listen { margin-block-start: var(--gs-space-2); }

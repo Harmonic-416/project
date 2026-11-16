@@ -18,10 +18,14 @@ export function seekToTick(api, tick) {
 
 /** Loop ticks [startTick, endTick) and put the cursor at the start. */
 export function loopTicks(api, startTick, endTick) {
+  playRange(api, startTick, endTick, true)
+}
+
+export function playRange(api, startTick, endTick, loop = false) {
   const range = new alphaTab.synth.PlaybackRange()
   range.startTick = startTick
   range.endTick = endTick
-  setPlayerOptions(api, { playbackRange: range, isLooping: true, tickPosition: startTick })
+  setPlayerOptions(api, { playbackRange: range, isLooping: loop, tickPosition: startTick })
 }
 
 /** Back to playing the whole song, with any selection cleared. */

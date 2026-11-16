@@ -1,0 +1,96 @@
+/* The card after a take (TakeSummary.jsx). Tier colours: great ≥ 90 % of notes, good ≥ 60 %, start below. */
+.take-summary {
+  --ts-tone: var(--v-border-strong);
+  --ts-soft: var(--v-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--v-s3);
+  padding: var(--v-s4);
+  border: 2px solid var(--ts-tone);
+  border-radius: var(--v-radius-lg);
+  background: var(--ts-soft);
+  animation: v-rise-in var(--v-slow) var(--v-ease-bounce) both;
+}
+.take-summary--great { --ts-tone: var(--v-good); --ts-soft: var(--v-good-soft); }
+.take-summary--good { --ts-tone: var(--v-gold); --ts-soft: var(--v-gold-soft); }
+
+.take-summary__head { display: flex; align-items: center; gap: var(--v-s3); }
+
+.take-summary__stars {
+  display: flex;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--v-border-strong);
+}
+.take-summary__star--on { color: var(--v-gold); }
+
+.take-summary__title {
+  font-family: var(--v-font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.take-summary__score { margin: 2px 0 0; color: var(--v-muted); font-size: 0.9rem; }
+.take-summary__score b { color: var(--v-text); }
+
+.take-summary__spots h4 {
+  margin: 0 0 var(--v-s2);
+  color: var(--v-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.take-summary__spots ul { display: flex; flex-direction: column; gap: var(--v-s2); margin: 0; padding: 0; list-style: none; }
+
+.take-summary__spot {
+  display: flex;
+  align-items: center;
+  gap: var(--v-s3);
+  padding: var(--v-s2) var(--v-s3);
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  background: var(--v-card);
+  font-size: 0.9rem;
+}
+
+.take-summary__glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--v-bad);
+  color: var(--v-on-accent);
+  font-weight: 800;
+}
+.take-summary__spot--silent .take-summary__glyph { background: var(--v-border-strong); color: var(--v-text); }
+
+.take-summary__hear {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-pill);
+  background: var(--v-subtle);
+  color: var(--v-text);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.take-summary__hear:hover { border-color: var(--v-primary); }
+
+.take-summary__more,
+.take-summary__note { margin: 0; color: var(--v-muted); font-size: 0.82rem; }
+
+.take-summary__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v-s3); }
+
+@media (max-width: 480px) {
+  .take-summary__stars { font-size: 1.35rem; }
+  .take-summary__title { font-size: 1.1rem; }
+}
+
+/* The summary is the card: the record panel around it steps back instead of drawing a second border. */
+.record-panel:has(.take-summary) { padding: 0; border: 0; background: none; }

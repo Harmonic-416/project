@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createWaitAttempts, soundsLikeANote } from '../src/tabs/guitar/song/follow/waitListening.js'
 import { initialWait, waitReducer } from '../src/tabs/guitar/song/follow/waitState.js'
+import { initialPracticeRun, practiceRunReducer } from '../src/tabs/guitar/practice/practiceRunState.js'
 import { OPEN_STRINGS, listen, mix, pick, renderGuitar, strum, typing, withRoomNoise } from './guitarSignals.js'
 
 const EM = { 6: 0, 5: 2, 4: 2, 3: 0, 2: 0, 1: 0 }
@@ -58,6 +59,13 @@ describe('wait for me: noise is not a note', () => {
     const signal = mix(renderGuitar(4, strum(0.8, EM, { amp: 0.05 })), typing(4, 1.4, 3.6, { amp: 0.03, seed: 11 }))
     expect(waitFor(STRUM_SONG, withRoomNoise(signal, 0.003))).toEqual({ moved: 1, marks: ['hit'], wrong: 0 })
   })
+
+  it('accepts the first pick after digital silence without learning its attack as the noise floor', () => {
+    const signal = renderGuitar(1.5, [pick(0.5, 1, 0)])
+    const [window] = listen(signal)
+    expect(window.floor).toBeNull()
+    expect(waitFor(ODE_SONG, signal)).toEqual({ moved: 1, marks: ['hit'], wrong: 0 })
+  })
 })
 
 describe('wait for me: one strum, one judgement', () => {
@@ -73,6 +81,56 @@ describe('wait for me: one strum, one judgement', () => {
   it('judges a strum caught in two goes once, without calling its first half wrong', () => {
     const signal = renderGuitar(3, strum(0.5, EM, { gap: 0.13, second: 1.6 }))
     expect(waitFor(STRUM_SONG, withRoomNoise(signal))).toEqual({ moved: 1, marks: ['hit'], wrong: 0 })
+  })
+
+  it('allows a separately picked next note inside the chord grouping window', () => {
+    const signal = renderGuitar(1.5, [pick(0.5, 1, 0), pick(0.68, 1, 1, { amp: 0.6 })])
+    const phrase = [noteEntry(0, ODE.E), noteEntry(1, ODE.F)]
+    expect(waitFor(phrase, withRoomNoise(signal))).toEqual({ moved: 2, marks: hits(2), wrong: 0 })
+    expect(waitFor(phrase, signal)).toEqual({ moved: 2, marks: hits(2), wrong: 0 })
+  })
+
+  it('requires a new attack for adjacent copies of the same note', () => {
+    const phrase = [ODE_SONG[0], ODE_SONG[1]]
+    const signal = withRoomNoise(renderGuitar(1.6, [pick(0.5, 1, 0), pick(0.68, 1, 0, { amp: 0.6 })]))
+    expect(waitFor(phrase, signal)).toEqual({ moved: 2, marks: hits(2), wrong: 0 })
+
+    const [played] = listen(renderGuitar(1.5, [pick(0.5, 1, 0)]))
+    const attempts = createWaitAttempts()
+    expect(attempts.consider(played, phrase[0]).actions).toHaveLength(1)
+    expect(attempts.consider(played, phrase[1]).actions).toHaveLength(0)
+    const shift = Math.round(0.38 * played.sampleRate)
+    // Reproduce a spurious onset with strong pitch evidence but no rise
+    // in the raw audio level, as can happen when a note keeps ringing.
+    const ringing = {
+      ...played, source: 'flux', onset: played.onset + shift,
+      beforeLevel: 0.15,
+      levels: played.levels.map(({ position }) => ({ position: position + shift, level: 0.15 })),
+    }
+    expect(attempts.consider(ringing, phrase[1]).actions).toHaveLength(0)
+  })
+
+  it('credits two physical strums only twice during a three-strum lesson checkpoint', () => {
+    const audio = renderGuitar(3, [...strum(0.5, EM), ...strum(1.1, EM, { seed: 42 }), ...strum(1.7, EM, { seed: 43 })])
+    const attempts = createWaitAttempts()
+    // A lesson repeats the same chord target object for the whole streak.
+    const target = STRUM_SONG[0]
+    const [first, second, third] = listen(withRoomNoise(audio))
+    const shift = Math.round(0.38 * second.sampleRate)
+    const ringing = {
+      ...second, source: 'flux', onset: second.onset + shift, beforeLevel: 0.1,
+      levels: second.levels.map(({ position }) => ({ position: position + shift, level: 0.1 })),
+    }
+    let run = { ...initialPracticeRun(), status: 'running' }
+    const hear = (window) => {
+      for (const { result } of attempts.consider(window, target).actions) {
+        run = practiceRunReducer(run, { type: 'result', verdict: result.verdict === 'hit' ? 'verified' : 'wrong' })
+      }
+    }
+    ;[first, second, second, ringing].forEach(hear)
+    expect(run).toMatchObject({ streak: 2, status: 'running' })
+    hear(third)
+    expect(run).toMatchObject({ streak: 3, status: 'passed' })
   })
 
   it('hears every strum and pick of correct playing', () => {

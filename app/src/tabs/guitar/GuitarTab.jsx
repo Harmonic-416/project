@@ -1,9 +1,9 @@
+import GuitarFeedback from './practice/GuitarFeedback.jsx'
 import { lazy, Suspense, useCallback, useState } from 'react'
 import './GuitarTab.css'
 import Tuner from './tuner/Tuner.jsx'
 import AccountChip from '../../auth/AccountChip.jsx'
 import Exercises from './exercises/Exercises.jsx'
-import Fretboard from './fretboard/Fretboard.jsx'
 import LearnTab from './learn/LearnTab.jsx'
 import TuneUpPrompt from './tuner/TuneUpPrompt.jsx'
 import { createTuningWatch, dismissTunePrompt, isTunePromptDismissed, isTunedThisSession } from './tuner/tuneSession.js'
@@ -16,15 +16,14 @@ const VIEWS = [
   { id: 'song', label: 'Songs' },
   { id: 'learn', label: 'Learn' }, // chord lessons, strum on the beat (F18); progress on the account
   { id: 'exercises', label: 'Exercises' }, // ear training (F41)
-  { id: 'fretboard', label: 'Fretboard' }, // every note on the neck, per tuning
-  { id: 'tuner', label: 'Tuner' },
+  { id: 'tuner', label: 'Tuner' }, // also opens the fretboard map (every note on the neck)
 ]
 
 /**
  * Guitar: Songs (tab + notation, played along and scored), Learn (the chord
  * lessons and strum on the beat, with progress kept on the account when
  * signed in; `learnProgressVersion` from App.jsx), Exercises to practise on
- * your own, the Fretboard (every note on the neck), and the Tuner. Opens on Songs; a shared guitar
+ * your own, and the Tuner (with the fretboard map under it). Opens on Songs; a shared guitar
  * attempt (`sharedAttemptId`, from a share link via App.jsx) opens there too,
  * and so does a song's practice sessions from Home (`sessionsToOpen`).
  * Until the guitar has been tuned this session, Songs shows a "Tune first?"
@@ -67,17 +66,14 @@ function GuitarTab({
     open('tuner')
   }
 
-  const notNow = () => {
-    if (drift !== null) {
-      watch.reset()
-      setDrift(null)
-      return
-    }
+  const alreadyTuned = () => {
     dismissTunePrompt()
     setDismissed(true)
+    watch.reset()
+    setDrift(null)
   }
 
-  const showPrompt = view === 'song' && (drift !== null || (!tuned && !dismissed))
+  const showPrompt = view === 'song' && !dismissed && (drift !== null || !tuned)
   const returnLabel = VIEWS.find((v) => v.id === returnTo)?.label
 
   return (
@@ -98,7 +94,7 @@ function GuitarTab({
         </nav>
         <AccountChip auth={auth} onNavigate={onNavigate} />
       </div>
-      {showPrompt && <TuneUpPrompt drift={drift} onTune={tuneNow} onDismiss={notNow} />}
+      {showPrompt && <TuneUpPrompt drift={drift} onTune={tuneNow} onDismiss={alreadyTuned} />}
       <div className="guitar-tab__body">
         <TuningReportContext.Provider value={report}>
           {view === 'tuner' ? (
@@ -114,10 +110,8 @@ function GuitarTab({
             <LearnTab auth={auth} progressVersion={learnProgressVersion} />
           ) : view === 'exercises' ? (
             <Exercises />
-          ) : view === 'fretboard' ? (
-            <Fretboard />
           ) : (
-            <Suspense fallback={<p className="guitar-tab__loading">Loading songs…</p>}>
+            <Suspense fallback={<GuitarFeedback>Loading songs...</GuitarFeedback>}>
               <GuitarSong
                 auth={auth}
                 onNavigate={onNavigate}

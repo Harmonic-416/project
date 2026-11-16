@@ -1,3 +1,4 @@
+import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { useEffect, useRef, useState } from 'react'
 import './TranscribePanel.css'
 
@@ -64,9 +65,7 @@ function TranscribePanel({ onTranscribed }) {
         <div className="transcribe__bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
           <span style={{ width: `${percent}%` }} />
         </div>
-        <p className="transcribe__stage">
-          {job.label}… {percent}%
-        </p>
+        <GuitarFeedback>{job.label}... {percent}%</GuitarFeedback>
         <p className="transcribe__hint">{HINT[job.device] ?? 'Keep this tab open.'}</p>
         <button type="button" className="transcribe__cancel" onClick={() => controller.current?.abort()}>
           Cancel
@@ -120,7 +119,7 @@ function TranscribePanel({ onTranscribed }) {
         Use a song you own, or your own playing. The audio stays on this device: nothing is uploaded. The first time
         downloads about 70 MB of listening models.
       </p>
-      {error && <p className="guitar-song__status guitar-song__status--error">{error}</p>}
+      {error && <GuitarFeedback kind="error">{error} Choose an audio file above to try again.</GuitarFeedback>}
     </section>
   )
 }

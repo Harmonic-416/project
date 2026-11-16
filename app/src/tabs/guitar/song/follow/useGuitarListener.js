@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createCapture } from '../../../../audio/capture/createCapture.js'
 import { createPitchTracker, midiToNoteName } from '../../../vocal/audio/pitchDetector.js'
 import { createWindowCollector } from './listenWindows.js'
+import { hasClippedSamples } from './inputQuality.js'
 
 // 4096 samples ≈ 85 ms at 48 kHz: several periods of low E (82 Hz), as in the tuner.
 const FRAME_SIZE = 4096
@@ -31,6 +32,7 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
   const [error, setError] = useState(null)
   const [live, setLive] = useState(null) // { midi, noteName } | null
   const [quiet, setQuiet] = useState(false)
+  const [clipping, setClipping] = useState(false)
   const rigRef = useRef(null) // { capture, collector, recorder, chunks, map, recordingStartWall }
   const sessionRef = useRef(0) // bumped by stop(), so a start still awaiting the mic gives up
   const onWindowRef = useRef(onWindow)
@@ -48,6 +50,7 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
         setStatus('idle')
         setLive(null)
         setQuiet(false)
+        setClipping(false)
         if (!rig) {
           resolve(null)
           return
@@ -78,6 +81,7 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
         open.paused = false
         open.pausedAt = null
         open.lastSound = now
+        open.lastClip = -Infinity
         open.collector.reset()
         if (open.recorder?.state === 'paused') open.recorder.resume()
         setStatus('listening')
@@ -93,17 +97,20 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
       const capture = await createCapture({
         frameSize: FRAME_SIZE,
         hop: HOP,
-        onFrame: ({ samples, level, position }) => {
+        onFrame: ({ samples, level, position, captureWall }) => {
           if (!rig || rig.paused) return
           const now = performance.now()
-          rig.map = { position, wall: now }
-          const reading = pitch.analyze(samples, capture.sampleRate)
+          rig.map = { position, wall: Number.isFinite(captureWall) ? captureWall : now }
+          const clipped = hasClippedSamples(samples)
+          if (clipped) rig.lastClip = now
+          const reading = clipped ? null : pitch.analyze(samples, capture.sampleRate)
           rig.collector.frame({ samples, position, level, midi: reading?.midi ?? null })
           if (level >= SOUND_FLOOR) rig.lastSound = now
           if (now - rig.lastUi >= UI_INTERVAL_MS) {
             rig.lastUi = now
             setLive(reading ? { midi: reading.midi, noteName: midiToNoteName(reading.midi) } : null)
             setQuiet(now - rig.lastSound > QUIET_MS)
+            setClipping(now - rig.lastClip < 1000)
           }
         },
         onOnset: ({ position }) => {
@@ -120,7 +127,9 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
         sampleRate,
         frameSize: FRAME_SIZE,
         hop: HOP,
-        onWindow: (w) => onWindowRef.current?.({ ...w, sampleRate, wall: toWall(w.onset) }),
+        onWindow: (w) => {
+          if (!w.frames.some(hasClippedSamples)) onWindowRef.current?.({ ...w, sampleRate, wall: toWall(w.onset) })
+        },
       })
 
       let recorder = null
@@ -140,7 +149,7 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
       }
 
       const now = performance.now()
-      rig = { capture, collector, recorder, chunks, map: { position: 0, wall: now }, lastSound: now, lastUi: 0, recordingStartWall: now, paused: false, pausedAt: null, pausedMs: 0 }
+      rig = { capture, collector, recorder, chunks, map: { position: 0, wall: now }, lastSound: now, lastClip: -Infinity, lastUi: 0, recordingStartWall: now, paused: false, pausedAt: null, pausedMs: 0 }
       rigRef.current = rig
       setStatus('listening')
       return true
@@ -162,6 +171,7 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
     setStatus('paused')
     setLive(null)
     setQuiet(false)
+    setClipping(false)
   }, [])
 
   const muteFor = useCallback((ms) => {
@@ -190,5 +200,5 @@ export function useGuitarListener({ onWindow, record = false } = {}) {
     [],
   )
 
-  return { status, error, live, quiet, start, stop, pause, muteFor, getRecordingStartWall, recordingSecondsAt }
+  return { status, error, live, quiet, clipping, start, stop, pause, muteFor, getRecordingStartWall, recordingSecondsAt }
 }

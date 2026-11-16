@@ -8,14 +8,14 @@
 .warm-up__hint {
   margin: 0;
   font-size: 0.9rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .warm-up__how {
   margin: 0;
   padding-left: 1.2em;
   font-size: 0.9rem;
-  color: #3b3940;
+  color: var(--v-text, #3b3940);
 }
 
 .warm-up__how li + li {
@@ -25,7 +25,7 @@
 .warm-up__error {
   margin: 0;
   font-size: 0.9rem;
-  color: #cf4b36;
+  color: var(--v-bad, #cf4b36);
 }
 
 .warm-up__voices {
@@ -36,29 +36,29 @@
 
 .warm-up__voice {
   padding: 8px 14px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--v-border, #e2dfd8);
   border-radius: 999px;
-  background: #ffffff;
-  color: #24242c;
+  background: var(--v-card, #ffffff);
+  color: var(--v-text, #24242c);
   font: inherit;
   cursor: pointer;
 }
 
 .warm-up__voice:hover {
-  background: #f0f7f7;
+  background: var(--v-primary-soft, #f0f7f7);
 }
 
 .warm-up__voice--on,
 .warm-up__voice--on:hover {
-  border-color: #128789;
-  background: #128789;
-  color: #ffffff;
+  border-color: var(--v-primary, #128789);
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
 }
 
 .warm-up .vocal-tab__search-songs:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  background: #ffffff;
+  background: var(--v-card, #ffffff);
 }
 
 .warm-up__now {
@@ -67,9 +67,9 @@
   align-items: center;
   gap: 6px;
   padding: 24px 14px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--v-border, #e2dfd8);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--v-card, #ffffff);
   text-align: center;
 }
 
@@ -78,13 +78,13 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .warm-up__cue {
   min-width: 7em;
   padding: 6px 18px;
-  border: 2px solid #128789;
+  border: 2px solid var(--v-primary, #128789);
   border-radius: 999px;
   font-size: 1.1rem;
   font-weight: 700;
@@ -93,24 +93,24 @@
 }
 
 .warm-up__cue--sing {
-  background: #128789;
-  color: #ffffff;
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
 }
 
 .warm-up__cue--listen {
-  border-color: #c9c6bf;
-  background: #f4f2ee;
-  color: #6c6a72;
+  border-color: var(--v-border-strong, #c9c6bf);
+  background: var(--v-subtle, #f4f2ee);
+  color: var(--v-muted, #6c6a72);
 }
 
 .warm-up__now-note {
   font-size: 2.4rem;
-  color: #128789;
+  color: var(--v-primary, #128789);
 }
 
 .warm-up__now-detail {
   font-size: 0.9rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .warm-up__controls {
@@ -122,20 +122,20 @@
 .warm-up__primary,
 .warm-up__secondary {
   padding: 10px 24px;
-  border: 1px solid #128789;
+  border: 1px solid var(--v-primary, #128789);
   border-radius: 8px;
   font: inherit;
   cursor: pointer;
 }
 
 .warm-up__primary {
-  background: #128789;
-  color: #ffffff;
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
 }
 
 .warm-up__secondary {
-  background: #ffffff;
-  color: #128789;
+  background: var(--v-card, #ffffff);
+  color: var(--v-primary, #128789);
 }
 
 /* Harmony and pitch tests */
@@ -147,12 +147,12 @@
   padding: 4px 16px;
   border-radius: 999px;
   font-size: 1rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .pitch-test__move--on {
-  background: #fff3d6;
-  color: #8a5a00;
+  background: var(--v-gold-soft, #fff3d6);
+  color: var(--v-gold-dark, #8a5a00);
   font-weight: 700;
 }
 
@@ -163,16 +163,16 @@
 
 .pitch-test__heard {
   font-size: 0.9rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .pitch-test__heard--right {
-  color: #128789;
+  color: var(--v-primary, #128789);
   font-weight: 600;
 }
 
 .pitch-test__heard--off {
-  color: #cf4b36;
+  color: var(--v-bad, #cf4b36);
 }
 
 .pitch-test__chords {
@@ -187,25 +187,195 @@
 
 .pitch-test__chord {
   padding: 4px 10px;
-  border: 1px solid #e2dfd8;
+  border: 1px solid var(--v-border, #e2dfd8);
   border-radius: 999px;
   font-size: 0.85rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .pitch-test__chord--sung {
-  border-color: #128789;
-  color: #128789;
+  border-color: var(--v-primary, #128789);
+  color: var(--v-primary, #128789);
 }
 
 .pitch-test__chord--right {
-  border-color: #128789;
-  background: #128789;
-  color: #ffffff;
+  border-color: var(--v-primary, #128789);
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
 }
 
 .pitch-test__chord--wrong {
-  border-color: #cf4b36;
-  background: #fdecea;
-  color: #cf4b36;
+  border-color: var(--v-bad, #cf4b36);
+  background: var(--v-bad-soft, #fdecea);
+  color: var(--v-bad, #cf4b36);
+}
+
+/* ── Polish: chunky, colourful, pressable (theme/vocalTheme.css) ── */
+.warm-up {
+  gap: var(--v-s4);
+}
+
+.warm-up__voices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+.warm-up__voice {
+  min-height: 48px;
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius);
+  box-shadow: 0 var(--v-lip) 0 var(--v-border);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  transition:
+    transform var(--v-fast) var(--v-ease-out),
+    box-shadow var(--v-fast) var(--v-ease-out);
+}
+
+.warm-up__voice:hover {
+  background: color-mix(in srgb, var(--v-accent) 10%, var(--v-card));
+}
+
+.warm-up__voice:active {
+  transform: translateY(var(--v-lip));
+  box-shadow: 0 0 0 var(--v-border);
+}
+
+.warm-up__voice--on,
+.warm-up__voice--on:hover {
+  border-color: transparent;
+  background: var(--v-accent);
+  box-shadow: 0 var(--v-lip) 0 var(--v-accent-dark);
+  animation: v-pop var(--v-slow) var(--v-ease-bounce);
+}
+
+/* The "now" panel: a big friendly card around the current note. */
+.warm-up__now {
+  padding: var(--v-s5) var(--v-s4);
+  border: 2px solid var(--v-border);
+  border-radius: var(--v-radius-lg);
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--v-accent) 14%, transparent), transparent 70%),
+    var(--v-card);
+}
+
+.warm-up__now-label {
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.warm-up__now-note {
+  font-family: var(--v-font-display);
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+/* Sing / Listen: a pill that breathes while you sing. */
+.warm-up__cue {
+  padding: 6px 20px;
+  border-radius: var(--v-radius-pill);
+  font-family: var(--v-font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.warm-up__cue--sing {
+  background: var(--v-good);
+  color: var(--v-on-accent);
+  box-shadow: 0 3px 0 var(--v-good-dark);
+  animation: v-breathe 1.6s ease-in-out infinite;
+}
+
+.warm-up__cue--listen {
+  background: var(--v-sky-soft);
+  color: var(--v-sky);
+}
+
+.warm-up__controls {
+  gap: var(--v-s2);
+}
+
+.warm-up__primary,
+.warm-up__secondary {
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 2px solid transparent;
+  border-radius: var(--v-radius);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+  transition:
+    transform var(--v-fast) var(--v-ease-out),
+    box-shadow var(--v-fast) var(--v-ease-out);
+}
+
+.warm-up__primary {
+  background: var(--v-accent);
+  box-shadow: 0 var(--v-lip) 0 var(--v-accent-dark);
+  color: var(--v-on-accent);
+}
+
+.warm-up__secondary {
+  border-color: var(--v-border);
+  background: var(--v-card);
+  box-shadow: 0 var(--v-lip) 0 var(--v-border);
+  color: var(--v-accent);
+}
+
+.warm-up__primary:active:not(:disabled),
+.warm-up__secondary:active:not(:disabled) {
+  transform: translateY(var(--v-lip));
+  box-shadow: none;
+}
+
+/* The notes / chords of a test, as chips that pop green or shake red. */
+.pitch-test__chord {
+  border-width: 2px;
+  border-radius: var(--v-radius);
+  font-family: var(--v-font-display);
+  font-weight: 800;
+}
+
+.pitch-test__chord--right {
+  animation: v-pop var(--v-slow) var(--v-ease-bounce) both;
+}
+
+.pitch-test__chord--wrong {
+  animation: v-shake var(--v-slow) ease-in-out;
+}
+
+.pitch-test__heard--right {
+  animation: v-pop var(--v-slow) var(--v-ease-bounce);
+}
+
+.warm-up__how {
+  padding: var(--v-s3) var(--v-s4) var(--v-s3) calc(var(--v-s4) + 1.2em);
+  border-radius: var(--v-radius);
+  background: var(--v-subtle);
+  color: var(--v-muted);
+}
+
+.pitch-test__chord--right {
+  border-color: var(--v-good-dark);
+  background: var(--v-good);
+}
+
+.warm-up__now .v-progress {
+  align-self: stretch;
+  max-width: 360px;
+  width: 100%;
+  margin: var(--v-s1) auto 0;
+}
+
+.warm-up__now .v-celebrate {
+  align-self: stretch;
+  border: none;
+  background: none;
+  padding: var(--v-s2) 0 0;
+}
+
+.v-howto .warm-up__how {
+  padding: 0 0 0 1.2em;
+  background: none;
 }

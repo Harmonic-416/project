@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { getSharedAttempt, listSongScores, saveAttempt, updateAttemptResult, type NewSharedAttempt } from '../../src/lib/attempts'
+import { getSharedAttempt, getSongScoreStats, listSongScores, saveAttempt, updateAttemptResult, type NewSharedAttempt } from '../../src/lib/attempts'
 import { listPracticeSessions, startPracticeSession } from '../../src/lib/practiceSessions'
 import { hasSupabaseEnv, newTestUser } from '../helpers'
 
@@ -58,6 +58,9 @@ describe.skipIf(!hasSupabaseEnv)('guitar run history (0017)', () => {
     })
     expect(scores.map((s) => s.id)).toEqual([second.id, first.id])
     expect(scores.map((s) => s.accuracy)).toEqual([80, 60])
+    expect(await getSongScoreStats(owner.supabase, {
+      songFingerprint: fingerprint, instrument: 'guitar', mode: 'trouble', easy: false, partId: '0',
+    })).toEqual({ last: 80, best: 80, count: 2 })
   }, 30_000)
 
   it('corrects a saved run after the re-check; nobody else can', async () => {

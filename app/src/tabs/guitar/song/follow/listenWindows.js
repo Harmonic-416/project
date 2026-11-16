@@ -21,15 +21,16 @@ import { magnitudeSpectrum } from './noteJudge.js'
  * the sample it ends at).
  *
  *   onWindow({ onset, source, frames, spectra, pitches, before, beforeSpectrum,
- *              referenceSpectrum, levels, hop, floor, closedBy, closedAt })
+ *              referenceSpectrum, levels, hop, floor, beforeLevel, closedBy, closedAt })
  *
  * For telling a played note from noise and from a note still ringing
  * (waitListening.js): `referenceSpectrum` is the frame that ends
  * `referenceSeconds` before the onset, clear of a strum's first strings and
  * of a back-dated onset's timing; `levels` are the hop levels from the onset
  * to the window's end ([{ position, level }], each the RMS of the `hop`
- * samples ending at `position`); `floor` is the room's level so far (the
- * quietest median of five hops since reset, null until known); `closedBy`
+ * samples ending at `position`); `beforeLevel` is the highest hop RMS shortly
+ * before the attack; `floor` is the room level estimated before
+ * the attack (the quietest median of five eligible hops, null until known); `closedBy`
  * is 'span' when the window ran its full length, 'onset' when a new onset at
  * `closedAt` cut it short.
  */
@@ -77,18 +78,24 @@ export function createWindowCollector({
       w.spectra.push(w.lastAfter.spectrum)
     }
     if (!w.frames.length) return
-    const { onset, source, frames, spectra, pitches, before, beforeSpectrum, referenceSpectrum, levels } = w
-    onWindow?.({ onset, source, frames, spectra, pitches, before, beforeSpectrum, referenceSpectrum, levels, hop, floor, closedBy, closedAt })
+    const { onset, source, frames, spectra, pitches, before, beforeSpectrum, referenceSpectrum, levels, floor, beforeLevel } = w
+    onWindow?.({ onset, source, frames, spectra, pitches, before, beforeSpectrum, referenceSpectrum, levels, hop, floor, beforeLevel, closedBy, closedAt })
   }
 
   const begin = (position, source) => {
     if (position < mutedUntil || Math.abs(position - lastOnset) < merge) return
     close('onset', position)
     lastOnset = position
+    recentLevels = []
     let previous = null
     let reference = null
+    let beforeLevel = 0
+    const beforeStart = position - Math.round(0.065 * sampleRate)
     for (const frame of history) {
-      if (frame.position <= position) previous = frame
+      if (frame.position <= position) {
+        previous = frame
+        if (frame.position > beforeStart) beforeLevel = Math.max(beforeLevel, frame.level ?? 0)
+      }
       if (frame.position <= position - referenceGap) reference = frame
     }
     open = {
@@ -101,6 +108,8 @@ export function createWindowCollector({
       beforeSpectrum: previous?.spectrum ?? null,
       referenceSpectrum: (reference ?? previous)?.spectrum ?? null,
       levels: [],
+      beforeLevel,
+      floor,
       lastAfter: null,
     }
     // A back-dated onset (flux, pitch) has already seen some of its frames.
@@ -121,7 +130,10 @@ export function createWindowCollector({
 
   /** The room floor: the quietest median of five hop levels so far (digital silence ignored). */
   const trackFloor = (level) => {
-    if (!(level > 1e-6)) return
+    if (!(level > 1e-6)) {
+      recentLevels = []
+      return
+    }
     recentLevels.push(level)
     if (recentLevels.length > 5) recentLevels.shift()
     if (recentLevels.length < 5) return
@@ -145,7 +157,6 @@ export function createWindowCollector({
       if (history.length > 16) history.shift() // enough to reach back past a back-dated onset
 
       if (position < mutedUntil) return
-      if (level !== undefined) trackFloor(level)
 
       if (flux) {
         const found = flux.push(frame.spectrum, position, level ?? 1)
@@ -166,7 +177,12 @@ export function createWindowCollector({
         candidate = null
       }
 
-      if (!open) return
+      if (!open) {
+        // Pitched frames or a recent attack may still be the guitar's decay.
+        if (level !== undefined && midi === null && position - lastOnset >= frameSize) trackFloor(level)
+        else recentLevels = []
+        return
+      }
       if (position > open.onset) {
         open.lastAfter = frame
         // A back-dated onset may have taken this frame's level from the history already.

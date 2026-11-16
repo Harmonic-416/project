@@ -1,6 +1,7 @@
+import GuitarModeFeedback from './GuitarModeFeedback.jsx'
 import * as alphaTab from '@coderline/alphatab'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import PlaybackControls from '../../../vocal/components/PlaybackControls.jsx'
+import PlaybackControls from './GuitarPlaybackControls.jsx'
 import ShareAttempt from '../../../vocal/components/ShareAttempt.jsx'
 import { downloadBlob, safeFilename } from '../../../vocal/notation/exportNotation.js'
 import LatencyCalibration from './LatencyCalibration.jsx'
@@ -8,11 +9,16 @@ import { matchTranscription, toSongNotes } from './matchTranscription.js'
 import { isFullRun } from './runHistory.js'
 import { troubleTiming } from './recordingTiming.js'
 import { clearLoop, loopTicks, seekToTick } from './playerControls.js'
+import { songVerdicts } from './songSection.js'
 import { judgeWindow } from './noteJudge.js'
 import { secondsToTicks, ticksToSeconds } from './songTimeline.js'
 import { createGuitarTroubleTracker, troubleSummary } from './troubleTracker.js'
 import { useGuitarListener } from './useGuitarListener.js'
 import { useTuningReport } from '../../tuner/tuningReport.js'
+import RunReview from './RunReview.jsx'
+import HearingHelp from './HearingHelp.jsx'
+import { CLIPPING_HELP } from './inputQuality.js'
+import { finishedOnsetTime } from './songClock.js'
 
 // A listening window closes ~0.3 s after its onset; settle a note only once its verdict can have arrived.
 const JUDGE_LAG_SECONDS = 0.45
@@ -44,6 +50,9 @@ const ANCHOR_INTERVAL_MS = 40
  */
 function GuitarTroubleMode({
   api,
+  transportHost,
+  feedbackHost,
+  onTransportStart,
   score,
   timeline,
   overlay,
@@ -64,12 +73,16 @@ function GuitarTroubleMode({
   const { entries, tempoMap, duration } = timeline
   const [verdicts, setVerdicts] = useState([]) // per entry index
   const verdictsRef = useRef([])
+  const evidenceRef = useRef([])
   const trackerRef = useRef(null)
+  const generationRef = useRef(0)
   const runRef = useRef(null) // { from, lastTime, anchors, lastAnchorWall, speed, recordingStartWall }
   const latencyRef = useRef(latencyMs)
   const reportTuning = useTuningReport()
   const [runFrom, setRunFrom] = useState(null)
   const [summary, setSummary] = useState(null) // { from, to, finished, recording, anchors, recordingStartWall, speed, timing }
+  const [finishing, setFinishing] = useState(false)
+  const finishTimer = useRef(null)
   const [refine, setRefine] = useState({ status: 'idle', progress: 0, error: null })
   const [loop, setLoop] = useState(null) // { bar }
   const [calibrating, setCalibrating] = useState(false)
@@ -79,8 +92,9 @@ function GuitarTroubleMode({
   }, [latencyMs])
 
   const setVerdict = useCallback(
-    (index, verdict) => {
+    (index, verdict, result = null) => {
       verdictsRef.current[index] = verdict
+      evidenceRef.current[index] = result
       overlay.mark(index, verdict ?? null)
     },
     [overlay],
@@ -90,7 +104,7 @@ function GuitarTroubleMode({
   const settle = useCallback(
     (settled) => {
       if (!settled.length) return
-      for (const { entry, verdict } of settled) setVerdict(entry.index, verdict)
+      for (const { entry, verdict, result } of settled) setVerdict(entry.index, verdict, result)
       publish()
     },
     [publish, setVerdict],
@@ -99,8 +113,11 @@ function GuitarTroubleMode({
   const handleWindow = useCallback(
     (w) => {
       const tracker = trackerRef.current
-      if (!tracker || !clock.playing) return // paused: nothing to play along with
-      const time = clock.secondsAt(w.wall - latencyRef.current)
+      const run = runRef.current
+      if (!tracker || !run || (!run.finish && !clock.playing)) return
+      const time = run.finish
+        ? finishedOnsetTime(run.finish, w.wall, latencyRef.current, run.speed)
+        : clock.secondsAt(w.wall - latencyRef.current)
       if (time === null) return
       const judged = tracker.addOnset(time, (entry) => judgeWindow(w, entry))
       if (judged?.result.verdict === 'hit') reportTuning(judged.result.cents) // single notes carry cents
@@ -131,12 +148,14 @@ function GuitarTroubleMode({
   /** A new run from `from`: playing a passage again clears its old marks. */
   const startRun = useCallback(
     (from) => {
+      generationRef.current += 1
       for (const entry of entries) {
         if (entry.time >= from - 0.2 && verdictsRef.current[entry.index]) setVerdict(entry.index, undefined)
       }
       publish()
       runRef.current = {
         from,
+        historyEligible: timeline.startTick == null && !api.isLooping && !api.playbackRange,
         lastTime: from,
         anchors: [],
         lastAnchorWall: 0,
@@ -148,21 +167,34 @@ function GuitarTroubleMode({
       setSummary(null)
       setRefine({ status: 'idle', progress: 0, error: null })
     },
-    [api, entries, listener, newPass, publish, setVerdict],
+    [api, entries, listener, newPass, publish, setVerdict, timeline.startTick],
   )
 
   // Clock anchors for the run, to place the recording's notes afterwards.
   useEffect(() => {
     if (!api) return undefined
-    return api.playerPositionChanged.on((e) => {
+    const stopPosition = api.playerPositionChanged.on((e) => {
       const run = runRef.current
-      if (!run || api.playerState !== alphaTab.synth.PlayerState.Playing) return
+      if (!run || run.finish || api.playerState !== alphaTab.synth.PlayerState.Playing) return
+      if ((e.isSeek && run.anchors.length > 0) || api.isLooping || api.playbackRange) run.historyEligible = false
       const now = performance.now()
       if (!e.isSeek && now - run.lastAnchorWall < ANCHOR_INTERVAL_MS) return
       run.lastAnchorWall = now
       run.anchors.push({ wall: now, seconds: ticksToSeconds(tempoMap, e.currentTick) })
     })
-  }, [api, tempoMap])
+    const stopFinished = api.playerFinished?.on(() => {
+      const run = runRef.current
+      if (!run || run.finish || api.isLooping) return
+      const range = api.playbackRange
+      const seconds = range ? ticksToSeconds(tempoMap, range.endTick) : duration
+      run.finish = { wall: performance.now(), seconds }
+      run.anchors.push(run.finish)
+    })
+    return () => {
+      stopPosition()
+      stopFinished?.()
+    }
+  }, [api, tempoMap, duration])
 
   // Judge notes as playback passes them; a loop's jump back starts a new pass.
   useEffect(() => {
@@ -171,9 +203,10 @@ function GuitarTroubleMode({
     const tick = () => {
       const run = runRef.current
       const tracker = trackerRef.current
-      const time = run && tracker ? clock.secondsAt(performance.now() - latencyRef.current) : null
+      const time = run && !run.finish && tracker ? clock.secondsAt(performance.now() - latencyRef.current) : null
       if (time !== null) {
-        if (time < run.lastTime - 0.5) {
+        if (timeline.startTick == null && time < run.lastTime - 0.5) {
+          run.historyEligible = false
           settle(tracker.collect(run.lastTime + 0.25))
           newPass(time)
         } else {
@@ -185,7 +218,7 @@ function GuitarTroubleMode({
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [playing, clock, newPass, settle])
+  }, [playing, clock, newPass, settle, timeline.startTick])
 
   // End of the song (or Stop): judge what's left if we got to the end, then release the mic.
   const { stop: stopListening } = listener
@@ -195,15 +228,22 @@ function GuitarTroubleMode({
     prevStateRef.current = player.state
     if (player.state !== 'stopped' || prev === 'stopped' || !runRef.current) return
     const run = runRef.current
-    const tracker = trackerRef.current
-    runRef.current = null
-    trackerRef.current = null
     const range = api?.playbackRange
     const end = range ? ticksToSeconds(tempoMap, range.endTick) : duration
-    const finished = run.lastTime >= end - END_SLACK_SECONDS
-    if (finished && tracker) settle(tracker.collect(end + 1))
-    stopListening().then((recording) => {
+    const finished = Boolean(run.finish) || run.lastTime >= end - END_SLACK_SECONDS
+    const generation = generationRef.current
+    const finish = async () => {
+      finishTimer.current = null
+      if (generation !== generationRef.current) return
+      const tracker = trackerRef.current
+      runRef.current = null
+      trackerRef.current = null
+      if (finished && tracker) settle(tracker.collect(end + 1))
+      const recording = await stopListening()
+      if (generation !== generationRef.current) return
+      setFinishing(false)
       setSummary({
+        historyEligible: run.historyEligible,
         from: run.from,
         to: finished ? end : run.lastTime,
         finished,
@@ -215,12 +255,21 @@ function GuitarTroubleMode({
           ? troubleTiming(run.anchors, { recordingStartWall: run.recordingStartWall, latencyMs: latencyRef.current })
           : null,
       })
-    })
+    }
+    if (run.finish) {
+      setFinishing(true)
+      finishTimer.current = setTimeout(finish, JUDGE_LAG_SECONDS * 1000 + Math.max(0, latencyRef.current))
+    } else {
+      void finish()
+    }
   }, [api, duration, player.state, settle, stopListening, tempoMap])
 
   // Leaving the mode takes the marks off the score and the loop off the player.
   useEffect(
     () => () => {
+      generationRef.current += 1
+      clearTimeout(finishTimer.current)
+      finishTimer.current = null
       overlay.clear()
       api?.stop()
     },
@@ -228,12 +277,20 @@ function GuitarTroubleMode({
   )
 
   const play = async () => {
+    if (finishTimer.current !== null) return
     if (!(await listener.start())) return
-    if (!runRef.current) startRun(ticksToSeconds(tempoMap, api.tickPosition))
+    let tick = api.tickPosition
+    if (timeline.startTick != null) {
+      if (tick < timeline.startTick || tick >= timeline.endTick) seekToTick(api, timeline.startTick)
+      // The synth can report one tick past the range start after resetting.
+      tick = tick <= timeline.startTick + 1 || tick >= timeline.endTick ? timeline.startTick : tick
+    }
+    if (!runRef.current) startRun(ticksToSeconds(tempoMap, tick))
     api.play()
   }
 
   const seek = (time) => {
+    if (runRef.current) runRef.current.historyEligible = false
     seekToTick(api, secondsToTicks(tempoMap, time))
     if (runRef.current) newPass(time)
   }
@@ -255,6 +312,19 @@ function GuitarTroubleMode({
     return entries.find((e) => e.time >= summary.from - 1e-6 && e.time <= summary.to + 1e-6 && verdicts[e.index] === 'miss') ?? null
   }, [entries, summary, verdicts])
 
+  const highlightWeak = useCallback(() => {
+    if (!summary) return
+    overlay.clear()
+    for (const entry of entries) {
+      const verdict = verdicts[entry.index]
+      if (entry.time >= summary.from && entry.time <= summary.to && (verdict === 'miss' || verdict === 'close')) overlay.mark(entry.index, verdict)
+    }
+  }, [summary, entries, verdicts, overlay])
+  useEffect(() => {
+    if (!summary || playing || !api?.beatMouseDown) return undefined
+    return api.beatMouseDown.on(highlightWeak)
+  }, [api, summary, playing, highlightWeak])
+
   const loopSpot = () => {
     const length = firstMiss.barEndTick - firstMiss.barStartTick
     loopTicks(api, Math.max(0, firstMiss.barStartTick - length), firstMiss.barEndTick) // a bar of run-up
@@ -267,8 +337,10 @@ function GuitarTroubleMode({
   }
 
   const clearMarks = () => {
+    generationRef.current += 1
     overlay.clear()
     verdictsRef.current = []
+    evidenceRef.current = []
     publish()
     setRunFrom(null)
     setSummary(null)
@@ -276,12 +348,14 @@ function GuitarTroubleMode({
 
   const checkRun = async () => {
     if (!summary?.recording) return
+    const generation = generationRef.current
     setRefine({ status: 'running', progress: 0, error: null })
     try {
       const { transcribeRecording } = await import('./refineWithBasicPitch.js')
       const notes = await transcribeRecording(summary.recording, {
-        onProgress: (progress) => setRefine((r) => ({ ...r, progress })),
+        onProgress: (progress) => { if (generation === generationRef.current) setRefine((r) => ({ ...r, progress })) },
       })
+      if (generation !== generationRef.current) return
       const songNotes = toSongNotes(notes, {
         anchors: summary.anchors,
         recordingStartWall: summary.recordingStartWall,
@@ -294,6 +368,7 @@ function GuitarTroubleMode({
       publish()
       setRefine({ status: 'done', progress: 1, error: null })
     } catch (err) {
+      if (generation !== generationRef.current) return
       console.error(err)
       setRefine({ status: 'error', progress: 0, error: 'The detailed check couldn’t run on this device.' })
     }
@@ -304,20 +379,24 @@ function GuitarTroubleMode({
   return (
     <>
       <PlaybackControls
+        transportHost={transportHost}
+        onTransportStart={onTransportStart}
         state={player.state}
         position={ticksToSeconds(tempoMap, player.tick)}
         duration={duration}
+        startTime={timeline.startTime}
         rate={speed}
         onPlay={play}
         onPause={() => api.pause()}
         onStop={() => api.stop()}
         onSeek={seek}
-        disabled={!ready || listener.status === 'requesting' || calibrating}
+        disabled={!ready || listener.status === 'requesting' || calibrating || finishing}
       />
-      <div className="practice-status" aria-live="polite">
+      <GuitarModeFeedback host={feedbackHost}><div className="practice-status" aria-live="polite">
+        {finishing && <span>Checking the last notes…</span>}
         {listening && playing ? (
           <span className="practice-status__live">
-            {listener.quiet ? 'Couldn’t hear you — play a little louder' : listener.live ? `you: ${listener.live.noteName}` : 'listening…'}
+            {listener.clipping ? CLIPPING_HELP : listener.quiet ? 'Couldn’t hear you — play a little louder' : listener.live ? `you: ${listener.live.noteName}` : 'listening…'}
           </span>
         ) : (
           !counts && <span>Play along in time. Headphones help — otherwise the mic also hears the music.</span>
@@ -329,7 +408,8 @@ function GuitarTroubleMode({
             {counts.missed ? ` · ${counts.missed} missed` : ''}
           </strong>
         )}
-        {!playing && firstMiss && !loop && (
+        {!playing && summary && <button type="button" className="practice-status__link" onClick={highlightWeak}>Highlight weak spots</button>}
+        {!playing && timeline.startTick == null && firstMiss && !loop && (
           <button type="button" className="practice-status__link" onClick={loopSpot}>
             Loop bar {firstMiss.bar + 1}
           </button>
@@ -356,18 +436,20 @@ function GuitarTroubleMode({
         {refine.status === 'running' && <span>Checking note by note… {Math.round(refine.progress * 100)}%</span>}
         {refine.status === 'done' && <span>Checked note by note.</span>}
         {refine.error && <span className="practice-status__error">{refine.error}</span>}
-        {!playing && verdicts.some(Boolean) && (
+        {!playing && !finishing && verdicts.some(Boolean) && (
           <button type="button" className="practice-status__link" onClick={clearMarks}>
             Clear marks
           </button>
         )}
-        {!playing && !calibrating && (
+        {!playing && !calibrating && !finishing && (
           <button type="button" className="practice-status__link" onClick={() => setCalibrating(true)}>
             {latencyMs ? `Latency ${latencyMs} ms · recalibrate` : 'Calibrate latency'}
           </button>
         )}
         {listener.status === 'error' && <span className="practice-status__error">{listener.error}</span>}
-      </div>
+      </div></GuitarModeFeedback>
+      {listener.quiet && listening && playing && <HearingHelp />}
+      {!playing && summary && <RunReview entries={entries} verdicts={sharedVerdicts ?? []} evidence={evidenceRef.current} mode="trouble" onSelect={(entry) => seek(entry.time)} />}
       {!playing && summary && counts?.scored > 0 && auth && (
         <ShareAttempt
           auth={auth}
@@ -377,11 +459,12 @@ function GuitarTroubleMode({
           recording={summary.recording}
           timing={summary.timing}
           instrument="guitar"
-          verdicts={sharedVerdicts}
+          recordingChoice
+          verdicts={songVerdicts(timeline, sharedVerdicts)}
           session={session}
           mode="trouble"
           easy={easy}
-          fullRun={isFullRun(entries, sharedVerdicts)}
+          fullRun={summary.finished && summary.historyEligible && isFullRun(entries, sharedVerdicts)}
           onSaved={onSaved}
         />
       )}

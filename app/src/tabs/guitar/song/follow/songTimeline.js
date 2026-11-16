@@ -201,7 +201,8 @@ export function buildTimeline(score, { trackIndex = 0, settings, tickLookup = ti
 
   const lastBar = tickLookup.masterBars[tickLookup.masterBars.length - 1]
   const endTick = lastBar ? lastBar.end : 0
-  return { entries, tempoMap, endTick, duration: ticksToSeconds(tempoMap, endTick) }
+  const bars = tickLookup.masterBars.map(({ masterBar, start, end }) => ({ index: masterBar.index, start, end }))
+  return { entries, bars, tempoMap, endTick, duration: ticksToSeconds(tempoMap, endTick) }
 }
 
 /** Index of the first entry at or after `seconds` (the last entry past the end), or -1 with no entries. */

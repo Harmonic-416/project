@@ -4,6 +4,8 @@
  * without loading alphaTab, which the loader brings along.
  */
 export const EXTENSION_FORMATS = {
+  mscx: 'musescore',
+  mscz: 'musescore',
   gp: 'guitar-pro',
   gp3: 'guitar-pro',
   gp4: 'guitar-pro',

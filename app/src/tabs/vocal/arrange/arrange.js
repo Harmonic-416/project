@@ -3,6 +3,7 @@ import { beatClock } from '../../guitar/song/transcribe/beatWarp.js'
 import { TEMPLATES, chordEmission, chordId, harmonyXml, pathChords, smoothChords } from '../../guitar/song/transcribe/chords.js'
 import { SLOTS_PER_BEAT, partXml, scoreXml } from '../../guitar/song/transcribe/scoreXml.js'
 import { placeLyrics } from './lyrics.js'
+import { bestCombinedShift, transposeFifths } from '../transpose/keyFit.js'
 
 /**
  * A song's tune and chords → a new arrangement of it for voices (TTBB, SATB
@@ -26,7 +27,10 @@ import { placeLyrics } from './lyrics.js'
  *     chord tones in each part's range, parts in order and not crossing the
  *     melody, the bass on the root where it can be, the root and third
  *     present, no doubled third or seventh, smooth motion and no parallel
- *     fifths or octaves from one chord to the next.
+ *     fifths or octaves from one chord to the next;
+ *   - the finished parts are moved together to the key where they sit best
+ *     in their voices' ranges (ensembleShift: the Vocal tab's key-fit scorer,
+ *     transpose/keyFit.js, summed over the parts with the tune counting most).
  * Not a transcription of what the singers on the recording sing: a lead
  * vocal is one line, and Basic Pitch can't reliably pull several voices
  * apart, so the harmony parts are written new from the chords.
@@ -245,6 +249,40 @@ export function reach(midi, voice) {
   while (p > voice.high + REACH && p - 12 >= voice.low - REACH) p -= 12
   while (p < voice.low - REACH && p + 12 <= voice.high + REACH) p += 12
   return p
+}
+
+// ── The ensemble's key ───────────────────────────────────────────────────
+
+// How much each part's fit counts when the finished arrangement is moved:
+// the tune most (a soloist's most of all), the harmony parts alike.
+export const MELODY_WEIGHT = 3
+export const SOLO_WEIGHT = 4
+
+/**
+ * The shift (semitones, −12 … 12; whole octaves only with `octavesOnly`)
+ * that best fits every part of an arrangement into its voice's range, by
+ * keyFit's scorer summed over the parts: `parts` as arrangeSong builds them
+ * ([{ events }], top first), `voices` the ensemble's ranges, `melodyPart`
+ * the part with the tune, `fifths` the key signature (for the accidentals
+ * of the new key). The tune's part weighs MELODY_WEIGHT (SOLO_WEIGHT for a
+ * soloist), the others 1 each.
+ */
+export function ensembleShift(parts, voices, melodyPart, { octavesOnly = false, fifths = 0, solo = false } = {}) {
+  const fitted = parts.map((part, v) => ({
+    notes: part.events.map((e) => ({ midi: e.midi, duration: e.end - e.start })),
+    range: voices[v],
+    weight: v === melodyPart ? (solo ? SOLO_WEIGHT : MELODY_WEIGHT) : 1,
+  }))
+  return bestCombinedShift(fitted, { fifths, octavesOnly }).shift
+}
+
+/** `key` (estimateKey's) moved `semitones`. */
+export function moveKey(key, semitones) {
+  if (!semitones) return key
+  const tonic = (((key.tonic + semitones) % 12) + 12) % 12
+  const fifths = transposeFifths(key.fifths, semitones)
+  const name = `${(fifths < 0 ? FLAT_NAMES : SHARP_NAMES)[tonic]} ${key.minor ? 'minor' : 'major'}`
+  return { tonic, minor: key.minor, fifths, name }
 }
 
 // ── The key ──────────────────────────────────────────────────────────────
@@ -637,6 +675,13 @@ export function blockChord(chord, backing) {
 
 // ── The score ────────────────────────────────────────────────────────────
 
+/** A beat chord ({ root, kind, id }, or null) moved `semitones`. */
+function moveChord(chord, semitones) {
+  if (!chord) return null
+  const root = (((chord.root + semitones) % 12) + 12) % 12
+  return { root, kind: chord.kind, id: chordId(root, chord.kind) }
+}
+
 const escapeXml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /**
@@ -685,7 +730,7 @@ export function arrangeSong({ notes, chords, bars, words = null, profiles = null
   const steps = ((shift % 12) + 12) % 12
   const tuned = placed.map((e) => ({ ...e, midi: reach(e.midi + shift, voices[tune]) }))
   const melody = words?.length ? placeLyrics(tuned, words, toSlot) : tuned
-  const moved = (chord) => (chord ? { root: (chord.root + steps) % 12, kind: chord.kind, id: chordId((chord.root + steps) % 12, chord.kind) } : null)
+  const moved = (chord) => moveChord(chord, steps)
   const perBar = beatsPerBar * SLOTS_PER_BEAT
   const measures = Math.ceil(melody.at(-1).end / perBar) + 1 // and a bar after it ends
   const chordAt = (slot) => moved(track[origin + Math.floor(slot / SLOTS_PER_BEAT)] ?? null)
@@ -710,7 +755,7 @@ export function arrangeSong({ notes, chords, bars, words = null, profiles = null
     if (s.melody !== null) return lyricAt.get(s.start) ?? null
     return i === 0 || segments[i - 1].melody !== null || !voiced[i - 1] ? { text: 'oo', syllabic: 'single' } : null
   }
-  const parts = voices.map((voice, v) => ({
+  const written = voices.map((voice, v) => ({
     name: voice.name,
     events:
       v === tune
@@ -722,8 +767,15 @@ export function arrangeSong({ notes, chords, bars, words = null, profiles = null
           }),
   }))
 
-  const beatChords = Array.from({ length: measures * beatsPerBar }, (_, b) => chordAt(b * SLOTS_PER_BEAT))
-  const key = estimateKey(melody, beatChords)
+  // Every part written: move them together to where they sit best in their voices.
+  const writtenChords = Array.from({ length: measures * beatsPerBar }, (_, b) => chordAt(b * SLOTS_PER_BEAT))
+  const writtenKey = estimateKey(melody, writtenChords)
+  const refit = ensembleShift(written, voices, tune, { octavesOnly: keepKey, fifths: writtenKey.fifths, solo })
+  const parts = refit
+    ? written.map((part) => ({ ...part, events: part.events.map((e) => ({ ...e, midi: e.midi + refit })) }))
+    : written
+  const beatChords = refit ? writtenChords.map((chord) => moveChord(chord, refit)) : writtenChords
+  const key = moveKey(writtenKey, refit)
   const harmonies = []
   beatChords.forEach((chord, b) => {
     if (chord && chord.id !== beatChords[b - 1]?.id) harmonies.push({ slot: b * SLOTS_PER_BEAT, xml: harmonyXml(chord) })
@@ -744,5 +796,5 @@ export function arrangeSong({ notes, chords, bars, words = null, profiles = null
   }))
   let musicXml = scoreXml(xml)
   if (title) musicXml = musicXml.replace('<score-partwise version="4.0">', `<score-partwise version="4.0"><work><work-title>${escapeXml(title)}</work-title></work>`)
-  return { musicXml, parts, voicing, melodyPart: tune, shift, key, bpm, beatsPerBar, measures, lyrics: sung }
+  return { musicXml, parts, voicing, melodyPart: tune, shift: shift + refit, key, bpm, beatsPerBar, measures, lyrics: sung }
 }

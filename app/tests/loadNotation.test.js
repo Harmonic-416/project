@@ -72,13 +72,14 @@ describe('loadNotation', () => {
     }
   })
 
-  it('explains how to export a MuseScore file instead of reading it', async () => {
+  it('opens a MuseScore file itself, under its own name or another', async () => {
     const mscz = fixture('musescore/amazing-grace.mscz')
-    await expect(loadNotation(mscz, 'amazing-grace.mscz')).rejects.toThrow(/MuseScore.*Export/)
-    // Under another name it is still recognised (a zip with a .mscx inside), and so is a bare .mscx.
-    await expect(loadNotation(mscz, 'amazing-grace.zip')).rejects.toThrow(/MuseScore/)
-    const mscx = new TextEncoder().encode('<?xml version="1.0"?><museScore version="4.20"><Score/></museScore>').buffer
-    await expect(loadNotation(mscx, 'song.xml')).rejects.toThrow(/MuseScore/)
+    for (const name of ['amazing-grace.mscz', 'amazing-grace.zip']) {
+      const loaded = await loadNotation(mscz, name)
+      expect(loaded.format).toBe('musescore')
+      expect(loaded.content).toContain('<score-partwise')
+      expect(loaded.content).toContain('<lyric')
+    }
     expect(NOTATION_ACCEPT).toContain('.mscz')
   })
 

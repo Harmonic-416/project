@@ -10,8 +10,8 @@
   border: none;
   border-radius: 8px;
   padding: 7px 14px;
-  background: #128789;
-  color: #ffffff;
+  background: var(--v-primary, #128789);
+  color: var(--v-on-accent, #ffffff);
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
@@ -34,24 +34,24 @@
 .share-attempt__link {
   flex: 1 1 220px;
   min-width: 0;
-  border: 1px solid #d6d3cc;
+  border: 1px solid var(--v-border-strong, #d6d3cc);
   border-radius: 8px;
   padding: 6px 10px;
   font: inherit;
   font-size: 0.85rem;
-  background: #ffffff;
-  color: #24242c;
+  background: var(--v-card, #ffffff);
+  color: var(--v-text, #24242c);
 }
 
 .share-attempt__hint {
   margin: 0;
   font-size: 0.85rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .share-attempt__error {
   font-size: 0.85rem;
-  color: #cf4b36;
+  color: var(--v-bad, #cf4b36);
 }
 
 /* SharedAttemptPanel: someone else's attempt on this device's copy of the score. */
@@ -69,7 +69,7 @@
   padding: 0;
   list-style: none;
   font-size: 0.8rem;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .shared-attempt__legend li {
@@ -84,10 +84,10 @@
   border-radius: 50%;
 }
 
-.shared-attempt__swatch--in-tune { background: #2e9e5b; }
-.shared-attempt__swatch--close { background: #e0a100; }
-.shared-attempt__swatch--octave { background: #5b7cf2; }
-.shared-attempt__swatch--wrong { background: #cf4b36; }
+.shared-attempt__swatch--in-tune { background: var(--v-good, #2e9e5b); }
+.shared-attempt__swatch--close { background: var(--v-gold, #e0a100); }
+.shared-attempt__swatch--octave { background: var(--v-sky, #5b7cf2); }
+.shared-attempt__swatch--wrong { background: var(--v-bad, #cf4b36); }
 
 .shared-attempt__audio {
   width: 100%;
@@ -110,21 +110,21 @@
 
 .shared-gate p {
   margin: 0;
-  color: #6c6a72;
+  color: var(--v-muted, #6c6a72);
 }
 
 .shared-gate__warning {
   padding: 8px 12px;
   border-radius: 8px;
-  background: #fbeccc;
-  color: #7a5300 !important;
+  background: var(--v-gold-soft, #fbeccc);
+  color: var(--v-gold-dark, #7a5300) !important;
 }
 
 /* "Send to friends" (ShareAttempt): a quieter button and the friend picker. */
 .share-attempt__button--quiet {
-  border: 1px solid #128789;
+  border: 1px solid var(--v-primary, #128789);
   background: transparent;
-  color: #128789;
+  color: var(--v-primary, #128789);
 }
 
 .share-attempt__button--quiet:disabled {
@@ -137,7 +137,7 @@
   gap: 10px;
   width: 100%;
   padding: 12px;
-  border: 1px solid #d6d3cc;
+  border: 1px solid var(--v-border-strong, #d6d3cc);
   border-radius: 10px;
   box-sizing: border-box;
 }
@@ -160,11 +160,11 @@
 
 @media (prefers-color-scheme: dark) {
   .share-attempt__button--quiet {
-    border-color: #3fb6b8;
-    color: #3fb6b8;
+    border-color: var(--v-primary, #3fb6b8);
+    color: var(--v-primary, #3fb6b8);
   }
 
   .share-attempt__picker {
-    border-color: #3a3a42;
+    border-color: var(--v-border, #3a3a42);
   }
 }

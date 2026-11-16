@@ -381,6 +381,35 @@ export async function listSongScores(
   return ((data ?? []) as SongScore[]).map((row) => ({ ...row, accuracy: Number(row.accuracy) }))
 }
 
+/** Last and all-time best without limiting the best to a page of recent runs. */
+export async function getSongScoreStats(
+  supabase: SupabaseClient,
+  { songId = null, songFingerprint = null, instrument, mode, easy = false, partId = null }: SongScoresQuery,
+): Promise<{ last: number; best: number; count: number } | null> {
+  if (!songId && !songFingerprint) return null
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!userData.user) return null
+  const query = (count: boolean) => {
+    let q = supabase.from('shared_attempt')
+      .select('accuracy, created_at', count ? { count: 'exact' } : {})
+      .eq('user_id', userData.user!.id).eq('instrument', instrument)
+      .eq('mode', mode).eq('easy', easy).eq('full_run', true)
+    q = songId ? q.eq('song_id', songId) : q.eq('song_fingerprint', songFingerprint!)
+    return partId === null ? q.is('part_id', null) : q.eq('part_id', partId)
+  }
+  const [latest, best] = await Promise.all([
+    query(true).order('created_at', { ascending: false }).limit(1),
+    query(false).order('accuracy', { ascending: false }).limit(1),
+  ])
+  if (latest.error) throw latest.error
+  if (best.error) throw best.error
+  const lastRow = latest.data?.[0]
+  const bestRow = best.data?.[0]
+  if (!lastRow || !bestRow) return null
+  return { last: Math.round(Number(lastRow.accuracy)), best: Math.round(Number(bestRow.accuracy)), count: latest.count ?? 0 }
+}
+
 // ── sending to friends (0010) ───────────────────────────────────────────
 
 /** Send one of your attempts to some of your friends; returns how many it went to. */

@@ -21,7 +21,9 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
     if (this.stopped) return false
     const channel = inputs[0]?.[0]
     if (channel) {
+      const startPosition = this.assembler.position
       for (const event of this.assembler.push(channel)) {
+        event.contextFrame = currentFrame + event.position - startPosition
         if (event.type === 'frame') this.port.postMessage(event, [event.samples.buffer])
         else this.port.postMessage(event)
       }

@@ -7,6 +7,18 @@
  */
 
 const listeners = new Set()
+const syncListeners = new Set()
+let syncSnapshot = { userId: null, state: 'local' }
+
+export const getProgressSyncStatus = () => syncSnapshot
+export function onProgressSyncStatus(listener) {
+  syncListeners.add(listener)
+  return () => syncListeners.delete(listener)
+}
+export function setProgressSyncStatus(userId, state) {
+  syncSnapshot = { userId, state }
+  for (const listener of syncListeners) listener()
+}
 
 export function progressSaved() {
   for (const listener of listeners) listener()

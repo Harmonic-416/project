@@ -1,0 +1,163 @@
+/* The live pitch meter beside the score (PitchMeter.jsx). Colours are the tab's feedback tokens. */
+.pitch-meter {
+  --pm-tone: var(--v-muted);
+  --pm-tone-soft: var(--v-subtle);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--v-s1);
+  box-sizing: border-box;
+  width: 108px;
+  height: 100%;
+  padding: var(--v-s2);
+  border: 2px solid var(--pm-tone);
+  border-radius: var(--v-radius-lg);
+  background: var(--pm-tone-soft);
+  color: var(--v-text);
+  text-align: center;
+  transition: background var(--v-med) var(--v-ease-out), border-color var(--v-med) var(--v-ease-out);
+}
+
+.pitch-meter--in-tune { --pm-tone: var(--v-good); --pm-tone-soft: var(--v-good-soft); }
+.pitch-meter--close { --pm-tone: var(--v-gold-dark); --pm-tone-soft: var(--v-gold-soft); }
+.pitch-meter--wrong { --pm-tone: var(--v-bad); --pm-tone-soft: var(--v-bad-soft); }
+.pitch-meter--octave { --pm-tone: var(--v-sky); --pm-tone-soft: var(--v-sky-soft); }
+.pitch-meter--idle,
+.pitch-meter--rest { --pm-tone: var(--v-border-strong); --pm-tone-soft: var(--v-card); }
+
+.pitch-meter__target {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.pitch-meter__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--v-muted);
+}
+
+.pitch-meter__note {
+  font-family: var(--v-font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.pitch-meter__lane {
+  position: relative;
+  min-height: 64px;
+  margin: 0 auto;
+  width: 44px;
+  border-radius: var(--v-radius-pill);
+  background: var(--v-card);
+  box-shadow: inset 0 0 0 2px var(--v-border);
+}
+
+.pitch-meter__band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((50 - var(--pm-band)) * 1%);
+  bottom: calc((50 - var(--pm-band)) * 1%);
+  background: var(--v-good-soft);
+  box-shadow: inset 0 0 0 2px var(--v-good);
+  border-radius: var(--v-radius-sm);
+}
+
+.pitch-meter__centre {
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  right: -6px;
+  height: 2px;
+  background: var(--v-good);
+}
+
+.pitch-meter__edge {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  color: var(--v-muted);
+}
+.pitch-meter__edge--top { top: 2px; }
+.pitch-meter__edge--bottom { bottom: 2px; }
+
+.pitch-meter__ball {
+  position: absolute;
+  left: 50%;
+  top: calc((50 - var(--pm-pos)) * 1%);
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  height: 20px;
+  padding: 0 4px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--v-radius-pill);
+  background: var(--pm-tone);
+  color: var(--v-on-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--pm-tone) 60%, var(--v-text));
+  transition: top 90ms linear, left 90ms linear, background var(--v-med) var(--v-ease-out);
+}
+
+.pitch-meter__words {
+  margin: 0;
+  font-family: var(--v-font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--pm-tone);
+}
+.pitch-meter--idle .pitch-meter__words,
+.pitch-meter--rest .pitch-meter__words { color: var(--v-muted); }
+
+.pitch-meter__arrow {
+  margin-right: 3px;
+  font-size: 1rem;
+}
+
+/* The score + meter row: the meter appears only while singing, as tall as the score. */
+.v-score-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--v-s3);
+}
+.v-score-row > :first-child { flex: 1; min-width: 0; }
+.v-score-row__meter { display: flex; }
+.v-score-row__meter:empty { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch-meter__ball { transition: none; }
+}
+
+/* Phone: a tuner strip under the score — note | flat ← lane → sharp | words. */
+@media (max-width: 560px) {
+  .v-score-row { flex-direction: column; gap: var(--v-s2); }
+  .pitch-meter {
+    grid-template-columns: auto 1fr 96px;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: var(--v-s3);
+    width: 100%;
+    height: auto;
+    padding: var(--v-s2) var(--v-s3);
+  }
+  .pitch-meter__lane { width: 100%; min-height: 32px; height: 32px; }
+  .pitch-meter__band {
+    top: 0;
+    bottom: 0;
+    left: calc((50 - var(--pm-band)) * 1%);
+    right: calc((50 - var(--pm-band)) * 1%);
+  }
+  .pitch-meter__centre { top: -6px; bottom: -6px; left: 50%; right: auto; width: 2px; height: auto; }
+  .pitch-meter__ball { top: 50%; left: calc((50 + var(--pm-pos)) * 1%); }
+  .pitch-meter__edge { top: 50%; transform: translateY(-50%); }
+  .pitch-meter__edge--top { left: auto; right: 6px; }
+  .pitch-meter__edge--bottom { left: 6px; bottom: auto; }
+  .pitch-meter__words { text-align: left; }
+}

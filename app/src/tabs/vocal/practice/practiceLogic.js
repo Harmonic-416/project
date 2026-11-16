@@ -37,6 +37,39 @@ export const ACCOMPANIMENTS = [
   },
 ]
 
+/**
+ * Listen mode's part mix, a ladder from learning a part to singing it in the
+ * texture (how choir and barbershop singers use learning tracks). Wait for me
+ * and Trouble spots keep the two-way ACCOMPANIMENTS: there the microphone is
+ * judging, so your own part never plays over you. Any rung but `solo` renders
+ * every part with yours on top, so stored settings still read solo / all.
+ */
+export const LISTEN_MIXES = [
+  { id: 'solo', label: 'My part only', hint: 'Only your part plays.' },
+  { id: 'lead', label: 'My part louder', hint: 'Everyone plays; your part stands out.' },
+  { id: 'others', label: 'Others only', hint: 'The other parts play; you sing yours.' },
+  { id: 'all', label: 'Everyone', hint: 'Every part at the same level.' },
+]
+
+/** How loud the other parts are under "My part louder" (velocity, 0–1). */
+export const LEAD_BACKING_LEVEL = 0.3
+
+/**
+ * Tone.Part events for Listen mode's mix: part 0 is the singer's (partOnTop
+ * puts it first). `velocity` scales each note's level in the synth.
+ */
+export function mixSchedule(notes, mix) {
+  const events = []
+  for (const note of notes) {
+    const mine = note.partIndex === 0
+    if (mix === 'others' && mine) continue
+    if (mix === 'solo' && !mine) continue
+    const velocity = mix === 'lead' && !mine ? LEAD_BACKING_LEVEL : 1
+    events.push({ time: note.time, pitches: [note.frequency], duration: note.duration, velocity })
+  }
+  return events
+}
+
 /** Tone.Part events for a set of score-model notes (one pitch each). */
 export function scheduleFor(notes) {
   return notes.map((n) => ({ time: n.time, pitches: [n.frequency], duration: n.duration }))

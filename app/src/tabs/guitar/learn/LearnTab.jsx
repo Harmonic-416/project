@@ -1,79 +1,110 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import GuitarFeedback from '../practice/GuitarFeedback.jsx'
+import { getProgressSyncStatus, onProgressSyncStatus, progressSaved } from './progressEvents.js'
+import { readLocalProgress } from './learnProgress.js'
 import StrumDrill from '../exercises/StrumDrill.jsx'
 import { STRUM_STEPS } from '../exercises/strumTiming.js'
 import PracticeScreen from '../practice/PracticeScreen.jsx'
 import { CHORDS } from '../practice/chords.js'
-import { readLocalProgress } from './learnProgress.js'
+import { unlockedCount } from '../practice/unlocks.js'
+import ChordUnits from './ChordUnits.jsx'
 import '../../../auth/authTheme.css'
 import './Learn.css'
 
-const ACTIVITIES = [
-  {
-    id: 'lessons',
-    title: 'Chord lessons',
-    text: '20 chords, one at a time, checked by the mic. Each one unlocks the next.',
-    Component: PracticeScreen,
-    progress: ({ cleared }) => `${Object.keys(cleared).length} of ${CHORDS.length} chords cleared`,
-  },
-  {
-    id: 'strum',
-    title: 'Strum on the beat',
-    text: 'Down-strums with the click, then down-up. The mic tells you early or late.',
-    Component: StrumDrill,
-    progress: ({ strumPassed }) => `${STRUM_STEPS.filter((s) => strumPassed[s.id]).length} of ${STRUM_STEPS.length} steps passed`,
-  },
-]
+export default function LearnTab({ auth, progressVersion = 0 }) {
+  const [opened, setOpened] = useState(null)
+  const [unlockedFor, setUnlockedFor] = useState(null)
+  const page = useRef(null)
+  const heading = useRef(null)
+  const confirmation = useRef(null)
+  const cancelUnlock = useRef(null)
+  const resume = useRef(null)
+  const unlockKey = `harmonic.guitar.unlock-all.${auth?.user?.id ?? 'guest'}`
+  let allUnlocked = unlockedFor === unlockKey
+  try {
+    allUnlocked ||= localStorage.getItem(unlockKey) === 'true'
+  } catch {
+    // The override still works while Learn is open if storage is unavailable.
+  }
 
-/**
- * Guitar → Learn: the chord lessons (Guided, Practice, Play and one-minute
- * Changes; practice/PracticeScreen.jsx) and strum on the beat
- * (exercises/StrumDrill.jsx), each opened from a card that shows how far the
- * player has got. Progress is kept in the browser and, when signed in, on
- * the account (useLearnProgressSync); `progressVersion` changes when the
- * account's progress was brought in, so what's shown is redrawn from it.
- */
-function LearnTab({ auth, progressVersion = 0 }) {
-  const [openId, setOpenId] = useState(null)
-  // Re-read on every render: closing an activity shows what it just saved.
+  useEffect(() => {
+    page.current?.closest('.guitar-tab__body')?.scrollTo?.({ top: 0 })
+    heading.current?.focus({ preventScroll: true })
+  }, [opened])
+
+  const sync = useSyncExternalStore(onProgressSyncStatus, getProgressSyncStatus)
+  const accountStatus = sync.userId === auth?.user?.id ? sync.state : 'saving'
   const progress = readLocalProgress()
-  const opened = ACTIVITIES.find((a) => a.id === openId)
+  const cleared = progress.cleared ?? {}
+  const done = CHORDS.filter((chord) => ['passed', 'skipped'].includes(cleared[chord.id])).length
+  const next = CHORDS[unlockedCount(cleared) - 1]
+  const strumDone = STRUM_STEPS.filter((step) => progress.strumPassed?.[step.id]).length
+  const openChord = (chordId = next.id, mode = 'guided') => setOpened({ id: 'lessons', chordId, mode })
+  const where = !auth?.configured ? 'Your progress is saved in this browser.' : !auth.user ? 'Saved on this device. Sign in on Home to sync your progress.' : accountStatus === 'error' ? 'Your progress is safe on this device. Account sync needs another try.' : accountStatus === 'saved' ? 'Your progress is saved to your account.' : 'Saving your progress to your account...'
 
-  const where = !auth?.configured
-    ? 'Your progress is saved in this browser.'
-    : auth.user
-      ? 'Your progress is saved to your account.'
-      : 'Your progress is saved in this browser. Sign in on Home to keep it on your account.'
+  function unlockAll() {
+    try {
+      localStorage.setItem(unlockKey, 'true')
+    } catch {
+      // Keep the current session usable when storage is blocked.
+    }
+    confirmation.current.close()
+    setUnlockedFor(unlockKey)
+    resume.current.focus()
+  }
 
   return (
-    <div className="learn">
+    <div ref={page} className={`learn ${opened ? 'learn--in-lesson' : ''}`}>
       {opened ? (
         <div className="learn__activity">
           <div className="learn__activity-top">
-            <button type="button" className="learn__back" onClick={() => setOpenId(null)}>
-              ← Learn
-            </button>
-            <h2>{opened.title}</h2>
+            <button type="button" className="learn__back" onClick={() => setOpened(null)}>&larr; Learn</button>
+            <h2 ref={heading} tabIndex={-1}>{opened.id === 'lessons' ? 'Chord lessons' : 'Strum on the beat'}</h2>
           </div>
-          <opened.Component key={progressVersion} />
+          {opened.id === 'lessons' ? (
+            <PracticeScreen key={`${unlockKey}:${progressVersion}`} initialChord={opened.chordId} initialMode={opened.mode} allUnlocked={allUnlocked} />
+          ) : <StrumDrill />}
         </div>
       ) : (
-        <section aria-label="Learn">
-          <p className="learn__where">{where}</p>
-          <ul className="learn__activities">
-            {ACTIVITIES.map((activity) => (
-              <li key={activity.id}>
-                <button type="button" className="feature-card" onClick={() => setOpenId(activity.id)}>
-                  <strong>{activity.title}</strong>
-                  <span className="feature-card__text">{activity.text}</span>
-                  <span className="feature-card__note">{activity.progress(progress)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+        <section aria-labelledby="learn-title">
+          <header className="learn__course-heading">
+            <h1 ref={heading} id="learn-title" tabIndex={-1}>Chord lessons</h1>
+            {allUnlocked ? <span className="learn__unlocked" role="status">All lessons unlocked</span> : (
+              <button type="button" className="learn__browse" onClick={() => {
+                confirmation.current.showModal()
+                cancelUnlock.current.focus()
+              }}>Unlock all</button>
+            )}
+          </header>
+          <div className="learn__quick">
+            <button ref={resume} type="button" className="learn__browse learn__resume" onClick={() => openChord()}>
+              {done === CHORDS.length ? 'Review' : 'Continue'} {next.name} <span aria-hidden="true">&rarr;</span>
+            </button>
+            <button type="button" className="learn__browse" onClick={() => setOpened({ id: 'strum' })}>
+              Strum on the beat <small>{strumDone}/{STRUM_STEPS.length} steps passed</small>
+            </button>
+            <button type="button" className="learn__browse" onClick={() => openChord(next.id, 'play')}>Play it through</button>
+          </div>
+          <div className="learn__course-progress">
+            <span>{done} of {CHORDS.length} chords cleared</span>
+            <progress max={CHORDS.length} value={done} aria-label="Chord lessons progress" />
+          </div>
+          <ChordUnits cleared={cleared} onOpen={openChord} allUnlocked={allUnlocked} nextChord={next} />
+          <div className="learn__where">
+            {auth?.user && accountStatus !== 'saved' ? (
+              <GuitarFeedback kind={accountStatus === 'error' ? 'error' : 'loading'} onRetry={accountStatus === 'error' ? progressSaved : undefined} retryLabel="Retry sync">{where}</GuitarFeedback>
+            ) : <p role="status">{where}</p>}
+          </div>
+          <dialog ref={confirmation} className="learn__confirmation" aria-labelledby="learn-unlock-title" aria-describedby="learn-unlock-warning">
+            <h2 id="learn-unlock-title">Are you sure you want to unlock all chord lessons?</h2>
+            <p id="learn-unlock-warning">It’s more rewarding to work through each lesson and unlock chords as you go.</p>
+            <div className="learn__confirmation-actions">
+              <button type="button" className="learn__confirm-yes" onClick={unlockAll}>Yes</button>
+              <button ref={cancelUnlock} type="button" className="learn__confirm-no" onClick={() => confirmation.current.close()}>No</button>
+            </div>
+          </dialog>
         </section>
       )}
     </div>
   )
 }
-
-export default LearnTab

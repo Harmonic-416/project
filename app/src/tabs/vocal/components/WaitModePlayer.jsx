@@ -3,8 +3,12 @@ import * as Tone from 'tone'
 import './PracticeModes.css'
 import PlaybackControls from './PlaybackControls.jsx'
 import PracticeSummary from './PracticeSummary.jsx'
+import { sfx } from '../feedback/sfx.js'
+import { recordActivity } from '../feedback/progress.js'
 import DynamicsMeter from './DynamicsMeter.jsx'
 import { useMicPitch } from '../audio/useMicPitch.js'
+import { createPortal } from 'react-dom'
+import PitchMeter from './PitchMeter.jsx'
 import { frequencyToMidi, midiToNoteName } from '../audio/pitchDetector.js'
 import { createHoldDetector, noteDistanceCents, soundingAt } from '../practice/practiceLogic.js'
 import {
@@ -61,7 +65,7 @@ const wallClock = () => performance.now() / 1000
  * with `runsRemote`); slow notes are
  * marked amber on the score.
  */
-function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNotes = null, runsKey, runsRemote = null }) {
+function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNotes = null, runsKey, runsRemote = null, meterSlot = null }) {
   const [index, setIndex] = useState(0)
   const indexRef = useRef(0)
   const [detector] = useState(() => createHoldDetector(STRICT_HOLD))
@@ -121,6 +125,9 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     }
     if (charted) addRun(result.score, { total: result.notes, right: result.notes - result.slowNotes, half: result.slowNotes, missed: 0 })
     setSummary({ ...result, charted })
+    if (result.score >= 90) sfx.perfect()
+    else sfx.complete()
+    recordActivity()
   }, [addRun, melody.length, sheetMusicRef])
 
   const handleSample = useCallback(
@@ -235,6 +242,12 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     synthRef.current.triggerAttackRelease(note.frequency, HINT_SECONDS)
   }, [detector, melody])
 
+  // The soft gate's way out: move on without singing this note (still scored, not charted, like a seek).
+  const skipNote = useCallback(() => {
+    const next = melody[indexRef.current + 1]
+    if (next) seek(next.time)
+  }, [melody, seek])
+
   const target = melody[index] ?? null
   const live = mic.current
   const liveCents = live && target ? noteDistanceCents(live.midi, target.midi) : null
@@ -262,7 +275,21 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
             </span>
           )
         )}
-        {listening && !done && (
+        {listening &&
+          !done &&
+          meterSlot &&
+          createPortal(
+            <PitchMeter
+              hasTarget={Boolean(target)}
+              targetName={target ? midiToNoteName(target.midi) : null}
+              sungName={live?.noteName ?? null}
+              cents={liveCents}
+              verdict={live && liveCents !== null ? liveVerdict(liveCents, STRICT_HOLD.toleranceCents) : 'rest'}
+              toleranceCents={STRICT_HOLD.toleranceCents}
+            />,
+            meterSlot,
+          )}
+        {listening && !done && !meterSlot && (
           <span className={`practice-status__live practice-status__live--${live ? liveVerdict(liveCents, STRICT_HOLD.toleranceCents) : 'rest'}`}>
             {live ? `you: ${live.noteName} (${liveCents > 0 ? '+' : ''}${Math.round(liveCents)}¢)` : 'listening…'}
           </span>
@@ -272,6 +299,11 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
         {target && (
           <button type="button" className="practice-status__link" onClick={hearNote}>
             Hear note
+          </button>
+        )}
+        {listening && !done && melody[index + 1] && (
+          <button type="button" className="practice-status__link" onClick={skipNote}>
+            Skip note ›
           </button>
         )}
         {mic.status === 'error' && <span className="practice-status__error">{mic.error}</span>}
