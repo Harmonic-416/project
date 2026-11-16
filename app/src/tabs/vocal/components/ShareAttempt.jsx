@@ -1,8 +1,9 @@
+import { Link, Send } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './ShareAttempt.css'
 import { attachRecording, saveAttempt, sendAttemptToFriends, shareAttempt, shareAttemptLink, updateAttemptResult } from '@backend/attempts'
 import { deleteAttemptRecording } from '@backend/practiceSessions'
-import { formatHandle, listFriends } from '@backend/friends'
+import { listFriends } from '@backend/friends'
 import { displayNameFor } from '../../../auth/authHelpers.js'
 import { shareUrlFor, toTrace } from '../share/sharedAttempt.js'
 import { formatBytes, keepByDefault } from '../practice/practiceSession.js'
@@ -272,23 +273,23 @@ function ShareAttempt({
       {state === 'shared' && link ? (
         <>
           <input className="share-attempt__link" readOnly value={link} onFocus={(event) => event.target.select()} />
-          <button type="button" className="share-attempt__button" onClick={() => offer(link, song.title)}>
-            Share link
+          <button type="button" className="share-attempt__button share-attempt__button--quiet" onClick={() => offer(link, song.title)}>
+            <Link size="1.1em" aria-hidden="true" /> Share link
           </button>
         </>
       ) : (
-        <button type="button" className="share-attempt__button" disabled={state === 'sharing'} onClick={copyLink}>
-          {state === 'sharing' ? 'Sharing…' : 'Copy link'}
+        <button type="button" className="share-attempt__button share-attempt__button--quiet" disabled={state === 'sharing'} onClick={copyLink}>
+          <Link size="1.1em" aria-hidden="true" /> {state === 'sharing' ? 'Sharing…' : 'Copy link'}
         </button>
       )}
       <button
         type="button"
-        className="share-attempt__button share-attempt__button--quiet"
+        className="share-attempt__button share-attempt__send"
         disabled={!saved}
         aria-expanded={picking}
         onClick={() => setPicking((open) => !open)}
       >
-        Send to friends
+        <Send size="1.1em" aria-hidden="true" /> Send to friends
       </button>
       {recording && !alwaysKeep && (
         <label className="share-attempt__option">
@@ -353,7 +354,7 @@ async function withRetries(task, delaysMs = [1000, 3000]) {
 const sameVerdicts = (a, b) => a === b || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i]))
 
 /** Tick friends, then Send. */
-function FriendPicker({ supabase, onSend, onClose }) {
+export function FriendPicker({ supabase, onSend, onClose }) {
   const [friends, setFriends] = useState(null)
   const [chosen, setChosen] = useState(() => new Set())
   const [sending, setSending] = useState(false)
@@ -393,15 +394,19 @@ function FriendPicker({ supabase, onSend, onClose }) {
     <div className="share-attempt__picker" role="group" aria-label="Send to friends">
       {friends === null && !error && <p className="share-attempt__hint">Loading your friends…</p>}
       {friends?.length === 0 && (
-        <p className="share-attempt__hint">No friends yet. Add some on the Home tab with their name#tag or your invite link.</p>
+        <p className="share-attempt__hint">No friends yet. Add some in the Social tab with their name#tag or your invite link.</p>
       )}
       {friends?.length > 0 && (
         <ul className="share-attempt__friends">
           {friends.map((friend) => (
             <li key={friend.user_id}>
-              <label className="share-attempt__option">
+              <label className={`share-attempt__friend${chosen.has(friend.user_id) ? ' is-chosen' : ''}`}>
                 <input type="checkbox" checked={chosen.has(friend.user_id)} onChange={() => toggle(friend.user_id)} />
-                {formatHandle(friend) ?? 'Unnamed friend'}
+                <span className="share-attempt__initial" aria-hidden="true">
+                  {(friend.display_name ?? '?').trim().charAt(0).toUpperCase() || '?'}
+                </span>
+                <span className="share-attempt__name">{friend.display_name ?? 'Unnamed friend'}</span>
+                {friend.tag && <span className="share-attempt__tag">#{friend.tag}</span>}
               </label>
             </li>
           ))}

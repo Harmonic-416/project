@@ -1,3 +1,6 @@
+import { loadSongBars, missedBars } from '../practice/songBars.js'
+import { Trash2 } from 'lucide-react'
+import AttemptShare from './AttemptShare.jsx'
 import { useEffect, useRef, useState } from 'react'
 import './SessionAttempts.css'
 import { deleteAttemptRecording, getRecordingUrl, saveAttemptFeedback } from '@backend/practiceSessions'
@@ -5,6 +8,27 @@ import { RUN_MODE_LABEL, attemptNotesLine, attemptTime, budgetOf, debounce, form
 
 const AUTOSAVE_MS = 600
 const RATINGS = [1, 2, 3, 4, 5]
+
+/**
+ * A browser's own recording (webm from MediaRecorder) carries no length, so
+ * the player shows only the time played and can't be scrubbed. Seeking far
+ * past the end makes the browser read to the end and learn the length; then
+ * go back to the start.
+ */
+function showWholeRecording(event) {
+  const audio = event.currentTarget
+  if (Number.isFinite(audio.duration)) return
+  const autoplay = audio.autoplay
+  audio.pause()
+  const settle = () => {
+    if (!Number.isFinite(audio.duration)) return
+    audio.removeEventListener('durationchange', settle)
+    audio.currentTime = 0
+    if (autoplay) audio.play().catch(() => {})
+  }
+  audio.addEventListener('durationchange', settle)
+  audio.currentTime = 1e101
+}
 
 /**
  * "This session": the attempts recorded since the song was opened (change:
@@ -36,6 +60,7 @@ function SessionAttempts({ supabase, session }) {
         <ol className="session-attempts__list">
           {attempts.map((attempt, i) => (
             <AttemptRow
+              share={false /* the card above already shares this sitting's latest take; Practice sessions shares any */}
               key={attempt.id}
               index={i + 1}
               attempt={attempt}
@@ -75,7 +100,7 @@ export function RecordingBudget({ storage }) {
  * `actions` go at the end of the row's first line; `showAudio` false leaves
  * the recording to the caller (an opened attempt already has a player).
  */
-export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDeleted, actions = null, showAudio = true, className = '' }) {
+export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDeleted, actions = null, showAudio = true, share = true, className = '' }) {
   const [note, setNote] = useState(attempt.self_note ?? '')
   const [noteState, setNoteState] = useState('idle') // idle | saving | saved | error
   const [rating, setRating] = useState(attempt.rating ?? null)
@@ -156,6 +181,10 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
     }
   }
 
+  const missed = Array.isArray(attempt.verdicts)
+    ? missedBars(attempt.verdicts, loadSongBars(attempt, attempt.verdicts.length))
+    : null
+
   const noteHint =
     noteState === 'saving' ? 'Saving…' : noteState === 'saved' ? 'Saved' : noteState === 'error' ? 'Could not save' : ''
 
@@ -190,18 +219,35 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
       {attemptNotesLine(attempt.verdicts, attempt.mode) && (
         <p className="attempt-row__notes">{attemptNotesLine(attempt.verdicts, attempt.mode)}</p>
       )}
+      {missed?.labels.length > 0 && (
+        <p className="attempt-row__missed">
+          <span className="attempt-row__missed-label">Go back to</span>
+          {missed.labels.map((label) => (
+            <span key={label} className="attempt-row__bar">
+              {label}
+            </span>
+          ))}
+          {missed.more > 0 && <span className="attempt-row__more">+{missed.more} more</span>}
+        </p>
+      )}
 
       {!showAudio ? null : attempt.recording_path ? (
         <div className="attempt-row__audio">
           {audioUrl ? (
-            <audio className="attempt-row__player" controls src={audioUrl} autoPlay={!attempt.recording_url} />
+            <audio
+              className="attempt-row__player"
+              controls
+              src={audioUrl}
+              autoPlay={!attempt.recording_url}
+              onLoadedMetadata={showWholeRecording}
+            />
           ) : (
             <button type="button" className="attempt-row__button" onClick={play}>
               ▶ Play recording
             </button>
           )}
           <button type="button" className="attempt-row__link" disabled={deleting} onClick={removeRecording}>
-            {deleting ? 'Deleting…' : 'Delete recording'}
+            <Trash2 size="1.05em" aria-hidden="true" /> {deleting ? 'Deleting…' : 'Delete recording'}
           </button>
           {audioError && <span className="attempt-row__error">{audioError}</span>}
         </div>
@@ -209,6 +255,7 @@ export function AttemptRow({ attempt, index, supabase, onChange, onRecordingDele
         <span className="attempt-row__hint">No recording kept.</span>
       )}
 
+      {share && <AttemptShare supabase={supabase} attempt={attempt} />}
       <label className="attempt-row__note">
         <span className="attempt-row__note-label">
           Note to self {noteHint && <em className={`attempt-row__note-state attempt-row__note-state--${noteState}`}>{noteHint}</em>}

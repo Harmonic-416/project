@@ -1,3 +1,4 @@
+import { Mic } from 'lucide-react'
 import { useState } from 'react'
 import './TransposeControl.css'
 import { keyOptions, notesOutside, optionName } from '../transpose/keyFit.js'
@@ -48,7 +49,7 @@ export default function KeySuggestion({ songId, notes, keyInfo, shift, onChange 
   return (
     <div className="key-suggestion" role="status">
       <span className="key-suggestion__icon" aria-hidden="true">
-        🎤
+        <Mic size="1.1em" aria-hidden="true" />
       </span>
       <p className="key-suggestion__text">
         This goes {where} {whose(voice)}. <strong>{optionName(recommended.shift - shift)}</strong> (to {recommended.key})

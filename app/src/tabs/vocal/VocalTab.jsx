@@ -1,3 +1,4 @@
+import { BookOpen, CalendarDays, Flame, Mic, Music, PenLine, Repeat, Search, Settings, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './theme/vocalTheme.css'
 import './theme/motion.css'
@@ -60,11 +61,11 @@ const OTHER_PART_CLASS = 'practice-note--other-part'
 
 // Each section has its own icon and accent colour (theme/vocalTheme.css).
 const SECTIONS = [
-  { id: 'songs', label: 'Songs', icon: '🎵' }, // search, practice sessions, the song list and uploads
+  { id: 'songs', label: 'Songs', icon: Music }, // search, practice sessions, the song list and uploads
   // A course of songs, one per level, with the warm-ups, solfège, rhythm and
   // ear tests beside each as the way to get ready for it (learn/levels.js).
-  { id: 'learn', label: 'Learn', icon: '📖' },
-  { id: 'compose', label: 'Compose', icon: '✍️' }, // arrange a song for voices
+  { id: 'learn', label: 'Learn', icon: BookOpen },
+  { id: 'compose', label: 'Compose', icon: PenLine }, // arrange a song for voices
 ]
 
 // This tab covers notation (MIDI / MusicXML / MXL) -> sheet music -> synced
@@ -671,7 +672,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         <div className="vocal-tab">
           <header className="hm-hero">
             <span className="hm-hero__badge" aria-hidden="true">
-              🎤
+              <Mic size="1.1em" aria-hidden="true" />
             </span>
             <div>
               <h1 className="hm-hero__title">What do you want to sing today?</h1>
@@ -686,7 +687,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               onClick={() => setView('search')}
             >
               <span className="vocal-quick__icon" aria-hidden="true">
-                🔍
+                <Search size="1.1em" aria-hidden="true" />
               </span>
               <span>
                 <strong>Search songs</strong>
@@ -704,7 +705,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               }}
             >
               <span className="vocal-quick__icon" aria-hidden="true">
-                🗓
+                <CalendarDays size="1.1em" aria-hidden="true" />
               </span>
               <span>
                 <strong>Practice sessions</strong>
@@ -893,7 +894,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                 aria-haspopup="dialog"
                 title={settingsSummary}
               >
-                <span aria-hidden="true">⚙️</span>
+                <span aria-hidden="true"><Settings size="1.1em" aria-hidden="true" /></span>
                 <span className="vocal-tab__settings-text">
                   Settings<small>{settingsSummary}</small>
                 </span>
@@ -910,7 +911,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                       setView('sessions')
                     }}
                   >
-                    🗓 Practice sessions
+                    <CalendarDays size="1.1em" aria-hidden="true" /> Practice sessions
                   </button>
                 )}
                 <ExportButtons notation={exportable} scoreModel={scoreModel} disabled={!scoreModel} />
@@ -925,7 +926,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
         {notation && arrangement && (
           <details className="vocal-tab__arranged">
             <summary>
-              ✨ Arranged for {arrangement.voicing} in {arrangement.key}
+              <Sparkles size="1.1em" aria-hidden="true" /> Arranged for {arrangement.voicing} in {arrangement.key}
             </summary>
             <p>
               {arrangement.shift % 12 !== 0 &&
@@ -1053,7 +1054,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                     onClick={() => playback.setLoop(null)}
                     title="Stop looping"
                   >
-                    🔁 {playback.loop.label} <span aria-hidden="true">✕</span>
+                    <Repeat size="1.1em" aria-hidden="true" /> {playback.loop.label} <span aria-hidden="true"><X size="1.1em" aria-hidden="true" /></span>
                   </button>
                 )}
                 <PlaybackControls
@@ -1113,7 +1114,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               onClick={() => openSection(item.id)}
             >
               <span className="vocal-frame__section-icon" aria-hidden="true">
-                {item.icon}
+                <item.icon size="1.1em" aria-hidden="true" />
               </span>
               <span className="vocal-frame__section-label">{item.label}</span>
             </button>
@@ -1129,7 +1130,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             }
             aria-label={`${streak}-day practice streak`}
           >
-            <span aria-hidden="true">🔥</span>
+            <span aria-hidden="true"><Flame size="1.1em" aria-hidden="true" /></span>
             {streak}
           </span>
           <button
@@ -1140,7 +1141,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             title={sfxMuted ? 'Sound effects off' : 'Sound effects on'}
             onClick={() => setSfxMuted(!sfxMuted)}
           >
-            {sfxMuted ? '🔇' : '🔊'}
+            {sfxMuted ? <VolumeX size="1.1em" aria-hidden="true" /> : <Volume2 size="1.1em" aria-hidden="true" />}
           </button>
           <AccountChip auth={auth} onNavigate={onNavigate} />
         </div>

@@ -1,3 +1,4 @@
+import { ListMusic, PenLine } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import '../../guitar/song/TranscribePanel.css'
 import './ArrangePanel.css'
@@ -186,7 +187,7 @@ function ArrangePanel({ onArranged, auth, supabase }) {
     return (
       <section className="transcribe arrange arrange--working" aria-live="polite">
         <span className="arrange__working-icon" aria-hidden="true">
-          🎼
+          <ListMusic size="1.1em" aria-hidden="true" />
         </span>
         <p className="transcribe__file">{video?.title ?? job.name}</p>
         <ProgressBar value={percent} max={100} label="Arranging" />
@@ -205,7 +206,7 @@ function ArrangePanel({ onArranged, auth, supabase }) {
     <section className="transcribe arrange">
       <header className="hm-hero">
         <span className="hm-hero__badge" aria-hidden="true">
-          ✍️
+          <PenLine size="1.1em" aria-hidden="true" />
         </span>
         <div>
           <h1 className="hm-hero__title">Arrange a song for voices</h1>
