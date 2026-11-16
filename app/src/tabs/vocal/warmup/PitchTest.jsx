@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { useMicPitch } from '../audio/useMicPitch.js'
+import Celebration from '../ui/Celebration.jsx'
 import { noteName } from './warmupLogic.js'
 import { TEST_NOTES, createNoteCatcher, judgePhrase, randomPhrase } from './pitchTestLogic.js'
 
@@ -142,11 +143,14 @@ export default function PitchTest({ part, onExit }) {
             Done
           </button>
         </div>
-        <ul className="warm-up__how">
-          <li>Listen to the notes, then sing them back in the same order.</li>
-          <li>Hold each note for a moment. To sing the same note twice, take a breath between.</li>
-          <li>The same note an octave away counts.</li>
-        </ul>
+        <details className="v-howto">
+          <summary>How it works</summary>
+          <ul className="warm-up__how">
+            <li>Listen to the notes, then sing them back in the same order.</li>
+            <li>Hold each note for a moment. To sing the same note twice, take a breath between.</li>
+            <li>The same note an octave away counts.</li>
+          </ul>
+        </details>
       </div>
     )
   }
@@ -192,6 +196,7 @@ export default function PitchTest({ part, onExit }) {
                 : `${results.filter((r) => r.right).length} of ${run.phrase.length} right.`}
         </span>
       </div>
+      {run.phase === 'done' && <Celebration id="pitch-test" right={results.filter((r) => r.right).length} total={run.phrase.length} />}
       {mic.error && <p className="warm-up__error">Microphone: {mic.error}</p>}
       <div className="warm-up__controls">
         {run.phase === 'done' ? (
