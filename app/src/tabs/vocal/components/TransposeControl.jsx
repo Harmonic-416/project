@@ -18,6 +18,20 @@ import { useVoiceRange } from '../transpose/useVoiceRange.js'
 
 const span = (r) => `${noteLabel(r.low)}–${noteLabel(r.high)}`
 
+export function TransposeSteps({ shift, onChange, label, disabled, min = MIN_SHIFT, max = MAX_SHIFT, reset = false }) {
+  return (
+    <div className="practice-modes__options" role="group" aria-label="Fine-tune the key">
+      <button type="button" className="practice-modes__option" aria-label="Down a semitone"
+        disabled={disabled || shift <= min} onClick={() => onChange(shift - 1)}>−</button>
+      <output className="practice-modes__option transpose__now" aria-live="polite">{label}</output>
+      <button type="button" className="practice-modes__option" aria-label="Up a semitone"
+        disabled={disabled || shift >= max} onClick={() => onChange(shift + 1)}>+</button>
+      {reset && shift !== 0 && <button type="button" className="practice-modes__option" disabled={disabled}
+        onClick={() => onChange(0)}>As written</button>}
+    </div>
+  )
+}
+
 /**
  * The song's key, in the song settings. The singer picks their voice (or
  * the range they've sung for us, RangeCapture); a strip shows that range
@@ -94,29 +108,7 @@ export default function TransposeControl({ shift, onChange, notes, keyInfo, disa
       )}
 
       <div className="key-fit__fine">
-        <div className="practice-modes__options" role="group" aria-label="Fine-tune the key">
-          <button
-            type="button"
-            className="practice-modes__option"
-            aria-label="Down a semitone"
-            disabled={disabled || shift <= MIN_SHIFT}
-            onClick={() => onChange(shift - 1)}
-          >
-            −
-          </button>
-          <output className="practice-modes__option transpose__now" aria-live="polite">
-            {transposeLabel(shift, keyInfo)}
-          </output>
-          <button
-            type="button"
-            className="practice-modes__option"
-            aria-label="Up a semitone"
-            disabled={disabled || shift >= MAX_SHIFT}
-            onClick={() => onChange(shift + 1)}
-          >
-            +
-          </button>
-        </div>
+        <TransposeSteps shift={shift} onChange={onChange} label={transposeLabel(shift, keyInfo)} disabled={disabled} />
         {!capturing && (
           <button type="button" className="key-fit__link" onClick={() => setCapturing(true)}>
             {voice.measured ? 'Measure my range again' : 'Measure my range'}

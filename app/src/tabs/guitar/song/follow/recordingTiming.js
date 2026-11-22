@@ -33,6 +33,21 @@ export function songTimeAt(timing, seconds) {
   return r1 === r0 ? s1 : s0 + ((seconds - r0) / (r1 - r0)) * (s1 - s0)
 }
 
+/** First recorded occurrence of a score position, including runs with seeks or repeats. */
+export function recordingTimeAt(timing, seconds) {
+  const target = round(seconds)
+  for (let index = 0; index < (timing?.length ?? 0); index++) {
+    const [recorded, song] = timing[index]
+    if (song === target) return Math.max(0, recorded)
+    const next = timing[index + 1]
+    if (next && song < target && target < next[1]) {
+      const fraction = (target - song) / (next[1] - song)
+      return Math.max(0, recorded + fraction * (next[0] - recorded))
+    }
+  }
+  return null
+}
+
 /** Drop the points that lie on the line between their neighbours (within `tolerance` song seconds), and round. */
 export function compressTiming(points, tolerance = 0.02) {
   const kept = points.length > 2 ? [points[0]] : [...points]

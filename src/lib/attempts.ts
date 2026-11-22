@@ -62,6 +62,7 @@ export interface SharedAttempt {
   full_run: boolean | null
   /** Guitar runs with a recording (0018): follows the recording along the song, so a viewer's cursor can. */
   timing: TimingPoint[] | null
+  guitar_shift?: number
 }
 
 export interface NewSharedAttempt {
@@ -89,6 +90,7 @@ export interface NewSharedAttempt {
   fullRun?: boolean | null
   /** Guitar runs with a recording (0018): where in the song the recording is. */
   timing?: TimingPoint[] | null
+  guitarShift?: number
 }
 
 export const MAX_TRACE_SAMPLES = 30000
@@ -209,6 +211,7 @@ async function insertAttempt(
       full_run: attempt.fullRun ?? null,
       // Only written when there is some, so Vocal attempts don't depend on 0018.
       ...(attempt.timing ? { timing: attempt.timing } : {}),
+      ...(attempt.instrument === 'guitar' && attempt.guitarShift ? { guitar_shift: attempt.guitarShift } : {}),
     })
     .select()
     .single()
@@ -351,6 +354,7 @@ export interface SongScoresQuery {
   mode: RunMode
   easy?: boolean
   partId?: string | null
+  guitarShift?: number
   limit?: number
 }
 
@@ -361,7 +365,7 @@ export interface SongScoresQuery {
  */
 export async function listSongScores(
   supabase: SupabaseClient,
-  { songId = null, songFingerprint = null, instrument, mode, easy = false, partId = null, limit = 50 }: SongScoresQuery,
+  { songId = null, songFingerprint = null, instrument, mode, easy = false, partId = null, guitarShift = 0, limit = 50 }: SongScoresQuery,
 ): Promise<SongScore[]> {
   if (!songId && !songFingerprint) return []
   const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -376,15 +380,42 @@ export async function listSongScores(
     .eq('full_run', true)
   query = songId ? query.eq('song_id', songId) : query.eq('song_fingerprint', songFingerprint ?? '')
   if (partId !== null) query = query.eq('part_id', partId)
+  if (instrument === 'guitar') query = query.eq('guitar_shift', guitarShift)
   const { data, error } = await query.order('created_at', { ascending: false }).limit(limit)
   if (error) throw error
   return ((data ?? []) as SongScore[]).map((row) => ({ ...row, accuracy: Number(row.accuracy) }))
 }
 
+/** Recent full guitar runs tied to the exact score file used for scoring. */
+export async function listGuitarPracticeVerdicts(
+  supabase: SupabaseClient,
+  { songId = null, songFingerprint, mode, easy = false, partId = null, guitarShift = 0 }: SongScoresQuery,
+): Promise<NoteVerdict[][]> {
+  if (!songFingerprint) return []
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!userData.user) return []
+
+  let query = supabase.from('shared_attempt').select('verdicts')
+    .eq('user_id', userData.user.id)
+    .eq('instrument', 'guitar')
+    .eq('guitar_shift', guitarShift)
+    .eq('song_fingerprint', songFingerprint)
+    .eq('mode', mode)
+    .eq('easy', easy)
+    .eq('full_run', true)
+    .not('verdicts', 'is', null)
+  query = songId ? query.eq('song_id', songId) : query.is('song_id', null)
+  query = partId === null ? query.is('part_id', null) : query.eq('part_id', partId)
+  const { data, error } = await query.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(10)
+  if (error) throw error
+  return (data ?? []).map(({ verdicts }) => verdicts as NoteVerdict[])
+}
+
 /** Last and all-time best without limiting the best to a page of recent runs. */
 export async function getSongScoreStats(
   supabase: SupabaseClient,
-  { songId = null, songFingerprint = null, instrument, mode, easy = false, partId = null }: SongScoresQuery,
+  { songId = null, songFingerprint = null, instrument, mode, easy = false, partId = null, guitarShift = 0 }: SongScoresQuery,
 ): Promise<{ last: number; best: number; count: number } | null> {
   if (!songId && !songFingerprint) return null
   const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -395,6 +426,7 @@ export async function getSongScoreStats(
       .select('accuracy, created_at', count ? { count: 'exact' } : {})
       .eq('user_id', userData.user!.id).eq('instrument', instrument)
       .eq('mode', mode).eq('easy', easy).eq('full_run', true)
+    if (instrument === 'guitar') q = q.eq('guitar_shift', guitarShift)
     q = songId ? q.eq('song_id', songId) : q.eq('song_fingerprint', songFingerprint!)
     return partId === null ? q.is('part_id', null) : q.eq('part_id', partId)
   }
@@ -488,6 +520,7 @@ export interface AttemptComment {
   tag: string
   avatar_url: string | null
   body: string
+  anchor_index?: number | null
   created_at: string
 }
 
@@ -499,11 +532,15 @@ export async function listAttemptComments(supabase: SupabaseClient, attemptId: s
 }
 
 /** Comment on your attempt or one a friend sent you. */
-export async function addAttemptComment(supabase: SupabaseClient, attemptId: string, body: string): Promise<void> {
+export async function addAttemptComment(supabase: SupabaseClient, attemptId: string, body: string, anchorIndex: number | null = null): Promise<void> {
   const text = body.trim()
   if (!text) throw new Error('Write something first')
   if (text.length > MAX_COMMENT_LENGTH) throw new Error(`Keep it under ${MAX_COMMENT_LENGTH} characters`)
-  const { error } = await supabase.from('attempt_comment').insert({ attempt_id: attemptId, body: text })
+  const { error } = await supabase.from('attempt_comment').insert({
+    attempt_id: attemptId,
+    body: text,
+    ...(anchorIndex === null ? {} : { anchor_index: anchorIndex }),
+  })
   if (error) throw new Error(error.message)
 }
 

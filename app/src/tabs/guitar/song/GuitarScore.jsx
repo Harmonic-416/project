@@ -35,7 +35,7 @@ const SOUND_FONT = `${import.meta.env.BASE_URL}soundfont/sonivox.sf3`
  * tempo marks show the tempo being played. `controlsDisabled` locks both
  * (a Trouble spots run keeps the speed it started with).
  */
-const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndexes = [0], onApi, onSpeedChange, controlsDisabled, userId, catalogSongId, client, settingsHost, hideControls = false, sectionFocused = false }, ref) {
+const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndexes = [0], onApi, onSpeedChange, onManualTempoChange, passageTempo = null, onPassageTempoChange, controlsDisabled, userId, catalogSongId, client, settingsHost, hideControls = false, sectionFocused = false, backingActive = false }, ref) {
   const followEnabledRef = useRef(false)
   const scrollRef = useRef(null)
   const surfaceRef = useRef(null)
@@ -47,6 +47,10 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
   const [beat, setBeat] = useState(null)
   const metronomeRef = useRef(metronome)
   const { tempo, change: setTempo, message: tempoMessage, retry: retryTempo } = useGuitarTempo({ fingerprint: songKey, catalogSongId, userId, client })
+  const chosenTempo = passageTempo ?? tempo
+  const [trainingTempo, setTrainingTempo] = useState(null)
+  const trainingTempoRef = useRef(null)
+  const chosenTempoRef = useRef(chosenTempo)
   const [retry, setRetry] = useState(0)
   const tempoRef = useRef(tempo)
   const shownFactorRef = useRef(1) // the factor the printed tempo marks were last drawn at
@@ -171,16 +175,21 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
     const api = apiRef.current
     if (!api) return
     api.metronomeVolume = metronome.on ? metronome.volume : 0
-    api.countInVolume = metronome.countIn ? metronome.volume : 0
-  }, [metronome, retry])
+    api.countInVolume = metronome.countIn && !backingActive ? metronome.volume : 0
+  }, [metronome, retry, backingActive])
+
+  const applyTempo = useCallback((pct) => {
+    tempoRef.current = pct
+    drawTempoMarks()
+    const speed = pct / 100
+    if (apiRef.current && apiRef.current.playbackSpeed !== speed) apiRef.current.playbackSpeed = speed
+    onSpeedChangeRef.current?.(speed)
+  }, [drawTempoMarks])
 
   useEffect(() => {
-    tempoRef.current = tempo
-    drawTempoMarks()
-    const speed = tempo / 100
-    if (apiRef.current) apiRef.current.playbackSpeed = speed
-    onSpeedChangeRef.current?.(speed)
-  }, [tempo, drawTempoMarks, retry])
+    chosenTempoRef.current = chosenTempo
+    applyTempo(trainingTempoRef.current ?? chosenTempo)
+  }, [chosenTempo, applyTempo, retry])
 
   useImperativeHandle(ref, () => ({
     getApi: () => apiRef.current,
@@ -190,15 +199,26 @@ const GuitarScore = forwardRef(function GuitarScore({ score, songKey, trackIndex
       apiRef.current?.scrollToCursor()
     },
     revealBar: (index) => revealBar(apiRef.current?.boundsLookup?.findMasterBarByIndex(index)),
-  }), [revealBar])
+    getChosenTempo: () => chosenTempoRef.current,
+    setTrainingTempo: (pct) => {
+      trainingTempoRef.current = pct
+      setTrainingTempo(pct)
+      applyTempo(pct ?? chosenTempoRef.current)
+    },
+  }), [applyTempo, revealBar])
 
+  const effectiveTempo = trainingTempo ?? chosenTempo
   const settings = <>
-      <details className="guitar-score__settings"><summary>Tempo {tempo}% · Metronome {metronome.on ? 'on' : 'off'} · Count-in {metronome.countIn ? 'on' : 'off'}</summary><div className="guitar-score__settings-body">
+      <details className="guitar-score__settings"><summary>Tempo {effectiveTempo}% · Metronome {metronome.on ? 'on' : 'off'} · Count-in {metronome.countIn ? 'on' : 'off'}</summary><div className="guitar-score__settings-body">
       <MetronomeControl settings={metronome} onChange={setMetronome} beat={beat} disabled={controlsDisabled} />
-      <p className="guitar-score__status">{metronome.countIn ? 'One bar of clicks plays before playback starts.' : 'Playback starts without a count-in.'} {metronome.on && beat && (beat.downbeat ? 'Downbeat - beat 1' : 'Beat')}</p>
-      <TempoControl pct={tempo} onChange={setTempo} bpm={score?.tempo} disabled={controlsDisabled} />
+      <p className="guitar-score__status">{backingActive ? 'Backing playback starts without a count-in.' : metronome.countIn ? 'One bar of clicks plays before playback starts.' : 'Playback starts without a count-in.'} {metronome.on && beat && (beat.downbeat ? 'Downbeat - beat 1' : 'Beat')}</p>
+      <TempoControl pct={effectiveTempo} onChange={(value) => {
+        onManualTempoChange?.()
+        if (passageTempo === null) setTempo(value)
+        else onPassageTempoChange(value)
+      }} bpm={score?.tempo} disabled={controlsDisabled && trainingTempo === null} />
       </div></details>
-      {tempoMessage && <p className="guitar-score__status" role="status">{tempoMessage} {tempoMessage.includes('Retry sync') && <button type="button" disabled={controlsDisabled} onClick={retryTempo}>Retry sync</button>}</p>}
+      {passageTempo === null && tempoMessage && <p className="guitar-score__status" role="status">{tempoMessage} {tempoMessage.includes('Retry sync') && <button type="button" disabled={controlsDisabled} onClick={retryTempo}>Retry sync</button>}</p>}
   </>
   return (
     <div className="guitar-score">

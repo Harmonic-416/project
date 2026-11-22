@@ -5,6 +5,7 @@ import PlaybackControls from '../../../vocal/components/PlaybackControls.jsx'
 export default function GuitarPlaybackControls({ transportHost, onTransportStart, startTime = 0, ...props }) {
   const controls = <PlaybackControls
     {...props}
+    seekOnInput
     position={Math.max(0, props.position - startTime)}
     duration={props.duration - startTime}
     onSeek={props.onSeek && ((time) => props.onSeek(time + startTime))}

@@ -13,10 +13,11 @@ function formatTime(seconds) {
  * readout shows real time at a slowed tempo; leave it out when the player
  * already reports real time (alphaTab).
  */
-function PlaybackControls({ state, position, duration, rate = 1, onPlay, onPause, onStop, onSeek, disabled }) {
+function PlaybackControls({ state, position, duration, rate = 1, onPlay, onPause, onStop, onSeek, disabled, seekOnInput = false }) {
   // 'counting' is the metronome's count-in before playback starts.
   const counting = state === 'counting'
   const isPlaying = state === 'playing' || counting
+  const seek = (event) => onSeek(Number(event.currentTarget.value))
 
   return (
     <div className="playback-controls">
@@ -39,11 +40,13 @@ function PlaybackControls({ state, position, duration, rate = 1, onPlay, onPause
       <input
         type="range"
         className="playback-controls__seek"
+        aria-label="Playback position"
         min={0}
         max={duration || 0}
         step={0.01}
         value={Math.min(position, duration || 0)}
-        onChange={(event) => onSeek(Number(event.target.value))}
+        onInput={seekOnInput ? seek : undefined}
+        onChange={seekOnInput ? undefined : seek}
         disabled={disabled || !duration || counting}
       />
       <span className="playback-controls__time">

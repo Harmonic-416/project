@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { isFullRun, lastAndBest, lastAndBestLine, waitAccuracy, waitVerdicts } from '../src/tabs/guitar/song/follow/runHistory.js'
+import { isFullRun, lastAndBest, lastAndBestLine, recurringTroubleSpots, waitAccuracy, waitVerdicts } from '../src/tabs/guitar/song/follow/runHistory.js'
 import { initialWait, waitReducer, waitSummary } from '../src/tabs/guitar/song/follow/waitState.js'
 import { attemptNotesLine } from '../src/tabs/vocal/practice/practiceSession.js'
 
 // Guitar run history (change: guitar-run-history, F22).
 const entry = (index, extra = {}) => ({ index, time: index, technique: null, ...extra })
 const entries = [entry(0), entry(1, { optional: true }), entry(2), entry(3, { technique: 'dead' })]
+
+it('counts each difficult measure once per scored run and ignores incompatible verdicts', () => {
+  const score = [entry(0, { bar: 0 }), entry(1, { bar: 0 }), entry(2, { bar: 1, optional: true })]
+  expect(recurringTroubleSpots(score, [
+    ['miss', 'close', 'miss'],
+    ['hit', 'miss', 'close'],
+    ['hit', 'hit', 'miss'],
+    ['skipped', null, 'miss'],
+    ['miss'],
+  ])).toEqual([{ bar: 0, difficult: 2, evaluated: 3 }])
+})
 
 describe('isFullRun', () => {
   it('is a full run when every scored note has a verdict', () => {

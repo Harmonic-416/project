@@ -5,6 +5,13 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import GuitarPlaybackControls from '../src/tabs/guitar/song/follow/GuitarPlaybackControls.jsx'
 afterEach(() => { cleanup(); document.querySelector('#transport-test')?.remove() })
 describe('mode transport placement', () => {
+  it('seeks from native range input events using the passage offset', () => {
+    const seek = vi.fn()
+    render(<GuitarPlaybackControls state="paused" startTime={5} position={5} duration={17} onSeek={seek} />)
+    fireEvent.input(screen.getByRole('slider', { name: 'Playback position' }), { target: { value: '3.5' } })
+    expect(seek).toHaveBeenCalledWith(8.5)
+  })
+
   it('puts the active mode controls in the toolbar while retaining its play action', () => {
     const host = document.createElement('div')
     host.id = 'transport-test'

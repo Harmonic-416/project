@@ -1,12 +1,14 @@
 import GuitarFeedback from '../../practice/GuitarFeedback.jsx'
 import { useEffect, useRef, useState } from 'react'
-import { getSharedRecordingUrl } from '@backend/attempts'
+import { canViewAttempt, getSharedRecordingUrl } from '@backend/attempts'
+import AttemptThread from '../../../home/AttemptThread.jsx'
 import '../../../vocal/components/ShareAttempt.css'
 import { RUN_MODE_LABEL, attemptNotesLine } from '../../../vocal/practice/practiceSession.js'
 import { troubleSummary } from './troubleTracker.js'
-import { entryAt, songTimeAt } from './recordingTiming.js'
+import { entryAt, recordingTimeAt, songTimeAt } from './recordingTiming.js'
 import { seekToTick } from './playerControls.js'
 import RunReview from './RunReview.jsx'
+import { signed } from '../../../vocal/transpose/keyFit.js'
 
 const LEGEND = [
   ['hit', 'played'],
@@ -37,7 +39,10 @@ const WAIT_LEGEND = [
  * `ready` once its player is up). Runs saved before that have no timing,
  * and their cursor stays put.
  */
-function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supabase, api = null, ready = false }) {
+function GuitarSharedPanel({
+  onTransportStart, attempt, entries, overlay, supabase, api = null, ready = false,
+  userId, scoreFingerprint,
+}) {
   const [reloads, setReloads] = useState(0)
   const key = `${attempt.id}:${reloads}`
   const [recording, setRecording] = useState(null)
@@ -45,6 +50,32 @@ function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supaba
   const recordingError = recording?.key === key ? recording.error : null
   const audioRef = useRef(null)
   const verdicts = attempt.verdicts ?? []
+  const [permission, setPermission] = useState(null)
+  const [comments, setComments] = useState(null)
+  const [anchor, setAnchor] = useState(null)
+  const canComment = permission?.attemptId === attempt.id && permission?.userId === userId && permission.allowed
+  const scoreMatches = attempt.song_fingerprint
+    ? attempt.song_fingerprint === scoreFingerprint
+    : !attempt.song_id
+
+  useEffect(() => {
+    if (!userId) return undefined
+    let live = true
+    canViewAttempt(supabase, attempt.id).then(
+      (allowed) => { if (live) setPermission({ attemptId: attempt.id, userId, allowed }) },
+      () => { if (live) setPermission({ attemptId: attempt.id, userId, error: true }) },
+    )
+    return () => { live = false }
+  }, [supabase, attempt.id, userId])
+
+  useEffect(() => {
+    if (!scoreMatches || !canComment || !api?.beatMouseDown) return undefined
+    return api.beatMouseDown.on((beat) => {
+      const entry = entries.find((item) => item.beats.includes(beat) &&
+        ['hit', 'close', 'miss'].includes(attempt.verdicts?.[item.index]))
+      if (entry) setAnchor(entry)
+    })
+  }, [api, entries, attempt, canComment, scoreMatches])
 
   useEffect(() => {
     ;(attempt.verdicts ?? []).forEach((verdict, index) => {
@@ -52,6 +83,14 @@ function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supaba
     })
     return () => overlay.clear()
   }, [attempt, entries, overlay])
+
+  useEffect(() => {
+    if (!canComment || !scoreMatches) return undefined
+    for (const comment of comments ?? []) {
+      if (entries[comment.anchor_index]) overlay.markComment(comment.anchor_index)
+    }
+    return () => overlay.clear('comment')
+  }, [canComment, comments, entries, overlay, scoreMatches, attempt])
 
   useEffect(() => {
     let cancelled = false
@@ -95,10 +134,14 @@ function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supaba
       cancelAnimationFrame(raf)
       show()
     }
+    const onSeek = () => {
+      show()
+      if (!audio.paused) onPlay()
+    }
     audio.addEventListener('play', onPlay)
     audio.addEventListener('pause', onStop)
     audio.addEventListener('ended', onStop)
-    audio.addEventListener('seeked', onStop)
+    audio.addEventListener('seeked', onSeek)
     show()
     if (!audio.paused) onPlay()
     return () => {
@@ -106,7 +149,7 @@ function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supaba
       audio.removeEventListener('play', onPlay)
       audio.removeEventListener('pause', onStop)
       audio.removeEventListener('ended', onStop)
-      audio.removeEventListener('seeked', onStop)
+      audio.removeEventListener('seeked', onSeek)
     }
   }, [recordingUrl, timing, api, ready, entries])
 
@@ -116,12 +159,33 @@ function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supaba
   const wait = attempt.mode === 'wait'
   const modeLabel = RUN_MODE_LABEL[attempt.mode]
   const loading = Boolean(attempt.recording_path) && !recordingUrl && !recordingError
+  const jumpTo = (entry, seekRecording = false) => {
+    if (!api || !ready) return
+    const audio = audioRef.current
+    const recorded = seekRecording ? recordingTimeAt(timing, entry.time) : null
+    if (audio && recorded !== null && (!Number.isFinite(audio.duration) || recorded <= audio.duration)) {
+      audio.currentTime = recorded
+    } else if (seekRecording) {
+      audio?.pause()
+    }
+    seekToTick(api, entry.tick)
+    api.scrollToCursor()
+  }
+
+  const renderAnchor = (index) => {
+    if (index == null) return null
+    const entry = scoreMatches ? entries[index] : null
+    return entry
+      ? <button type="button" className="home-link-button" disabled={!ready} onClick={() => jumpTo(entry, true)}>Go to bar {entry.bar + 1} · note {index + 1}</button>
+      : <small>Score position unavailable</small>
+  }
 
   return (
     <section className="guitar-shared">
       <p className="shared-attempt__title">
         <strong>{who}</strong>’s attempt{modeLabel ? ` · ${modeLabel}` : ''}
         {attempt.easy ? ' (Easy)' : ''}
+        {attempt.guitar_shift ? ` · Tuning ${signed(attempt.guitar_shift)} semitones` : ''}
         {attempt.part_name ? ` · ${attempt.part_name}` : ''} · {when}
       </p>
       {recordingUrl && (
@@ -164,7 +228,25 @@ function GuitarSharedPanel({ onTransportStart, attempt, entries, overlay, supaba
           </li>
         ))}
       </ul>
-      <RunReview entries={entries} verdicts={verdicts} mode={wait ? 'wait' : 'trouble'} onSelect={(entry) => { if (api && ready) { seekToTick(api, entry.tick); api.scrollToCursor() } }} />
+      {canComment && (
+        <section aria-label="Run comments">
+          <h3>Comments</h3>
+          <p>{scoreMatches
+            ? 'Select a scored note on the tab or in the breakdown to attach feedback.'
+            : 'This take supports whole-run comments because its score version could not be confirmed.'}</p>
+          <AttemptThread
+            key={`${attempt.id}:${userId}`}
+            attemptId={attempt.id} myId={userId} isOwner={attempt.user_id === userId}
+            supabase={supabase} anchor={scoreMatches ? anchor : null} onClearAnchor={() => setAnchor(null)}
+            renderAnchor={renderAnchor} onComments={setComments}
+          />
+        </section>
+      )}
+      {permission?.attemptId === attempt.id && permission?.error && <GuitarFeedback kind="error">Comments could not load.</GuitarFeedback>}
+      <RunReview entries={entries} verdicts={verdicts} mode={wait ? 'wait' : 'trouble'} onSelect={(entry) => {
+        jumpTo(entry)
+        if (canComment && scoreMatches && ['hit', 'close', 'miss'].includes(verdicts[entry.index])) setAnchor(entry)
+      }} />
     </section>
   )
 }

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { getSharedAttempt, getSongScoreStats, listSongScores, saveAttempt, updateAttemptResult, type NewSharedAttempt } from '../../src/lib/attempts'
+import { getSharedAttempt, getSongScoreStats, listGuitarPracticeVerdicts, listSongScores, saveAttempt, shareAttempt, updateAttemptResult, type NewSharedAttempt } from '../../src/lib/attempts'
 import { listPracticeSessions, startPracticeSession } from '../../src/lib/practiceSessions'
 import { hasSupabaseEnv, newTestUser } from '../helpers'
 
@@ -90,5 +90,17 @@ describe.skipIf(!hasSupabaseEnv)('guitar run history (0017)', () => {
     expect(guitarOnly.map((s) => s.id)).not.toContain(voice.id)
     const both = await listPracticeSessions(owner.supabase, { songFingerprint: fingerprint })
     expect(both.map((s) => s.id)).toEqual(expect.arrayContaining([guitar.id, voice.id]))
+  }, 30_000)
+
+  it('reopens the shared shift and separates shifted history from as-written runs', async () => {
+    const songFingerprint = 'ab'.repeat(32)
+    const legacy = await saveAttempt(owner.supabase, { ...run, songFingerprint, accuracy: 50 })
+    const shifted = await shareAttempt(owner.supabase, { ...run, songFingerprint, guitarShift: -1, accuracy: 90 })
+    expect((await getSharedAttempt(other.supabase, shifted.id))?.guitar_shift).toBe(-1)
+    expect(legacy.guitar_shift).toBe(0)
+    const query = { songFingerprint, instrument: 'guitar', mode: 'trouble', partId: '0' } as const
+    expect(await getSongScoreStats(owner.supabase, query)).toEqual({ last: 50, best: 50, count: 1 })
+    expect(await getSongScoreStats(owner.supabase, { ...query, guitarShift: -1 })).toEqual({ last: 90, best: 90, count: 1 })
+    expect(await listGuitarPracticeVerdicts(owner.supabase, { ...query, guitarShift: -1 })).toEqual([run.verdicts])
   }, 30_000)
 })
