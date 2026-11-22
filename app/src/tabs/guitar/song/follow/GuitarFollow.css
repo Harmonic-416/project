@@ -27,6 +27,8 @@
 .tab-overlay__mark--close { fill: var(--gs-score-close); stroke: var(--gs-score-close); }
 .tab-overlay__mark--miss { fill: var(--gs-score-miss); stroke: var(--gs-score-miss); fill-opacity: 0.25; }
 .tab-overlay__mark--skipped { fill: var(--gs-score-muted); stroke: var(--gs-score-muted); fill-opacity: 0.1; stroke-dasharray: 3 2; }
+.tab-overlay__comment { fill: var(--gs-score-accent); }
+.tab-overlay__measure { fill: var(--gs-score-accent); fill-opacity: 0.18; }
 
 .guitar-follow__strings {
   padding: 0 4px;

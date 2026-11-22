@@ -2,6 +2,14 @@ import { useLatestSongRequest } from './useLatestSongRequest.js'
 import { useDraftLibrary } from './useDraftLibrary.js'
 import SongHeading from './SongHeading.jsx'
 import SongSectionPicker from './SongSectionPicker.jsx'
+import { synth } from '@coderline/alphatab'
+import LocalBackingTrack from './LocalBackingTrack.jsx'
+import { guitarShiftLimits, transposeGuitarScore } from './transposeGuitarScore.js'
+import { TransposeSteps } from '../../vocal/components/TransposeControl.jsx'
+import { signed } from '../../vocal/transpose/keyFit.js'
+import { attachBackingTrack } from './follow/localBackingTrack.js'
+import { barsTouchedByRange, savedPassagesKey } from './savedPassages.js'
+import { clampTempo } from '../../../audio/tempo/tempo.js'
 import { BUILT_IN_SONGS, findSongFile } from './songSources.js'
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -17,7 +25,7 @@ import '../../vocal/components/NotationUploader.css'
 import { loadMyFile, rememberMyFile } from '../../home/myFiles.js'
 import { fingerprintBytes } from '../../vocal/share/sharedAttempt.js'
 import { fetchCloudNotation } from '../../vocal/songs/cloudLibrary.js'
-import { getSharedAttempt, getSongScoreStats } from '@backend/attempts'
+import { getSharedAttempt, getSongScoreStats, listGuitarPracticeVerdicts } from '@backend/attempts'
 import { usePracticeSession } from '../../vocal/practice/usePracticeSession.js'
 import { supabase } from '../../../lib/supabaseClient.js'
 import { GUITAR_NOTATION_ACCEPT, loadGuitarNotation } from '../notation/loadGuitarNotation.js'
@@ -35,7 +43,7 @@ import GuitarTroubleMode from './follow/GuitarTroubleMode.jsx'
 import GuitarWaitMode from './follow/GuitarWaitMode.jsx'
 import SongTransportExtras from './follow/SongTransportExtras.jsx'
 import { loadEasy, saveEasy, withEasy } from './follow/easyMode.js'
-import { lastAndBestLine } from './follow/runHistory.js'
+import { lastAndBestLine, recurringTroubleSpots } from './follow/runHistory.js'
 import { GUITAR_ACCOMPANIMENTS, GUITAR_MODES, applyMix } from './follow/modes.js'
 import { clearLoop, playRange, seekToTick } from './follow/playerControls.js'
 import { sectionTimeline } from './follow/songSection.js'
@@ -87,6 +95,9 @@ import './follow/GuitarFollow.css'
 function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened }) {
   const [browse, setBrowse] = useState('library') // library | search | transcribe
   const [notation, setNotation] = useState(null) // loadGuitarNotation's result + { fingerprint, catalogSongId, builtin, draft }
+  const [pitchSetup, setPitchSetup] = useState({ shift: 0, score: null })
+  const [shiftError, setShiftError] = useState(null)
+  const [scoredRunActive, setScoredRunActive] = useState(false)
   const requests = useLatestSongRequest()
   const [status, setStatus] = useState('idle') // idle | loading | ready | error
   const [error, setError] = useState(null)
@@ -94,11 +105,15 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   const [exportError, setExportError] = useState(null)
   const [api, setApi] = useState(null)
   const [mode, setMode] = useState('listen')
-  const [section, setSection] = useState(null)
+  const [selection, setSection] = useState(null)
+  const [passageTempo, setPassageTempo] = useState(null)
   const [trackIndex, setTrackIndex] = useState(null) // null = the first practiceable track
   const [accompaniment, setAccompaniment] = useState('solo')
   const [latencyMs, setLatencyMs] = useState(loadLatency)
   const [referenceOn, setReferenceOn] = useState(true)
+  const [backing, setBacking] = useState(null)
+  const [backingError, setBackingError] = useState(null)
+  const backingTransport = useRef(null)
   const [speed, setSpeed] = useState(1) // the tempo control's playback speed, for the time readouts
   const [easy, setEasy] = useState(false)
   // A shared attempt being opened: { phase, attempt, error, pendingFile }, where
@@ -116,6 +131,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   const [feedbackHost, setFeedbackHost] = useState(null)
   const [optionsOpen, setOptionsOpen] = useState(false)
   const scoreRef = useRef(null)
+  const stopTrainingRef = useRef(null)
+  const setTrainingTempo = useCallback((tempo) => scoreRef.current?.setTrainingTempo(tempo), [])
   const enableScoreFollow = useCallback(() => scoreRef.current?.enableFollow(), [])
   const revealScoreBar = useCallback((index) => scoreRef.current?.revealBar(index), [])
   const pageRef = useRef(null)
@@ -126,8 +143,10 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   // `catalogSongId` / `builtin` say where the song came from (for sharing),
   // `draft` ({ id }) that it's a transcription kept on this device;
   // `part` preselects a track and accompaniment (opening a shared attempt).
-  const open = useCallback(async (arrayBuffer, filename, { title, catalogSongId = null, builtin = false, draft = null, part = null, request = requests.begin() } = {}) => {
+  const open = useCallback(async (arrayBuffer, filename, { title, catalogSongId = null, builtin = false, draft = null, part = null, shift = 0, request = requests.begin() } = {}) => {
     if (!request.isCurrent()) return undefined
+    setBacking(null)
+    setBackingError(null)
     setStatus('loading')
     setError(null)
     setStorageNotice(null)
@@ -139,11 +158,15 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         fingerprintBytes(arrayBuffer),
       ])
       if (!request.isCurrent()) return undefined
+      const shifted = shift ? transposeGuitarScore(loaded.score, shift) : null
       setTrackIndex(part?.index ?? null)
       if (part) setAccompaniment(part.withOthers ? 'all' : 'solo')
       setMode('listen')
       setSection(null)
       setEasy(loadEasy(fingerprint))
+      setPitchSetup({ shift, score: shifted })
+      setShiftError(null)
+      setScoredRunActive(false)
       saveSongChords(loaded.title, chordNamesOf(loaded.score)) // for ear training's "Chords from my song"
       setNotation({ ...loaded, fingerprint, catalogSongId, builtin, draft })
       setStatus('ready')
@@ -302,21 +325,32 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   // ── Shared attempts ────────────────────────────────────────────────────
   const openShared = useCallback(
     async (attempt, bytes, filename, options = {}) => {
-      setShared({ phase: 'open', attempt })
+      const request = requests.begin()
+      setShared({ phase: 'loading', attempt })
       const index = Number(attempt.part_id)
-      await open(bytes, filename, {
+      const loaded = await open(bytes, filename, {
         ...options,
+        request,
         catalogSongId: attempt.song_id,
         part: { index: Number.isInteger(index) ? index : null, withOthers: attempt.with_others },
+        shift: attempt.guitar_shift ?? 0,
       })
+      if (!request.isCurrent()) return
+      if (!loaded) {
+        setShared({ phase: 'error', error: 'Could not open this score at the tuning used in the shared run.' })
+        return
+      }
+      setShared({ phase: 'open', attempt })
       onSharedAttemptDone?.()
     },
-    [open, onSharedAttemptDone],
+    [open, onSharedAttemptDone, requests],
   )
 
   // Follow a share link once someone is signed in. Before that, the gate
   // shows a phase derived from auth (see sharedGate below).
   const userId = auth?.user?.id ?? null
+  const passageKey = savedPassagesKey(notation?.fingerprint, userId)
+  const section = selection?.passageId && selection.storageKey !== passageKey ? null : selection
   useEffect(() => {
     if (!sharedAttemptId || !userId || !supabase) return undefined
     let cancelled = false
@@ -360,7 +394,9 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   }, [onSharedAttemptDone, requests])
 
   // ── The open song ──────────────────────────────────────────────────────
-  const score = notation?.score ?? null
+  const shift = pitchSetup.shift
+  const shiftLimits = useMemo(() => notation ? guitarShiftLimits(notation.score) : null, [notation])
+  const score = notation ? pitchSetup.score ?? notation.score : null
   const tracks = useMemo(() => (score ? practiceableTracks(score) : []), [score])
   const practised = tracks.find((t) => t.index === trackIndex) ?? tracks[0] ?? null
   const hasOthers = Boolean(score && score.tracks.length > 1)
@@ -390,25 +426,85 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
     [api, clock],
   )
   const player = useAlphaTabPlayer(api, { onPosition })
+  const backingActive = mode === 'listen' && Boolean(notation && backing && !sessionsView && shared?.phase !== 'open')
+  const stopBacking = useCallback(() => {
+    setBacking(null)
+    setBackingError(null)
+  }, [])
+  useEffect(() => {
+    if (!backingActive || !api) return undefined
+    const transport = attachBackingTrack(api, backing.audio, backing.alignment,
+      () => api.playerState === synth.PlayerState.Playing,
+      (message) => {
+        setBackingError(message)
+        setBacking(null)
+      })
+    backingTransport.current = transport
+    return () => {
+      backingTransport.current = null
+      transport.dispose()
+    }
+  }, [api, backing, backingActive])
+  useEffect(() => {
+    if (backingActive) backingTransport.current?.syncTempo()
+  }, [backingActive, speed])
   const getHost = useCallback(() => scoreRef.current?.getHost() ?? null, [])
-  const overlay = useTabOverlay(api, getHost, entries)
+  const highlighted = section?.loop || section?.passageId ? section : null
+  const overlay = useTabOverlay(api, getHost, entries, highlighted?.first ?? null, highlighted?.last)
   const sectionStart = practiceTimeline?.startTick
   const sectionEnd = practiceTimeline?.endTick
+  const savedSection = Boolean(section?.passageId)
+  const shouldLoop = Boolean(section?.loop)
 
   useEffect(() => {
-    if (!api || !player.ready || sectionStart == null || mode === 'wait') return
-    playRange(api, sectionStart, sectionEnd)
+    if (!api || !player.ready || sectionStart == null || backingActive) return
+    if (savedSection && mode === 'wait') {
+      clearLoop(api)
+      seekToTick(api, sectionStart)
+    } else if (mode !== 'wait' || shouldLoop) {
+      playRange(api, sectionStart, sectionEnd, shouldLoop)
+    } else {
+      return
+    }
     api.scrollToCursor()
-  }, [api, player.ready, sectionStart, sectionEnd, mode, practised, easy, accompaniment])
+  }, [api, player.ready, sectionStart, sectionEnd, section, savedSection, shouldLoop, mode, practised, easy, accompaniment, backingActive])
 
-  const changeSection = (next) => {
+  useEffect(() => {
+    if (!selection?.passageId || selection.storageKey === passageKey) return
     api?.stop()
     if (api) clearLoop(api)
-    setSection(next)
+  }, [api, passageKey, selection])
+
+  const changeSection = (next) => {
+    stopTrainingRef.current?.()
+    api?.stop()
+    if (api) clearLoop(api)
+    setSection(next?.passageId ? { ...next, storageKey: passageKey } : next)
+    setPassageTempo(next?.passageId ? next.tempo : null)
+    if (next) revealScoreBar(next.first)
+  }
+
+  const passageSettings = () => {
+    const range = api?.playbackRange
+    const bars = range ? barsTouchedByRange(timeline?.bars ?? [], range) : section
+    if (!bars) return null
+    return {
+      first: bars.first,
+      last: bars.last,
+      tempo: clampTempo(scoreRef.current?.getChosenTempo()),
+      loop: range ? api.isLooping === true : section?.loop === true,
+    }
+  }
+  const changePassageLoop = () => {
+    setSection((current) => current?.passageId ? { ...current, loop: api.isLooping } : current)
   }
 
   const playSelection = () => {
     if (!api) return
+    if (backingActive) {
+      backingTransport.current?.play()
+      return
+    }
     if (sectionStart != null && (api.tickPosition < sectionStart || api.tickPosition >= sectionEnd)) {
       seekToTick(api, sectionStart)
     }
@@ -419,15 +515,16 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   const restoreMix = useCallback(() => {
     if (api && score) {
       applyMix(api, score, { mode, accompaniment, trackIndex: practised?.index ?? 0 })
-      if (mode === 'listen' && !referenceOn) api.changeTrackMute(score.tracks, true)
+      if (mode === 'listen' && (backingActive || !referenceOn)) api.changeTrackMute(score.tracks, true)
     }
-  }, [api, score, mode, accompaniment, practised, referenceOn])
+  }, [api, score, mode, accompaniment, practised, referenceOn, backingActive])
   useEffect(() => {
     restoreMix()
   }, [restoreMix, player.ready])
 
   const changeMode = (next) => {
     api?.stop()
+    if (next !== 'listen') stopBacking()
     setMode(next)
   }
   const changeTrack = (index) => {
@@ -466,21 +563,33 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
   // Last and best of the full runs at this song, mode, part and version.
   const scoredMode = mode === 'wait' || mode === 'trouble' ? mode : null
   const partId = practised ? String(practised.index) : null
-  const scoresKey = notation && scoredMode ? `${userId}:${notation.catalogSongId ?? notation.fingerprint}:${scoredMode}:${partId}:${easy}` : null
+  const scoresKey = notation && scoredMode ? `${userId}:${notation.catalogSongId}:${notation.fingerprint}:${scoredMode}:${partId}:${easy}:${shift}` : null
+  const troubleSpots = useMemo(() => {
+    if (!timeline || !scoresKey || scores?.key !== scoresKey || !scores.runs) return []
+    return recurringTroubleSpots(withEasy(timeline, easy).entries, scores.runs)
+  }, [timeline, easy, scores, scoresKey])
   useEffect(() => {
     if (!scoresKey || !userId || !supabase || viewingShared) return undefined
     let live = true
-    getSongScoreStats(supabase, {
+    const query = {
       songId: notation.catalogSongId,
       songFingerprint: notation.fingerprint,
       instrument: 'guitar',
       mode: scoredMode,
       easy,
       partId,
-    }).then(
-      (stats) => live && setScores({ key: scoresKey, stats }),
-      () => { if (live) setScores({ key: scoresKey, error: 'Your run history could not load.' }) },
-    )
+      guitarShift: shift,
+    }
+    Promise.allSettled([getSongScoreStats(supabase, query), listGuitarPracticeVerdicts(supabase, query)])
+      .then(([stats, runs]) => {
+        if (!live) return
+        setScores({
+          key: scoresKey,
+          stats: stats.status === 'fulfilled' ? stats.value : null,
+          error: stats.status === 'rejected' ? 'Your run history could not load.' : null,
+          runs: runs.status === 'fulfilled' ? runs.value : null,
+        })
+      })
     return () => {
       live = false
     }
@@ -510,6 +619,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
 
   const openSessions = (song, returnTo) => {
     requests.cancel()
+    stopBacking()
     api?.stop()
     setSessionsView({ song, returnTo })
   }
@@ -682,6 +792,20 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
     catch { setExportError('This score could not be exported. Try the other format, or reopen the original file and try again.') }
   }
   const ready = player.ready
+  const shiftDisabled = !ready || backingActive || player.state === 'playing' || scoredRunActive
+  const changeShift = (next) => {
+    if (shiftDisabled || next === shift) return
+    try {
+      const shifted = transposeGuitarScore(notation.score, next, shiftLimits)
+      api?.stop()
+      setPitchSetup({ shift: next, score: next ? shifted : null })
+      setShiftError(null)
+    } catch (err) {
+      setShiftError(err instanceof RangeError ? err.message : 'Could not transpose this score.')
+    }
+  }
+  const backingStart = backingActive ? ticksToSeconds(timeline.tempoMap, backing.alignment.startTick) : null
+  const backingEnd = backingActive ? ticksToSeconds(timeline.tempoMap, backing.alignment.endTick) : null
   const modes = GUITAR_MODES.map((m) => (m.id !== 'listen' && !entries.length ? { ...m, disabled: true } : m))
   // What a shared attempt needs to name this song without uploading it.
   const shareSong = {
@@ -693,12 +817,13 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
     partId: practised ? String(practised.index) : null,
     partName: practised?.name ?? null,
     withOthers,
+    guitarShift: shift,
   }
 
   return (
     <div ref={pageRef} className={`guitar-song guitar-song--open guitar-follow${section && !viewingShared ? ' guitar-song--section' : ''}${optionsOpen ? ' guitar-song--options-open' : ''}`}>
       <header className="song-workspace__heading">
-      <SongHeading infoHost={infoHost} notation={notation} viewingShared={viewingShared} showSessions={!viewingShared && Boolean(auth?.user && supabase)} onSessions={() => openSessions(sessionSong, 'song')} onBack={() => { requests.cancel(); if (viewingShared) closeShared(); else setNotation(null) }} exportScore={exportScore} exportError={exportError} storageNotice={storageNotice} />
+      <SongHeading infoHost={infoHost} notation={notation} viewingShared={viewingShared} showSessions={!viewingShared && Boolean(auth?.user && supabase)} onSessions={() => openSessions(sessionSong, 'song')} onBack={() => { requests.cancel(); stopBacking(); if (viewingShared) closeShared(); else setNotation(null) }} exportScore={exportScore} exportError={exportError} storageNotice={storageNotice} />
       <button type="button" className="song-workspace__options-button" aria-controls="song-practice-options" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((open) => !open)}>Options</button>
       </header>
       <div className="song-workspace">
@@ -706,13 +831,16 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           {!viewingShared && (
             <div className="song-workspace__practice">
               <PracticeModeToggle mode={mode} onChange={changeMode} disabled={!ready} modes={modes} />
-              {score.masterBars?.length > 1 && (
-                <SongSectionPicker api={api} barCount={score.masterBars.length} section={section} onChange={changeSection} disabled={!ready} />
+              {score.masterBars?.length > 0 && (
+                <SongSectionPicker key={passageKey} api={api} barCount={score.masterBars.length} section={section}
+                  onChange={changeSection} disabled={!ready || backingActive} storageKey={passageKey} getPassage={passageSettings} />
               )}
+              {section?.loop && !savedSection && !backingActive && <button type="button" className="practice-status__link" onClick={() => changeSection(null)}>Clear trouble spot loop</button>}
             </div>
           )}
           {!viewingShared && <div ref={setTransportHost} className="guitar-song__transport-slot" />}
       <GuitarScore
+        key={`${notation.fingerprint}:${shift}`}
         ref={scoreRef}
         settingsHost={settingsHost}
         hideControls={viewingShared}
@@ -725,7 +853,11 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         trackIndexes={trackIndexes}
         onApi={setApi}
         onSpeedChange={setSpeed}
+        onManualTempoChange={() => stopTrainingRef.current?.()}
+        passageTempo={savedSection ? passageTempo : null}
+        onPassageTempoChange={setPassageTempo}
         controlsDisabled={viewingShared || (mode === 'trouble' && player.state === 'playing')}
+        backingActive={backingActive}
       />
         </section>
         <div className="song-workspace__side">
@@ -739,7 +871,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
         onSelect={changeTrack}
       />
 
-      {mode === 'listen' && !viewingShared && <button type="button" className="guitar-song__reference" aria-pressed={referenceOn} onClick={() => setReferenceOn((on) => !on)} disabled={!ready}>Reference audio {referenceOn ? 'on' : 'off'}</button>}
+      {mode === 'listen' && !viewingShared && !backingActive && <button type="button" className="guitar-song__reference" aria-pressed={referenceOn} onClick={() => setReferenceOn((on) => !on)} disabled={!ready}>Reference audio {referenceOn ? 'on' : 'off'}</button>}
       {hasOthers && !viewingShared && (
         <AccompanimentToggle
           value={accompaniment}
@@ -755,10 +887,23 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
 
       </div></details>}
       {!viewingShared && <div ref={setSettingsHost} className="guitar-song__tempo-slot" />}
+      {!viewingShared && <details className="guitar-song__settings">
+        <summary>Transpose · {shift ? `${signed(shift)} semitones` : 'As written'}</summary>
+        <div className="guitar-song__settings-body">
+          <TransposeSteps shift={shift} onChange={changeShift} disabled={shiftDisabled}
+            min={shiftLimits.min} max={shiftLimits.max} label={shift ? `${signed(shift)} semitones` : 'As written'} reset />
+          {backingActive && <p>Turn off the backing track to change the tuning shift.</p>}
+          {shiftError && <p role="alert">{shiftError}</p>}
+        </div>
+      </details>}
+      {!viewingShared && timeline && <LocalBackingTrack key={notation.fingerprint} api={api} timeline={timeline} ready={ready}
+        available={mode === 'listen'} active={backingActive} error={backingError} shifted={shift !== 0}
+        onActivate={(track) => { setBackingError(null); setBacking(track) }} onDeactivate={stopBacking} />}
 
       {!ready && !viewingShared && <GuitarFeedback>Loading guitar sound... {Math.round(player.loaded * 100)}%</GuitarFeedback>}
       {viewingShared && (
         <GuitarSharedPanel
+          key={`${shared.attempt.id}:${userId}`}
           onTransportStart={enableScoreFollow}
           attempt={shared.attempt}
           entries={entries}
@@ -766,6 +911,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           supabase={supabase}
           api={api}
           ready={ready}
+          userId={userId}
+          scoreFingerprint={notation.fingerprint}
         />
       )}
       {!viewingShared && scoresKey && auth?.user && entries.length > 0 && (
@@ -773,6 +920,32 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           <strong>Your full runs</strong>
           {scores?.key !== scoresKey ? <GuitarFeedback>Loading your run history...</GuitarFeedback> : scores.error ? <GuitarFeedback kind="error" onRetry={() => setScoresVersion((n) => n + 1)} retryLabel="Retry history">{scores.error}</GuitarFeedback> : <p>{lastAndBestLine(scores.stats)}</p>}
           <small>Compared within this mode, part and version. Partial or looped practice does not set a best.</small>
+          {scores?.key === scoresKey && (
+            <div className="run-review" aria-label="Recurring trouble spots">
+              <h3>Recurring trouble spots</h3>
+              {!scores.runs ? (
+                <GuitarFeedback kind="error" onRetry={() => setScoresVersion((n) => n + 1)} retryLabel="Retry trouble spots">Your trouble spots could not load.</GuitarFeedback>
+              ) : troubleSpots.length === 0 ? (
+                <p>No recurring trouble spots in comparable full runs.</p>
+              ) : (
+                <ul className="run-review__list">
+                  {troubleSpots.map(({ bar, difficult, evaluated }) => (
+                    <li key={bar}>
+                      <button type="button" className="run-review__item" disabled={!ready || player.state === 'playing'}
+                        aria-pressed={Boolean(section?.loop && section.first === bar)}
+                        onClick={() => {
+                          changeSection({ first: bar, last: bar, loop: true })
+                          revealScoreBar(bar)
+                        }}>
+                        <span>Bar {bar + 1}</span>
+                        <span>Needed work in {difficult} of {evaluated} runs</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </section>
       )}
       {section && !viewingShared && !practiceTimeline ? (
@@ -782,7 +955,7 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
       ) : timeline && !viewingShared && mode === 'wait' && entries.length > 0 ? (
         // Keyed by track and version so switching either starts the mode fresh.
         <GuitarWaitMode
-          key={`${practised.index}-${easy}-${sectionStart}-${sectionEnd}`}
+          key={`${shift}-${practised.index}-${easy}-${sectionStart}-${sectionEnd}`}
           api={api}
           transportHost={transportHost}
           feedbackHost={feedbackHost}
@@ -797,11 +970,12 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           session={practiceSession}
           easy={easy}
           onSaved={runSaved}
+          onRunActiveChange={setScoredRunActive}
         />
       ) : timeline && !viewingShared && mode === 'trouble' && entries.length > 0 ? (
         <>
           <GuitarTroubleMode
-            key={`${practised.index}-${easy}-${sectionStart}-${sectionEnd}`}
+            key={`${notation.fingerprint}-${shift}-${practised.index}-${easy}-${sectionStart}-${sectionEnd}`}
             api={api}
             transportHost={transportHost}
             feedbackHost={feedbackHost}
@@ -821,9 +995,13 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
             session={practiceSession}
             easy={easy}
             onSaved={runSaved}
+            onRunActiveChange={setScoredRunActive}
             speed={speed}
+            setTrainingTempo={setTrainingTempo}
+            stopTrainingRef={stopTrainingRef}
+            onPassageLoopChange={savedSection ? changePassageLoop : undefined}
+            onClearPassage={savedSection ? () => changeSection(null) : undefined}
           />
-          {!section && <SongTransportExtras api={api} disabled={!ready || player.state === 'playing'} />}
         </>
       ) : (
         // Someone's shared run plays their recording (GuitarSharedPanel), never the song's MIDI.
@@ -835,8 +1013,8 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
           onTransportStart={enableScoreFollow}
               state={player.state}
               position={ticksToSeconds(timeline.tempoMap, player.tick)}
-              duration={practiceTimeline.duration}
-              startTime={practiceTimeline.startTime}
+              duration={backingEnd ?? practiceTimeline.duration}
+              startTime={backingStart ?? practiceTimeline.startTime}
               rate={speed}
               onPlay={playSelection}
               onPause={() => api?.pause()}
@@ -846,7 +1024,9 @@ function GuitarSong({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fi
               }}
               disabled={!ready}
             />
-            {!section && <SongTransportExtras api={api} disabled={!ready} />}
+            {(!section || savedSection || backingActive) && <SongTransportExtras api={api} disabled={!ready || (savedSection && player.state === 'playing')}
+              onLoopChange={savedSection && !backingActive ? changePassageLoop : undefined}
+              onClear={backingActive ? () => backingTransport.current?.clearSelection() : savedSection ? () => changeSection(null) : undefined} />}
           </>
         )
       )}

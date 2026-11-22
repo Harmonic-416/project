@@ -11,17 +11,18 @@ import { troubleTiming } from './recordingTiming.js'
 import { clearLoop, loopTicks, seekToTick } from './playerControls.js'
 import { songVerdicts } from './songSection.js'
 import { judgeWindow } from './noteJudge.js'
-import { secondsToTicks, ticksToSeconds } from './songTimeline.js'
-import { createGuitarTroubleTracker, troubleSummary } from './troubleTracker.js'
+import { isScored, secondsToTicks, ticksToSeconds } from './songTimeline.js'
+import { createGuitarTroubleTracker, JUDGE_LAG_SECONDS, troubleSummary } from './troubleTracker.js'
 import { useGuitarListener } from './useGuitarListener.js'
 import { useTuningReport } from '../../tuner/tuningReport.js'
 import RunReview from './RunReview.jsx'
 import HearingHelp from './HearingHelp.jsx'
 import { CLIPPING_HELP } from './inputQuality.js'
 import { finishedOnsetTime } from './songClock.js'
+import { createSpeedTrainer } from './speedTrainer.js'
+import { clampTempo, TEMPO_MAX } from '../../../../audio/tempo/tempo.js'
+import SongTransportExtras from './SongTransportExtras.jsx'
 
-// A listening window closes ~0.3 s after its onset; settle a note only once its verdict can have arrived.
-const JUDGE_LAG_SECONDS = 0.45
 // Stopping this close to the end counts as finishing, so the last notes still get a verdict.
 const END_SLACK_SECONDS = 0.5
 const ANCHOR_INTERVAL_MS = 40
@@ -68,7 +69,12 @@ function GuitarTroubleMode({
   session = null,
   easy = false,
   onSaved = null,
+  onRunActiveChange,
   speed = 1,
+  setTrainingTempo,
+  stopTrainingRef,
+  onPassageLoopChange,
+  onClearPassage,
 }) {
   const { entries, tempoMap, duration } = timeline
   const [verdicts, setVerdicts] = useState([]) // per entry index
@@ -86,6 +92,9 @@ function GuitarTroubleMode({
   const [refine, setRefine] = useState({ status: 'idle', progress: 0, error: null })
   const [loop, setLoop] = useState(null) // { bar }
   const [calibrating, setCalibrating] = useState(false)
+  const trainerRef = useRef(null)
+  const [training, setTraining] = useState(null)
+  const [loopRange, setLoopRange] = useState(null)
 
   useEffect(() => {
     latencyRef.current = latencyMs
@@ -114,12 +123,15 @@ function GuitarTroubleMode({
     (w) => {
       const tracker = trackerRef.current
       const run = runRef.current
-      if (!tracker || !run || (!run.finish && !clock.playing)) return
+      if (!run || (!run.finish && !clock.playing)) return
+      const wall = w.wall - latencyRef.current
       const time = run.finish
         ? finishedOnsetTime(run.finish, w.wall, latencyRef.current, run.speed)
-        : clock.secondsAt(w.wall - latencyRef.current)
+        : clock.secondsAt(wall)
       if (time === null) return
-      const judged = tracker.addOnset(time, (entry) => judgeWindow(w, entry))
+      const judge = (entry) => judgeWindow(w, entry)
+      const active = trainerRef.current
+      const judged = active ? active.trainer.onset(wall, time, judge) : tracker?.addOnset(time, judge)
       if (judged?.result.verdict === 'hit') reportTuning(judged.result.cents) // single notes carry cents
       if (import.meta.env.DEV) {
         // For tuning against real playing: every judgement, in the console's window.__harmonic.
@@ -133,6 +145,9 @@ function GuitarTroubleMode({
   const listener = useGuitarListener({ onWindow: handleWindow, record: true })
   const listening = listener.status === 'listening'
   const playing = player.state === 'playing'
+  const runActive = listener.status === 'requesting' || (runFrom !== null && !summary)
+  useEffect(() => { onRunActiveChange?.(runActive) }, [onRunActiveChange, runActive])
+  useEffect(() => () => { onRunActiveChange?.(false) }, [onRunActiveChange])
 
   /** A fresh judging pass from `from` (song seconds). */
   const newPass = useCallback(
@@ -144,6 +159,66 @@ function GuitarTroubleMode({
     },
     [entries],
   )
+
+  const stopTraining = useCallback((resumeScoring = true) => {
+    if (!trainerRef.current) return
+    trainerRef.current = null
+    setTraining(null)
+    if (resumeScoring && runRef.current && api) newPass(ticksToSeconds(tempoMap, api.tickPosition))
+    setTrainingTempo?.(null)
+  }, [api, newPass, setTrainingTempo, tempoMap])
+
+  useEffect(() => {
+    if (!stopTrainingRef) return undefined
+    stopTrainingRef.current = stopTraining
+    return () => {
+      stopTrainingRef.current = null
+      if (trainerRef.current) {
+        trainerRef.current = null
+        setTrainingTempo?.(null)
+      }
+    }
+  }, [stopTraining, stopTrainingRef, setTrainingTempo])
+
+  const readLoop = useCallback(() => {
+    const range = api?.isLooping ? api.playbackRange : null
+    setLoopRange(range ? { startTick: range.startTick, endTick: range.endTick } : null)
+    const active = trainerRef.current
+    if (active && (!range || range.startTick !== active.startTick || range.endTick !== active.endTick)) stopTraining()
+  }, [api, stopTraining])
+
+  useEffect(() => {
+    if (!api) return undefined
+    readLoop()
+    return api.playbackRangeChanged?.on(readLoop)
+  }, [api, readLoop])
+
+  const loopEntries = useMemo(() => loopRange
+    ? entries.filter(({ tick }) => tick >= loopRange.startTick && tick < loopRange.endTick)
+    : [], [entries, loopRange])
+  const canTrain = loopEntries.some(isScored)
+  const toggleTraining = () => {
+    if (trainerRef.current) {
+      stopTraining()
+      return
+    }
+    if (!canTrain || !loopRange) return
+    const { startTick, endTick } = loopRange
+    const tempo = clampTempo(api.playbackSpeed * 100)
+    const trainer = createSpeedTrainer(loopEntries, {
+      start: ticksToSeconds(tempoMap, startTick),
+      end: ticksToSeconds(tempoMap, endTick),
+      tempo,
+      onTempo: setTrainingTempo,
+      onProgress: setTraining,
+      onSettled: settle,
+    })
+    trainerRef.current = { trainer, startTick, endTick, wrapping: false }
+    trackerRef.current = null
+    if (runRef.current) runRef.current.historyEligible = false
+    setTrainingTempo(tempo)
+    if (playing) trainer.begin(false)
+  }
 
   /** A new run from `from`: playing a passage again clears its old marks. */
   const startRun = useCallback(
@@ -174,6 +249,14 @@ function GuitarTroubleMode({
   useEffect(() => {
     if (!api) return undefined
     const stopPosition = api.playerPositionChanged.on((e) => {
+      const active = trainerRef.current
+      if (active && api.playerState === alphaTab.synth.PlayerState.Playing) {
+        if (e.isSeek && !(active.wrapping && Math.abs(e.currentTick - active.startTick) <= 1)) {
+          active.trainer.interrupt()
+          active.trainer.begin(false)
+        }
+        if (!e.isSeek) active.wrapping = false
+      }
       const run = runRef.current
       if (!run || run.finish || api.playerState !== alphaTab.synth.PlayerState.Playing) return
       if ((e.isSeek && run.anchors.length > 0) || api.isLooping || api.playbackRange) run.historyEligible = false
@@ -184,6 +267,12 @@ function GuitarTroubleMode({
     })
     const stopFinished = api.playerFinished?.on(() => {
       const run = runRef.current
+      const active = trainerRef.current
+      if (run && active && api.isLooping) {
+        active.wrapping = true
+        active.trainer.boundary(performance.now(), latencyRef.current)
+        return
+      }
       if (!run || run.finish || api.isLooping) return
       const range = api.playbackRange
       const seconds = range ? ticksToSeconds(tempoMap, range.endTick) : duration
@@ -203,9 +292,13 @@ function GuitarTroubleMode({
     const tick = () => {
       const run = runRef.current
       const tracker = trackerRef.current
-      const time = run && !run.finish && tracker ? clock.secondsAt(performance.now() - latencyRef.current) : null
+      const active = trainerRef.current
+      const time = run && !run.finish && (tracker || active) ? clock.secondsAt(performance.now() - latencyRef.current) : null
       if (time !== null) {
-        if (timeline.startTick == null && time < run.lastTime - 0.5) {
+        if (active) {
+          run.lastTime = time
+          active.trainer.update(performance.now(), time, latencyRef.current)
+        } else if (timeline.startTick == null && time < run.lastTime - 0.5) {
           run.historyEligible = false
           settle(tracker.collect(run.lastTime + 0.25))
           newPass(time)
@@ -226,7 +319,9 @@ function GuitarTroubleMode({
   useEffect(() => {
     const prev = prevStateRef.current
     prevStateRef.current = player.state
+    if (player.state === 'paused' && prev === 'playing') trainerRef.current?.trainer.interrupt()
     if (player.state !== 'stopped' || prev === 'stopped' || !runRef.current) return
+    stopTraining(false)
     const run = runRef.current
     const range = api?.playbackRange
     const end = range ? ticksToSeconds(tempoMap, range.endTick) : duration
@@ -262,7 +357,7 @@ function GuitarTroubleMode({
     } else {
       void finish()
     }
-  }, [api, duration, player.state, settle, stopListening, tempoMap])
+  }, [api, duration, player.state, settle, stopListening, stopTraining, tempoMap])
 
   // Leaving the mode takes the marks off the score and the loop off the player.
   useEffect(
@@ -286,13 +381,26 @@ function GuitarTroubleMode({
       tick = tick <= timeline.startTick + 1 || tick >= timeline.endTick ? timeline.startTick : tick
     }
     if (!runRef.current) startRun(ticksToSeconds(tempoMap, tick))
+    const active = trainerRef.current
+    if (active) {
+      trackerRef.current = null
+      if (tick < active.startTick || tick >= active.endTick) {
+        tick = active.startTick
+        seekToTick(api, tick)
+      }
+      const fromStart = Math.abs(tick - active.startTick) <= 1
+      // The count-in can report a seek to the start before the first played tick.
+      active.wrapping = fromStart
+      active.trainer.begin(fromStart)
+    }
     api.play()
   }
 
   const seek = (time) => {
+    trainerRef.current?.trainer.interrupt()
     if (runRef.current) runRef.current.historyEligible = false
     seekToTick(api, secondsToTicks(tempoMap, time))
-    if (runRef.current) newPass(time)
+    if (runRef.current && !trainerRef.current) newPass(time)
   }
 
   const counts = useMemo(() => {
@@ -328,11 +436,13 @@ function GuitarTroubleMode({
   const loopSpot = () => {
     const length = firstMiss.barEndTick - firstMiss.barStartTick
     loopTicks(api, Math.max(0, firstMiss.barStartTick - length), firstMiss.barEndTick) // a bar of run-up
+    readLoop()
     setLoop({ bar: firstMiss.bar + 1 })
   }
 
   const stopLooping = () => {
     clearLoop(api)
+    readLoop()
     setLoop(null)
   }
 
@@ -388,10 +498,26 @@ function GuitarTroubleMode({
         rate={speed}
         onPlay={play}
         onPause={() => api.pause()}
-        onStop={() => api.stop()}
+        onStop={() => {
+          stopTraining(false)
+          api.stop()
+        }}
         onSeek={seek}
         disabled={!ready || listener.status === 'requesting' || calibrating || finishing}
       />
+      {(timeline.startTick == null || onClearPassage) && <SongTransportExtras api={api} disabled={!ready || playing}
+        onLoopChange={() => { readLoop(); onPassageLoopChange?.() }} onClear={onClearPassage} />}
+      {(canTrain || training) && setTrainingTempo && (
+        <div className="song-extras">
+          <label className="song-extras__item">
+            <input type="checkbox" checked={Boolean(training)} onChange={toggleTraining} disabled={!ready} />
+            Speed trainer
+          </label>
+          {training && <span role="status">
+            {training.tempo}% · {training.tempo === TEMPO_MAX ? 'Maximum tempo' : `${training.streak} of ${training.target} clean repeats`}
+          </span>}
+        </div>
+      )}
       <GuitarModeFeedback host={feedbackHost}><div className="practice-status" aria-live="polite">
         {finishing && <span>Checking the last notes…</span>}
         {listening && playing ? (

@@ -83,7 +83,7 @@ function ShareAttempt({
     songId: song.songId,
     songTitle: song.title,
     songFormat: song.format,
-    songFingerprint: song.songId ? null : song.fingerprint,
+    songFingerprint: instrument === 'guitar' || !song.songId ? song.fingerprint : null,
     partId: song.partId,
     partName: song.partName,
     withOthers: song.withOthers,
@@ -95,6 +95,7 @@ function ShareAttempt({
     easy,
     fullRun,
     timing,
+    guitarShift: song.guitarShift,
   }))
   const onSavedRef = useRef(onSaved)
   onSavedRef.current = onSaved

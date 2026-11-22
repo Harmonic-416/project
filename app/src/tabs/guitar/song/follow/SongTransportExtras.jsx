@@ -6,7 +6,7 @@ import { clearLoop, setPlayerOptions } from './playerControls.js'
  * range. Tempo, metronome and count-in are GuitarScore's (F37, F40). The
  * loop lives on the player, so it carries over between modes.
  */
-function SongTransportExtras({ api, disabled }) {
+function SongTransportExtras({ api, disabled, onLoopChange, onClear }) {
   const [looping, setLooping] = useState(false)
   const [hasRange, setHasRange] = useState(false)
 
@@ -24,9 +24,14 @@ function SongTransportExtras({ api, disabled }) {
   if (!api) return null
 
   const clearRange = () => {
+    if (onClear) {
+      onClear()
+      return
+    }
     clearLoop(api)
     setHasRange(false)
     setLooping(false)
+    onLoopChange?.()
   }
 
   return (
@@ -41,6 +46,7 @@ function SongTransportExtras({ api, disabled }) {
               onChange={(event) => {
                 setPlayerOptions(api, { isLooping: event.target.checked })
                 setLooping(event.target.checked)
+                onLoopChange?.()
               }}
             />
             Loop selection

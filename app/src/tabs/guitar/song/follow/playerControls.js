@@ -25,7 +25,7 @@ export function playRange(api, startTick, endTick, loop = false) {
   const range = new alphaTab.synth.PlaybackRange()
   range.startTick = startTick
   range.endTick = endTick
-  setPlayerOptions(api, { playbackRange: range, isLooping: loop, tickPosition: startTick })
+  setPlayerOptions(api, { isLooping: loop, playbackRange: range, tickPosition: startTick })
 }
 
 /** Back to playing the whole song, with any selection cleared. */

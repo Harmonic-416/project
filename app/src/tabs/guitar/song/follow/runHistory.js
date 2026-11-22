@@ -38,3 +38,26 @@ export function lastAndBestLine(stats) {
   if (stats.count === 1) return `Last run ${stats.last}%`
   return `Last run ${stats.last}% · best ${stats.best}% (${stats.count} runs)`
 }
+
+/** Count each printed measure once per run, even when the score repeats it. */
+export function recurringTroubleSpots(entries, runs) {
+  const totals = new Map()
+  const scored = entries.filter(isScored)
+  for (const verdicts of runs) {
+    if (!Array.isArray(verdicts) || verdicts.length !== entries.length) continue
+    const measures = new Map()
+    for (const { index, bar } of scored) {
+      const verdict = verdicts[index]
+      if (verdict === 'close' || verdict === 'miss') measures.set(bar, true)
+      else if (verdict === 'hit' && !measures.has(bar)) measures.set(bar, false)
+    }
+    for (const [bar, difficult] of measures) {
+      const total = totals.get(bar) ?? { bar, difficult: 0, evaluated: 0 }
+      total.evaluated++
+      if (difficult) total.difficult++
+      totals.set(bar, total)
+    }
+  }
+  return [...totals.values()].filter(({ difficult }) => difficult >= 2)
+    .sort((a, b) => b.difficult - a.difficult || a.bar - b.bar)
+}

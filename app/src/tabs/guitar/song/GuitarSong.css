@@ -244,7 +244,7 @@
 .song-workspace__practice > .practice-modes { flex: 1 1 280px; min-width: 0; }
 .song-section { flex: 1 1 165px; max-width: 220px; min-width: 0; display: grid; gap: var(--gs-space-1); }
 .song-section > label { color: var(--gs-muted); font-size: .75rem; font-weight: 750; }
-.song-section select, .song-section__dialog :is(input, button) {
+.song-section select, .song-section__dialog :is(input, button), .song-section__fields > button {
   min-width: 0;
   border: 1px solid var(--gs-border);
   border-radius: var(--gs-radius-control);
