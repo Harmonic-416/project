@@ -54,7 +54,7 @@ function lightsOf(result) {
  * Each time the cursor moves on is noted against the recording
  * (recordingTiming.waitTiming), so their cursor moves with it.
  */
-function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, onTargetBar, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null }) {
+function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, onTargetBar, timeline, overlay, ready, auth = null, supabase = null, shareSong = null, session = null, easy = false, onSaved = null, onRunActiveChange }) {
   const { entries, duration } = timeline
   const reducer = useMemo(() => waitReducer(entries), [entries])
   const [state, dispatch] = useReducer(reducer, entries, initialWait)
@@ -135,6 +135,9 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, on
   const listener = useGuitarListener({ onWindow: handleWindow, record: true })
   const listening = listener.status === 'listening'
   const micOpen = listening || listener.status === 'paused'
+  const runActive = micOpen || listener.status === 'requesting' || (done && !take)
+  useEffect(() => { onRunActiveChange?.(runActive) }, [onRunActiveChange, runActive])
+  useEffect(() => () => { onRunActiveChange?.(false) }, [onRunActiveChange])
   useEffect(() => {
     secondsAtRef.current = listener.recordingSecondsAt
   }, [listener.recordingSecondsAt])

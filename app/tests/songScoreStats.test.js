@@ -23,12 +23,14 @@ function database(records) {
   }
 }
 const query = { songFingerprint: 'song', instrument: 'guitar', mode: 'wait', easy: false, partId: '0' }
-const row = { song_fingerprint: 'song', instrument: 'guitar', mode: 'wait', easy: false, part_id: '0', user_id: 'owner', full_run: true }
+const row = { song_fingerprint: 'song', instrument: 'guitar', mode: 'wait', easy: false, part_id: '0', user_id: 'owner', full_run: true, guitar_shift: 0 }
 describe('all-time comparable run statistics', () => {
   it('keeps a best older than the most recent 50 runs and excludes incomparable attempts', async () => {
     const records = Array.from({ length: 60 }, (_, index) => ({ ...row, created_at: index, accuracy: index === 0 ? 95 : 30 }))
     records.push({ ...row, accuracy: 100, created_at: 99, full_run: false }, { ...row, accuracy: 99, created_at: 98, user_id: 'other' }, { ...row, accuracy: 98, created_at: 97, easy: true })
+    records.push({ ...row, accuracy: 100, created_at: 100, guitar_shift: -1 })
     expect(await getSongScoreStats(database(records), query)).toEqual({ last: 30, best: 95, count: 60 })
+    expect(await getSongScoreStats(database(records), { ...query, guitarShift: -1 })).toEqual({ last: 100, best: 100, count: 1 })
   })
   it('returns no statistics when no comparable full runs exist', async () => {
     expect(await getSongScoreStats(database([]), query)).toBe(null)

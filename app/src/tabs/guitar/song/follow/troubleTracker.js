@@ -2,6 +2,8 @@ import { isScored } from './songTimeline.js'
 import { betterVerdict } from './noteJudge.js'
 
 const NEIGHBOR_TIE_SECONDS = 0.06
+// Let the mic analysis finish before settling a note's judging window.
+export const JUDGE_LAG_SECONDS = 0.45
 
 /**
  * "Trouble spots" on a guitar song (pure, unit-tested): playback never

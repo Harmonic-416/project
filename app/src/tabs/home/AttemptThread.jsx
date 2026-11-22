@@ -5,7 +5,7 @@ import {
   deleteAttemptComment,
   listAttemptComments,
 } from '@backend/attempts'
-import { supabase } from '../../lib/supabaseClient.js'
+import { supabase as defaultSupabase } from '../../lib/supabaseClient.js'
 import { Person } from './FriendsSection.jsx'
 import { timeAgo } from './homeFormat.js'
 
@@ -13,7 +13,10 @@ import { timeAgo } from './homeFormat.js'
  * Comments on one attempt, for its owner and the friends it was sent to.
  * You can delete your own comments, and any comment on your own attempt.
  */
-function AttemptThread({ attemptId, myId, isOwner, onChanged }) {
+function AttemptThread({
+  attemptId, myId, isOwner, onChanged, supabase = defaultSupabase,
+  anchor, onClearAnchor, renderAnchor, onComments,
+}) {
   const [comments, setComments] = useState(null)
   const [error, setError] = useState(null)
   const [draft, setDraft] = useState('')
@@ -26,7 +29,7 @@ function AttemptThread({ attemptId, myId, isOwner, onChanged }) {
     } catch (err) {
       setError(err.message || 'Could not load comments.')
     }
-  }, [attemptId])
+  }, [attemptId, supabase])
 
   useEffect(() => {
     let live = true
@@ -37,7 +40,11 @@ function AttemptThread({ attemptId, myId, isOwner, onChanged }) {
     return () => {
       live = false
     }
-  }, [attemptId])
+  }, [attemptId, supabase])
+
+  useEffect(() => {
+    onComments?.(comments)
+  }, [comments, onComments])
 
   const post = async (event) => {
     event.preventDefault()
@@ -45,8 +52,9 @@ function AttemptThread({ attemptId, myId, isOwner, onChanged }) {
     setPosting(true)
     setError(null)
     try {
-      await addAttemptComment(supabase, attemptId, draft)
+      await addAttemptComment(supabase, attemptId, draft, anchor?.index)
       setDraft('')
+      onClearAnchor?.()
       await load()
       onChanged?.()
     } catch (err) {
@@ -78,6 +86,7 @@ function AttemptThread({ attemptId, myId, isOwner, onChanged }) {
           {comments.map((comment) => (
             <li key={comment.id} className="home-thread__comment">
               <Person person={comment} detail={timeAgo(comment.created_at)} size={28} />
+              {renderAnchor?.(comment.anchor_index)}
               <p className="home-thread__body">{comment.body}</p>
               {(comment.author_id === myId || isOwner) && (
                 <button type="button" className="home-link-button home-link-button--small" onClick={() => remove(comment)}>
@@ -87,6 +96,12 @@ function AttemptThread({ attemptId, myId, isOwner, onChanged }) {
             </li>
           ))}
         </ul>
+      )}
+      {anchor && (
+        <p>
+          Commenting on bar {anchor.bar + 1}{' '}
+          <button type="button" className="home-link-button" onClick={onClearAnchor}>Comment on the whole run</button>
+        </p>
       )}
       <form className="home-thread__form" onSubmit={post}>
         <textarea

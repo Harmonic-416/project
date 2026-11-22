@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { compressTiming, entryAt, songTimeAt, troubleTiming, waitTiming } from '../src/tabs/guitar/song/follow/recordingTiming.js'
+import { compressTiming, entryAt, recordingTimeAt, songTimeAt, troubleTiming, waitTiming } from '../src/tabs/guitar/song/follow/recordingTiming.js'
+
+it('finds the first recording position for a note whose score time was rounded', () => {
+  const timing = waitTiming([{ at: 0, time: 0 }, { at: 5, time: 1.2344 }, { at: 9, time: 3 }])
+  expect(recordingTimeAt(timing, 1.2344)).toBe(5)
+  expect(recordingTimeAt(timing, 4)).toBeNull()
+  expect(recordingTimeAt(null, 1)).toBeNull()
+})
 
 // Shared guitar runs follow their recording (change: guitar-shared-playback).
 describe('songTimeAt', () => {
