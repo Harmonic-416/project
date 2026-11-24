@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { useMicPitch } from '../audio/useMicPitch.js'
@@ -73,7 +74,10 @@ export default function PitchTest({ part, onExit }) {
     if (run?.phase === 'done') stopMic()
   }, [run?.phase, stopMic])
 
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(['listening', 'requesting'].includes(mic.status))
   const play = async (phrase) => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     silence()
     if (!(await mic.start())) return
     await Tone.start()

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient.js'
+import NotationUploader from '../vocal/components/NotationUploader.jsx'
 import { GUITAR_NOTATION_ACCEPT } from '../guitar/notation/formats.js'
 import { NOTATION_ACCEPT } from '../vocal/notation/loadNotation.js'
 import { fingerprintBytes } from '../vocal/share/sharedAttempt.js'
@@ -19,7 +20,7 @@ const ACCEPT = { guitar: GUITAR_NOTATION_ACCEPT, voice: NOTATION_ACCEPT }
  * tapped. One the account doesn't have (another device hasn't sent it yet)
  * asks for this device's copy of the same file, checked by fingerprint.
  */
-function MyFilesSection({ onOpenFile, userId = null, version = 0 }) {
+function MyFilesSection({ onImportScore, onOpenFile, userId = null, version = 0 }) {
   const { files, error, usage, update } = useMyFiles(userId, version)
   const [fetching, setFetching] = useState(null) // id of a file being fetched from the account
   const picker = useRef(null)
@@ -32,10 +33,7 @@ function MyFilesSection({ onOpenFile, userId = null, version = 0 }) {
   if (files === null) return <p className="home-tab__hint">Loading…</p>
   if (files.length === 0) {
     return (
-      <p className="home-tab__hint">
-        Files you upload in Guitar or Vocal (MusicXML, MIDI, Guitar Pro) are listed here.{' '}
-        {signedIn ? 'They are kept on your account, private to you.' : 'Sign in to keep them on your account.'}
-      </p>
+      <EmptyFiles signedIn={signedIn} onImportScore={onImportScore} />
     )
   }
 
@@ -191,12 +189,26 @@ const KINDS = [
   { kind: 'Guitar Pro', Icon: GuitarIcon, tone: 'purple' },
 ]
 
+function EmptyFiles({ signedIn, onImportScore }) {
+  return (
+    <>
+      <p className="hp-muted">
+        Scores you open from a file appear here. {!signedIn && 'Sign in to keep them on your account.'}
+      </p>
+      {onImportScore && (
+        <NotationUploader onFileSelected={onImportScore} accept={GUITAR_NOTATION_ACCEPT} label="Open a Guitar score" />
+      )}
+    </>
+  )
+}
+
 /** Home's My Files card: how many of each kind, here and on the account. */
-export function FilesSummary({ onViewAll, userId = null, version = 0 }) {
+export function FilesSummary({ onImportScore, onViewAll, userId = null, version = 0 }) {
   const { files } = useMyFiles(userId, version)
   const count = (kind) => files?.filter((f) => fileKind(f.name) === kind).length ?? 0
   const elsewhere = files?.filter((f) => !f.local).length ?? 0
   const signedIn = Boolean(userId && supabase)
+  if (files?.length === 0) return <EmptyFiles signedIn={signedIn} onImportScore={onImportScore} />
   return (
     <>
       <p className="hp-muted">

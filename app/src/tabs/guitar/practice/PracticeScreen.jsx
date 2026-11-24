@@ -1,3 +1,5 @@
+import TipAnchor from '../../../ui/onboarding/Tip.jsx'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { finishGuitarPractice } from './guitarProgress.js'
 import LessonFocus from './LessonFocus.jsx'
 import LessonModes from './LessonModes.jsx'
@@ -135,6 +137,13 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
   const currentDiagnostic = diagnostic?.chordId === expectedChord.id ? diagnostic.message : null
   const advice = (heardVerdict === 'wrong' ? heard.advice : null) ?? currentDiagnostic ?? (heardVerdict ? heard.advice : null)
   const isListening = listening.status === 'listening'
+  const { markActive, startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(isListening || listening.status === 'requesting'
+    || (isPractice && ['countdown', 'running'].includes(run.status))
+    || (isPlay && ['countdown', 'running'].includes(play.status)))
+  const startGuidedListening = async () => {
+    if (!startWithMicrophone || await startWithMicrophone()) listening.start()
+  }
   // Hint strums the chord, low to high, so the learner hears the target (F31).
   const player = useChordPlayer()
 
@@ -157,6 +166,8 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
   const controlRun = useCallback(async (action, send) => {
     if (action.type === 'start') {
       const version = ++launchVersion.current
+      if (startWithMicrophone && !(await startWithMicrophone())) return
+      if (version !== launchVersion.current) return
       cancelHint()
       clearHeard()
       restartListening()
@@ -178,7 +189,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
       clearHeard()
     }
     send(action)
-  }, [cancelHint, clearHeard, restartListening, startListening, stopListening])
+  }, [cancelHint, clearHeard, restartListening, startListening, stopListening, startWithMicrophone])
   const runDispatchWithMic = useCallback((action) => controlRun(action, runDispatch), [controlRun])
   const playDispatchWithMic = useCallback((action) => controlRun(action, playDispatch), [controlRun])
   const practiceFinished = isPractice && ['passed', 'failed'].includes(run.status)
@@ -299,6 +310,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
     chooseMode('guided')
   }
   const startManually = () => {
+    markActive?.()
     launchVersion.current += 1
     setLaunching(false)
     stopListening()
@@ -322,26 +334,28 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
       {launching && <GuitarFeedback onRetry={() => (isPractice ? runDispatchWithMic : playDispatchWithMic)({ type: 'reset' })} retryLabel="Cancel start">Opening the microphone before the countdown...</GuitarFeedback>}
       <LessonModes mode={mode} onChange={chooseMode} />
       <section className="practice__lesson" aria-label="Lesson">
-        <header className="practice__header">
-          {isChanges ? (
-            <span>
-              Smooth switches · <strong>one minute</strong>
-            </span>
-          ) : isPlay ? (
-            <span>
-              Mini strumming loop · <strong>four rounds</strong>
-            </span>
-          ) : isPractice ? (
-            <span>
-              Practice · <strong>{chord.name}</strong>
-            </span>
-          ) : (
-            <span>
-              Lesson {state.chordIndex + 1} of {CHORDS.length} · <strong>{chord.name}</strong>
-              {state.notice && <small className="practice__skip-notice" role="status"> · {state.notice}</small>}
-            </span>
-          )}
-        </header>
+        <TipAnchor id="guitar.learn.lesson" visit={chord.id}>
+          <header className="practice__header">
+            {isChanges ? (
+              <span>
+                Smooth switches · <strong>one minute</strong>
+              </span>
+            ) : isPlay ? (
+              <span>
+                Mini strumming loop · <strong>four rounds</strong>
+              </span>
+            ) : isPractice ? (
+              <span>
+                Practice · <strong>{chord.name}</strong>
+              </span>
+            ) : (
+              <span>
+                Lesson {state.chordIndex + 1} of {CHORDS.length} · <strong>{chord.name}</strong>
+                {state.notice && <small className="practice__skip-notice" role="status"> · {state.notice}</small>}
+              </span>
+            )}
+          </header>
+        </TipAnchor>
 
         {isChanges ? (
           <ChangesRun unlocked={state.unlocked} onLearnChord={() => chooseMode('guided')} />
@@ -399,7 +413,7 @@ function PracticeScreen({ initialMode = 'guided', initialChord = null, allUnlock
             className={`practice__listen ${isListening ? 'is-on' : ''}`}
             aria-pressed={isListening}
             disabled={listening.status === 'requesting'}
-            onClick={isListening ? listening.stop : listening.start}
+            onClick={isListening ? listening.stop : startGuidedListening}
           >
             {listeningLabel}
           </button>

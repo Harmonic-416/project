@@ -1,0 +1,72 @@
+.onboarding-card {
+  box-sizing: border-box;
+  background: var(--v-card);
+  color: var(--v-text);
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-lg);
+  padding: var(--onboarding-padding);
+  box-shadow: var(--onboarding-shadow);
+}
+
+.onboarding-card h2 { margin: 0; font-size: 1.1rem; }
+.onboarding-card p { margin-block: var(--onboarding-gap); }
+.onboarding-card button {
+  color: inherit;
+  background: var(--v-subtle);
+  border: 1px solid var(--v-border);
+  border-radius: var(--v-radius-sm);
+  padding: var(--onboarding-gap);
+  cursor: pointer;
+}
+.onboarding-card button:disabled { cursor: default; opacity: .55; }
+.onboarding-card button:focus-visible { outline: 2px solid var(--v-primary); }
+.onboarding-heading, .onboarding-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--onboarding-gap);
+}
+.onboarding-heading { justify-content: space-between; }
+.onboarding-actions { flex-wrap: wrap; }
+.onboarding-welcome { max-width: min(var(--onboarding-dialog-width), 90vw); }
+.onboarding-welcome::backdrop { background: var(--onboarding-backdrop); }
+.onboarding-tip {
+  width: min(100%, var(--onboarding-tip-width));
+  position: relative;
+  margin-inline: auto;
+  z-index: 12;
+}
+.onboarding-tip[hidden] { display: block; position: absolute; visibility: hidden; }
+.onboarding-mic {
+  width: min(100%, var(--onboarding-dialog-width));
+  margin-inline: auto;
+}
+.onboarding-help { position: relative; display: flex; width: max-content; }
+.hp-subpage > .onboarding-help .onboarding-help-panel {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+}
+.onboarding-dot {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  width: var(--onboarding-gap);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--v-primary);
+}
+.onboarding-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.onboarding-help-panel {
+  position: absolute;
+  z-index: 13;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  display: grid;
+  gap: var(--onboarding-gap);
+  white-space: nowrap;
+}

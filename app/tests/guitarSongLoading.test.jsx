@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React, { forwardRef, useEffect, useImperativeHandle } from 'react'
+import React, { StrictMode, forwardRef, useEffect, useImperativeHandle } from 'react'
 import { importer } from '@coderline/alphatab'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -87,6 +87,18 @@ it.each(['invalid.mid', 'invalid.musicxml'])('does not add a rejected %s import 
   expect(screen.getByRole('button', {name:'First song',exact:true})).toBeTruthy()
   vi.restoreAllMocks()
 })
+it('imports a new score selected in Home once and keeps it in My Files', async () => {
+  const bytes = new ArrayBuffer(4)
+  const file = { name: 'new.musicxml', size: 4, arrayBuffer: async () => bytes }
+  const started = vi.fn()
+  loadGuitarNotation.mockResolvedValueOnce(parsed('New score'))
+  render(<StrictMode><GuitarSong scoreToImport={file} onScoreImportStarted={started} /></StrictMode>)
+  expect(await screen.findByRole('heading', { name: 'New score' })).toBeTruthy()
+  expect(started).toHaveBeenCalledOnce()
+  expect(loadGuitarNotation).toHaveBeenCalledOnce()
+  expect(rememberMyFile).toHaveBeenCalledWith({ id: 'fingerprint', name: file.name, instrument: 'guitar', bytes })
+})
+
 it('opens a saved file requested from Home and acknowledges it only after parsing', async () => {
   let resolve; loadMyFile.mockResolvedValue({id:'saved',name:'saved.musicxml',bytes:new ArrayBuffer(1)})
   loadGuitarNotation.mockReturnValueOnce(new Promise((done) => {resolve = done}))
@@ -111,15 +123,18 @@ it('puts the score, transport and practice modes in the main workspace', async (
   fireEvent.click(screen.getByRole('button',{name:'First song',exact:true}))
   await screen.findByRole('heading',{name:'Score workspace test'})
   const main=screen.getByRole('region',{name:'Score workspace'})
-  const options=screen.getByRole('complementary',{name:'Practice options'})
+  expect(screen.queryByRole('complementary', { name: 'Practice options' })).toBeNull()
   expect(main.contains(screen.getByRole('heading',{name:'Score workspace test'}))).toBe(true)
-  expect(main.querySelector('.guitar-song__transport-slot')).toBeTruthy()
+  const transport = main.querySelector('.guitar-song__transport-slot')
+  expect(transport).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'Score workspace test' }).compareDocumentPosition(transport)
+    & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(main.contains(screen.getByRole('group',{name:'Practice mode'}))).toBe(true)
-  expect(options.querySelector('.guitar-song__tempo-slot')).toBeTruthy()
   expect(container.querySelector('.song-workspace').children[0]).toBe(main)
   expect(main.nextElementSibling.querySelector('.song-workspace__feedback')).toBeTruthy()
   fireEvent.click(screen.getByRole('button',{name:'Settings',exact:true}))
   expect(screen.getByRole('button',{name:'Settings',exact:true}).getAttribute('aria-expanded')).toBe('true')
+  expect(screen.getByRole('complementary', { name: 'Practice options' }).querySelector('.guitar-song__tempo-slot')).toBeTruthy()
   fireEvent.click(screen.getByRole('button',{name:'Close practice options'}))
   expect(screen.getByRole('button',{name:'Settings',exact:true}).getAttribute('aria-expanded')).toBe('false')
 })
@@ -224,6 +239,7 @@ it('resumes a named passage after reopening with different staff lines', async (
   expect(mocks.scoreApi.playbackSpeed).toBe(0.65)
   expect(mocks.scoreApi.play).not.toHaveBeenCalled()
 
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
   fireEvent.click(screen.getByText(/^Tempo 65%/))
   fireEvent.change(screen.getByRole('slider', {name: 'Tempo'}), {target: {value: '70'}})
   expect(mocks.scoreApi.playbackSpeed).toBe(0.7)

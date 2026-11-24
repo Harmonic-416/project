@@ -1,3 +1,4 @@
+import { useOnboardingBusy } from '../../../ui/onboarding/useOnboarding.js'
 import { finishGuitarPractice } from '../practice/guitarProgress.js'
 import { useEffect, useReducer, useState } from 'react'
 import { sfx } from '../../vocal/feedback/sfx.js'
@@ -17,6 +18,7 @@ export default function ChordWorkout({ kind }) {
   const send = (action) => {setSoundError(null); dispatch(action)}
   const question = state.questions[state.index]
   const asking = state.phase === 'asking'
+  useOnboardingBusy(asking)
   const roundDone = state.phase === 'done'
   const playedRound = state.results.some((result) => !result.skipped)
   useEffect(() => {stop()}, [state.index,state.phase,stop])

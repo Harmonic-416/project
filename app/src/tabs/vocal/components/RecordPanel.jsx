@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { rememberSongBars, rememberSongLine } from '../practice/songBars.js'
 import { barAt } from '../practice/takeSummary.js'
 import { Download, Eraser } from 'lucide-react'
@@ -123,7 +124,10 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
 
   const mic = useMicPitch({ getTime: getTransportSeconds, onSample: handleSample })
 
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(['listening', 'requesting'].includes(mic.status))
   const startAttempt = useCallback(async () => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     setResult(null)
     setRecording(null)
     setNotes(null)
@@ -136,7 +140,7 @@ function RecordPanel({ scoreModel, playback, sheetMusicRef, title, auth, supabas
     await mic.start()
     await playback.play()
     setArmed(true)
-  }, [clearNoteMarks, mic, overlay, playback, judgedLine])
+  }, [clearNoteMarks, mic, overlay, playback, judgedLine, startWithMicrophone])
 
   const finishAttempt = useCallback(async () => {
     setArmed(false)

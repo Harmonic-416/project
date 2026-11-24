@@ -14,7 +14,7 @@ const FORMAT_LABEL = {
 }
 
 /** Song identity, provenance and file actions stay together above every mode. */
-export default function SongHeading({ notation, viewingShared, showSessions, onSessions, onBack, exportScore, exportError, storageNotice, infoHost }) {
+export default function SongHeading({ notation, viewingShared, showSessions, onSessions, onBack, exportScore, exportError, storageNotice, infoHost, settingsControl }) {
   const information = <>
     {(notation.score?.artist || notation.score?.music || notation.score?.words || notation.score?.subTitle || notation.score?.album) && <div className="song-workspace__credits"><strong>About this score</strong>{notation.score.subTitle && <p>{notation.score.subTitle}</p>}{notation.score.artist && <p>{notation.score.artist}</p>}{notation.score.album && <p>{notation.score.album}</p>}{notation.score.music && <p>Music: {notation.score.music}</p>}{notation.score.words && <p>Words: {notation.score.words}</p>}</div>}
     {notation.importNotice && <p role="status" className="guitar-song__notice guitar-song__notice--info">{notation.importNotice}</p>}
@@ -35,7 +35,10 @@ export default function SongHeading({ notation, viewingShared, showSessions, onS
         <span className={`guitar-song__format ${notation.draft ? 'guitar-song__format--draft' : ''}`}>
           {notation.draft ? 'Draft' : FORMAT_LABEL[notation.format]}
         </span>
-        <div className="guitar-song__actions" role="group" aria-label="Song actions">
+        {settingsControl}
+        <details className="guitar-song__actions">
+          <summary aria-label="Song actions">···</summary>
+          <div className="guitar-song__action-menu">
           {showSessions && (
             <button type="button" onClick={onSessions}>
               Sessions
@@ -47,7 +50,8 @@ export default function SongHeading({ notation, viewingShared, showSessions, onS
           <button type="button" onClick={() => exportScore(exportGuitarPro)}>
             Export Guitar Pro
           </button>
-        </div>
+          </div>
+        </details>
       </div>
       {infoHost ? createPortal(information, infoHost) : information}
   </>

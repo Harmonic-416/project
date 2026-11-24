@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   acceptFriendRequest,
   declineFriendRequest,
@@ -34,6 +34,7 @@ function ringFor(person) {
  * requests asking you and requests you sent, as three tabs with counts.
  */
 function SocialFriends({ me, friends, error, onChanged }) {
+  const addFriend = useRef(null)
   const [busy, setBusy] = useState(null) // id of the row being changed
   const [rowError, setRowError] = useState(null)
   const [list, setList] = useState('friends') // friends | requests | sent
@@ -118,14 +119,14 @@ function SocialFriends({ me, friends, error, onChanged }) {
   }
 
   const empty = {
-    friends: { Icon: PeopleIcon, text: 'No friends yet. Add someone with their name#tag, or share your invite link.' },
+    friends: { Icon: PeopleIcon, text: 'People you add or accept will appear here.' },
     requests: { Icon: InboxIcon, text: 'No one is asking right now.' },
     sent: { Icon: SendIcon, text: 'No requests waiting on an answer.' },
   }[list]
 
   return (
     <div className="social-friends">
-      <AddFriendForm me={me} onAdded={onChanged} />
+      <AddFriendForm me={me} onAdded={onChanged} inputRef={addFriend} />
 
       <section className="social-card" aria-label="Your friends">
         <div className="social-tabs" role="tablist" aria-label="Friends lists">
@@ -156,6 +157,11 @@ function SocialFriends({ me, friends, error, onChanged }) {
               <empty.Icon />
             </span>
             <p>{empty.text}</p>
+            {list === 'friends' && (
+              <button type="button" className="social-button" onClick={() => addFriend.current?.focus()}>
+                Add a friend
+              </button>
+            )}
           </div>
         ) : (
           <ul className="social-list" role="tabpanel">
@@ -185,7 +191,7 @@ function PersonRow({ person, detail, highlight = false, children }) {
   )
 }
 
-function AddFriendForm({ me, onAdded }) {
+function AddFriendForm({ me, onAdded, inputRef }) {
   const [handle, setHandle] = useState('')
   const [state, setState] = useState('idle') // idle | busy
   const [message, setMessage] = useState(null) // { text, error }
@@ -227,6 +233,7 @@ function AddFriendForm({ me, onAdded }) {
       </label>
       <div className="social-field">
         <input
+          ref={inputRef}
           id="social-add-friend"
           className="social-field__input"
           value={handle}

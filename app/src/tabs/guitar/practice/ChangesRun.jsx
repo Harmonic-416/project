@@ -1,4 +1,5 @@
 import { finishGuitarPractice } from './guitarProgress.js'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useGuitarListener } from '../song/follow/useGuitarListener.js'
 import ChordTransition from './ChordTransition.jsx'
@@ -103,7 +104,11 @@ function ChangesRun({ unlocked, onLearnChord }) {
     if (next[0] !== next[1]) { setShowStep(null); setDemoError(null); listener.stop(); dispatch({type:'reset'}); setPair(next) }
   }
 
-  const start = () => {
+  const { markActive, startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(state.status === 'countdown' || state.status === 'running')
+  const start = async () => {
+    if (useMic && startWithMicrophone && !(await startWithMicrophone())) return
+    markActive?.()
     setShowStep(null)
     stopSound()
     counterRef.current = createChangeCounter(a, b)

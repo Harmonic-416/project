@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
 import './App.css'
+import OnboardingProvider from './ui/onboarding/OnboardingProvider.jsx'
+import { shouldShowWelcome } from './ui/onboarding/onboardingStore.js'
 import HomeTab from './tabs/home/HomeTab.jsx'
 import GuitarTab from './tabs/guitar/GuitarTab.jsx'
 import VocalTab from './tabs/vocal/VocalTab.jsx'
@@ -66,10 +68,13 @@ function takeInvite() {
 const tabForInstrument = (instrument) => (instrument === 'guitar' ? 'guitar' : 'vocal')
 
 function App() {
+  const [firstOpen] = useState(() => shouldShowWelcome(window.location.href))
+  const [destination, setDestination] = useState({ tab: null, sequence: 0 })
   const [sharedAttempt, setSharedAttempt] = useState(takeSharedAttempt)
   const [invite, setInvite] = useState(takeInvite)
   // A file from Home's "My files" to open in its tab: { id, tab }.
   const [fileToOpen, setFileToOpen] = useState(null)
+  const [scoreToImport, setScoreToImport] = useState(null)
   // A song whose practice sessions Home wants shown (Vocal tab): { songId, songFingerprint, songTitle }.
   const [sessionsToOpen, setSessionsToOpen] = useState(null)
   const [activeTab, setActiveTab] = useState(invite ? 'social' : (sharedAttempt?.tab ?? 'home'))
@@ -115,6 +120,12 @@ function App() {
     setActiveTab(tab)
   }, [])
   const fileOpened = useCallback(() => setFileToOpen(null), [])
+  const importGuitarScore = useCallback((file) => {
+    setScoreToImport(file)
+    setDestination((current) => ({ ...current, tab: null }))
+    setActiveTab('guitar')
+  }, [])
+  const scoreImportStarted = useCallback(() => setScoreToImport(null), [])
 
   // Home: a song's practice sessions, in the tab it was practised in.
   const openSessions = useCallback(({ songId, songFingerprint, songTitle, instrument }) => {
@@ -124,45 +135,65 @@ function App() {
   }, [])
   const sessionsOpened = useCallback(() => setSessionsToOpen(null), [])
 
-  return (
-    <div className="app">
-      <main className="content">
-        <ActiveComponent
-          auth={auth}
-          onNavigate={setActiveTab}
-          sharedAttemptId={sharedAttempt?.tab === activeTab ? sharedAttempt.id : null}
-          onSharedAttemptDone={sharedAttemptDone}
-          fileToOpenId={fileToOpen?.tab === activeTab ? fileToOpen.id : null}
-          onFileOpened={fileOpened}
-          inviteCode={invite}
-          onInviteDone={inviteDone}
-          onOpenAttempt={openAttempt}
-          onOpenFile={openFile}
-          onOpenSessions={openSessions}
-          sessionsToOpen={sessionsToOpen?.tab === activeTab ? sessionsToOpen : null}
-          onSessionsOpened={sessionsOpened}
-          learnProgressVersion={learnProgressVersion}
-          myFilesVersion={myFilesVersion}
-        />
-      </main>
+  const navigate = useCallback((tab) => {
+    if (tab !== activeTab) setDestination((current) => ({ ...current, tab: null }))
+    if (tab !== 'guitar') setScoreToImport(null)
+    setActiveTab(tab)
+  }, [activeTab])
+  const openWelcomeDestination = (tab) => {
+    setDestination((current) => ({ tab, sequence: current.sequence + 1 }))
+    setActiveTab(tab)
+  }
 
-      <nav className="tab-bar">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-            aria-current={activeTab === tab.id ? 'page' : undefined}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="tab-icon" aria-hidden="true">
-              <tab.Icon />
-            </span>
-            <span className="tab-label">{tab.label}</span>
-          </button>
-        ))}
-      </nav>
-    </div>
+  return (
+    <OnboardingProvider initialWelcome={firstOpen && !sharedAttempt && !invite} onDestination={openWelcomeDestination}>
+      <div className="app">
+        <main className="content">
+          <ActiveComponent
+            auth={auth}
+            key={destination.sequence}
+            initialView={destination.tab === 'guitar' && activeTab === 'guitar' ? 'tuner' : undefined}
+            initialSection={destination.tab === 'vocal' && activeTab === 'vocal' ? 'learn' : undefined}
+            initialWarmUp={destination.tab === 'vocal' && activeTab === 'vocal'}
+            onNavigate={navigate}
+            sharedAttemptId={sharedAttempt?.tab === activeTab ? sharedAttempt.id : null}
+            onSharedAttemptDone={sharedAttemptDone}
+            fileToOpenId={fileToOpen?.tab === activeTab ? fileToOpen.id : null}
+            onFileOpened={fileOpened}
+            onImportScore={importGuitarScore}
+            scoreToImport={activeTab === 'guitar' ? scoreToImport : null}
+            onScoreImportStarted={scoreImportStarted}
+            inviteCode={invite}
+            onInviteDone={inviteDone}
+            onOpenAttempt={openAttempt}
+            onOpenFile={openFile}
+            onOpenSessions={openSessions}
+            sessionsToOpen={sessionsToOpen?.tab === activeTab ? sessionsToOpen : null}
+            onSessionsOpened={sessionsOpened}
+            learnProgressVersion={learnProgressVersion}
+            myFilesVersion={myFilesVersion}
+          />
+        </main>
+
+        <div id="onboarding-tip-dock" />
+        <nav className="tab-bar">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+              onClick={() => navigate(tab.id)}
+            >
+              <span className="tab-icon" aria-hidden="true">
+                <tab.Icon />
+              </span>
+              <span className="tab-label">{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+    </OnboardingProvider>
   )
 }
 

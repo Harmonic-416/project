@@ -1,5 +1,6 @@
 import { finishGuitarPractice } from '../../practice/guitarProgress.js'
 import GuitarModeFeedback from './GuitarModeFeedback.jsx'
+import { usePracticeOnboarding } from '../../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import PlaybackControls from './GuitarPlaybackControls.jsx'
 import ShareAttempt from '../../../vocal/components/ShareAttempt.jsx'
@@ -190,7 +191,9 @@ function GuitarWaitMode({ api, transportHost, feedbackHost, onTransportStart, on
     })
   }, [done, micOpen, state.results, stopListening])
 
+  const { startWithMicrophone } = usePracticeOnboarding()
   const play = async () => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     restart(done ? { type: 'reset' } : null)
     const fresh = !micOpen
     if (!(await listener.start())) return
