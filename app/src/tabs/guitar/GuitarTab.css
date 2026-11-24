@@ -206,15 +206,19 @@
   box-shadow: none;
 }
 
+/* Matches .vocal-frame__section-icon: muted when idle, full colour and a
+   little larger on the open section. */
 .guitar-tab__view-icon {
-  font-size: 1.15em;
-  filter: grayscale(.7);
-  transition: filter var(--v-med), transform var(--v-slow) var(--v-ease-bounce);
+  display: inline-flex;
+  font-size: 1.15rem;
+  line-height: 1;
+  opacity: .75;
+  transition: opacity var(--v-med), transform var(--v-slow) var(--v-ease-bounce);
 }
 
 .guitar-tab__view--active .guitar-tab__view-icon {
-  filter: none;
-  transform: scale(1.15);
+  opacity: 1;
+  transform: scale(1.18);
 }
 
 .guitar-tab :is(.learn__resume, .tuner__button, .workout__primary, .practice__listen, .play-run__primary) {

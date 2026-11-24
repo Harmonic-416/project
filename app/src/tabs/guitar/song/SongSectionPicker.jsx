@@ -6,6 +6,9 @@ const barLabel = ({ first, last }) => first === last ? `Bar ${first + 1}` : `Bar
 
 const savedKey = (id) => `saved:${id}`
 
+/** How long a passage notice stays up before it gets out of the way. */
+const MESSAGE_MS = 4000
+
 export default function SongSectionPicker({ api, barCount, section, onChange, disabled, storageKey, getPassage }) {
   const [rendered, setRendered] = useState(null)
   const [saved, setSaved] = useState(() => {
@@ -16,12 +19,28 @@ export default function SongSectionPicker({ api, barCount, section, onChange, di
     }
   })
   const [message, setMessage] = useState(null)
+  const [messageSection, setMessageSection] = useState(section)
   const [draft, setDraft] = useState(null)
   const dialog = useRef(null)
   const passageDialog = useRef(null)
   const picker = useRef(null)
   const firstInput = useRef(null)
   const lastInput = useRef(null)
+
+  // A notice answers the passage it was raised about: once the player picks or
+  // drags a different one it no longer applies (most often "choose bars first",
+  // which choosing bars has just done).
+  if (section !== messageSection) {
+    setMessageSection(section)
+    setMessage(null)
+  }
+
+  // Otherwise it clears itself, so it never sits in the practice row for good.
+  useEffect(() => {
+    if (!message) return undefined
+    const timer = setTimeout(() => setMessage(null), MESSAGE_MS)
+    return () => clearTimeout(timer)
+  }, [message])
 
   useEffect(() => {
     if (draft && !passageDialog.current.open) passageDialog.current.showModal()

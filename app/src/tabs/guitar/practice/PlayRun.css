@@ -208,7 +208,7 @@
 .strumming-loop__shapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--gs-space-3); min-height: 0; }
 .strumming-loop__shapes > div { display: flex; flex-direction: column; align-items: center; gap: var(--gs-space-2); padding: var(--gs-space-3); background: var(--gs-raised); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); min-height: 0; }
 .strumming-loop__shapes strong { font-size: .85rem; }
-.strumming-loop__shapes .chord-diagram { width: 100%; max-width: 190px; }
+.strumming-loop__shapes .chord-diagram { width: 100%; max-width: clamp(170px, 30vw, 280px); }
 .strumming-loop__invitation { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gs-space-3); padding-top: var(--gs-space-3); }
 .strumming-loop__invitation p { flex: 1 1 220px; }
 .strumming-loop__sequence { display: flex; gap: var(--gs-space-2); list-style: none; padding: var(--gs-space-3) 0 0; margin: 0; border-top: 1px solid var(--gs-border); }
@@ -218,7 +218,7 @@
 .strumming-loop__playing { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: var(--gs-space-4); min-height: 0; }
 .strumming-loop__target { display: flex; align-items: center; flex-direction: column; position: relative; min-height: 0; overflow: hidden; border-radius: var(--gs-radius-control); background: var(--gs-raised); padding: var(--gs-space-2); }
 .strumming-loop__target h3 { margin: 0; font-size: 1.2rem; }
-.strumming-loop__target .chord-diagram { width: 100%; max-width: 220px; }
+.strumming-loop__target .chord-diagram { width: 100%; max-width: clamp(190px, 30vw, 300px); }
 .strumming-loop__rhythm { align-self: center; min-width: 0; }
 .strumming-loop__rhythm h3 { font-size: 1.1rem; margin: var(--gs-space-2) 0; }
 .strumming-loop__beats { display: flex; gap: var(--gs-space-2); list-style: none; padding: 0; margin: var(--gs-space-3) 0; }
