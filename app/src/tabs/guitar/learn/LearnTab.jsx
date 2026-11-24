@@ -1,3 +1,4 @@
+import TipAnchor from '../../../ui/onboarding/Tip.jsx'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
 import { getProgressSyncStatus, onProgressSyncStatus, progressSaved } from './progressEvents.js'
@@ -63,7 +64,7 @@ export default function LearnTab({ auth, progressVersion = 0 }) {
           </div>
           {opened.id === 'lessons' ? (
             <PracticeScreen key={`${unlockKey}:${progressVersion}`} initialChord={opened.chordId} initialMode={opened.mode} allUnlocked={allUnlocked} />
-          ) : <StrumDrill />}
+          ) : <TipAnchor id="guitar.learn.strum"><StrumDrill /></TipAnchor>}
         </div>
       ) : (
         <section aria-labelledby="learn-title">
@@ -92,7 +93,9 @@ export default function LearnTab({ auth, progressVersion = 0 }) {
             <span>{done} of {CHORDS.length} chords cleared</span>
             <progress max={CHORDS.length} value={done} aria-label="Chord lessons progress" />
           </div>
-          <ChordUnits cleared={cleared} onOpen={openChord} allUnlocked={allUnlocked} nextChord={next} />
+          <TipAnchor id="guitar.learn">
+            <ChordUnits cleared={cleared} onOpen={openChord} allUnlocked={allUnlocked} nextChord={next} />
+          </TipAnchor>
           <div className="learn__where">
             {auth?.user && accountStatus !== 'saved' ? (
               <GuitarFeedback kind={accountStatus === 'error' ? 'error' : 'loading'} onRetry={accountStatus === 'error' ? progressSaved : undefined} retryLabel="Retry sync">{where}</GuitarFeedback>

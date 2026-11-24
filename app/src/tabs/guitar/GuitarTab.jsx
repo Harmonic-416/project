@@ -42,13 +42,16 @@ function GuitarTab({
   onSharedAttemptDone,
   fileToOpenId,
   onFileOpened,
+  scoreToImport,
+  onScoreImportStarted,
   sessionsToOpen,
   onSessionsOpened,
   learnProgressVersion,
   myFilesVersion,
+  initialView = 'song',
 }) {
   const progress = useSyncExternalStore(guitarProgress.subscribe, guitarProgress.loadProgress, guitarProgress.loadProgress)
-  const [view, setView] = useState('song')
+  const [view, setView] = useState(initialView)
   const [returnTo, setReturnTo] = useState(null) // the view "Tune now" came from
   const [tuned, setTuned] = useState(isTunedThisSession)
   const [dismissed, setDismissed] = useState(isTunePromptDismissed)
@@ -135,6 +138,8 @@ function GuitarTab({
                 onSharedAttemptDone={onSharedAttemptDone}
                 fileToOpenId={fileToOpenId}
                 onFileOpened={onFileOpened}
+                scoreToImport={scoreToImport}
+                onScoreImportStarted={onScoreImportStarted}
                 sessionsToOpen={sessionsToOpen}
                 onSessionsOpened={onSessionsOpened}
                 myFilesVersion={myFilesVersion}

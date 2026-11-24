@@ -1,3 +1,4 @@
+import { useOnboardingBusy } from '../../../ui/onboarding/useOnboarding.js'
 import { finishGuitarPractice } from '../practice/guitarProgress.js'
 import EarRoundSummary from './EarRoundSummary.jsx'
 import GuitarFeedback from '../practice/GuitarFeedback.jsx'
@@ -52,6 +53,7 @@ function EarTraining() {
   const lastSound = useRef(null)
 
   const { status, questions, index, results } = state
+  useOnboardingBusy(status === 'asking' || status === 'answered')
   const level = LEVELS.find((l) => l.id === (state.level ?? levelId))
   const question = questions[index]
   const result = status === 'answered' ? results[index] : null

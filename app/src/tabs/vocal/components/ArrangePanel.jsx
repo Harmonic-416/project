@@ -1,3 +1,4 @@
+import { usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { ListMusic, PenLine } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import '../../guitar/song/TranscribePanel.css'
@@ -152,7 +153,9 @@ function ArrangePanel({ onArranged, auth, supabase }) {
 
   const melodyChoices = VOICINGS[voicing].melody
 
+  const { markActive } = usePracticeOnboarding()
   const start = async (file) => {
+    markActive?.()
     const current = new AbortController()
     controller.current = current
     setError(null)

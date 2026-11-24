@@ -1,4 +1,5 @@
 import * as alphaTab from '@coderline/alphatab'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../../ui/onboarding/useOnboarding.js'
 import { useEffect, useRef, useState } from 'react'
 import { seekToTick, setPlayerOptions } from './playerControls.js'
 import { estimateLatency, saveLatency } from './songClock.js'
@@ -28,7 +29,10 @@ function LatencyCalibration({ api, score, onDone, onCancel, restoreMix }) {
     cleanupRef.current?.()
   }, [])
 
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(phase === 'starting' || phase === 'running')
   const start = async () => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     const attempt = ++attemptRef.current
     setPhase('starting')
     clicksRef.current = []

@@ -1,3 +1,5 @@
+import HelpControl from '../../ui/onboarding/HelpControl.jsx'
+import TipAnchor from '../../ui/onboarding/Tip.jsx'
 import { useEffect, useState } from 'react'
 import './HomeTab.css'
 import './HomePage.css'
@@ -30,7 +32,7 @@ const SONGS_SHOWN = 2
  * `myFilesVersion` (App.jsx) goes up when the device's file list changed, so
  * My Files reads it again.
  */
-function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, myFilesVersion = 0 }) {
+function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onImportScore, onOpenSessions, myFilesVersion = 0 }) {
   const { user, configured, ready } = auth
 
   // A failed sign-in or "Connect" comes back to the app with the reason in
@@ -53,7 +55,7 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, 
     return (
       <div className="home-page">
         <div className="home-tab hp">
-          <SubPage title="Account" onBack={() => setAccountOpen(false)}>
+          <SubPage tip="home.account" title="Account" onBack={() => setAccountOpen(false)}>
             <AccountCard user={user} onSignOut={auth.signOut} notice={notice} />
           </SubPage>
         </div>
@@ -94,6 +96,7 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, 
               <ChevronIcon />
             </button>
           )}
+          <HelpControl />
         </header>
 
         {signedIn ? (
@@ -102,24 +105,25 @@ function HomeTab({ auth, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, 
             onNavigate={onNavigate}
             onOpenAttempt={onOpenAttempt}
             onOpenFile={onOpenFile}
+            onImportScore={onImportScore}
             onOpenSessions={onOpenSessions}
             myFilesVersion={myFilesVersion}
           />
         ) : (
-          <SignedOutHome auth={auth} notice={notice} onNavigate={onNavigate} onOpenFile={onOpenFile} myFilesVersion={myFilesVersion} />
+          <SignedOutHome auth={auth} notice={notice} onNavigate={onNavigate} onOpenFile={onOpenFile} onImportScore={onImportScore} myFilesVersion={myFilesVersion} />
         )}
       </div>
     </div>
   )
 }
 
-function SignedOutHome({ auth, notice, onNavigate, onOpenFile, myFilesVersion }) {
+function SignedOutHome({ auth, notice, onNavigate, onOpenFile, onImportScore, myFilesVersion }) {
   const { configured, ready } = auth
   const [page, setPage] = useState(null)
   if (page === 'files') {
     return (
-      <SubPage title="My Files" onBack={() => setPage(null)}>
-        <MyFilesSection onOpenFile={onOpenFile} version={myFilesVersion} />
+      <SubPage tip="home.files" title="My Files" onBack={() => setPage(null)}>
+        <MyFilesSection onImportScore={onImportScore} onOpenFile={onOpenFile} version={myFilesVersion} />
       </SubPage>
     )
   }
@@ -140,91 +144,93 @@ function SignedOutHome({ auth, notice, onNavigate, onOpenFile, myFilesVersion })
           </>
         )}
       </div>
-      <QuickPractice onNavigate={onNavigate} />
-      <section className="hp-card" aria-labelledby="hp-files">
-        <SectionHead id="hp-files" Icon={FileIcon} title="My Files" onViewAll={() => setPage('files')} />
-        <FilesSummary onViewAll={() => setPage('files')} version={myFilesVersion} />
-      </section>
-    </>
-  )
+      <TipAnchor id="home.overview"><QuickPractice onNavigate={onNavigate} /></TipAnchor>
+        <section className="hp-card" aria-labelledby="hp-files">
+          <SectionHead id="hp-files" Icon={FileIcon} title="My Files" onViewAll={() => setPage('files')} />
+          <FilesSummary onImportScore={onImportScore} onViewAll={() => setPage('files')} version={myFilesVersion} />
+        </section>
+      </>
+    )
 }
 
-function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessions, myFilesVersion }) {
-  const { data, errors, reload } = useHomeData(user.id, PARTS)
-  const [page, setPage] = useState(null) // null | 'songs' | 'activity' | 'files'
-  const [activityTab, setActivityTab] = useState('received')
-  const unseen = data.inbox?.filter((item) => !item.seen_at).length ?? 0
-  const back = () => setPage(null)
+function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onImportScore, onOpenSessions, myFilesVersion }) {
+    const { data, errors, reload } = useHomeData(user.id, PARTS)
+    const [page, setPage] = useState(null) // null | 'songs' | 'activity' | 'files'
+    const [activityTab, setActivityTab] = useState('received')
+    const unseen = data.inbox?.filter((item) => !item.seen_at).length ?? 0
+    const back = () => setPage(null)
 
-  const activity = (limit) => (
-    <Activity
-      data={data}
-      errors={errors}
-      myId={user.id}
-      tab={activityTab}
-      onTab={setActivityTab}
-      unseen={unseen}
-      limit={limit}
-      onOpenAttempt={onOpenAttempt}
-      onChanged={() => reload('inbox')}
-    />
-  )
-
-  if (page === 'songs') {
-    return (
-      <SubPage title="Working On" onBack={back}>
-        <WorkingOnCards recent={data.recent} error={errors.recent} onOpenAttempt={onOpenAttempt} onOpenSessions={onOpenSessions} onNavigate={onNavigate} showAdd />
-      </SubPage>
+    const activity = (limit) => (
+      <Activity
+        data={data}
+        errors={errors}
+        myId={user.id}
+        tab={activityTab}
+        onTab={setActivityTab}
+        unseen={unseen}
+        limit={limit}
+        onOpenAttempt={onOpenAttempt}
+        onChanged={() => reload('inbox')}
+      />
     )
-  }
-  if (page === 'activity') {
-    return (
-      <SubPage title="Recent Activity" onBack={back}>
-        {activity(null)}
-      </SubPage>
-    )
-  }
-  if (page === 'files') {
-    return (
-      <SubPage title="My Files" onBack={back}>
-        <MyFilesSection onOpenFile={onOpenFile} userId={user.id} version={myFilesVersion} />
-      </SubPage>
-    )
-  }
 
-  return (
-    <>
-      <section className="hp-card hp-card--glow" aria-labelledby="hp-continue">
-        <div className="hp-card__head">
-          <h2 id="hp-continue" className="hp-card__title">
-            <span className="hp-card__icon">
-              <PracticeIcon />
-            </span>
-            Continue Practice
-          </h2>
-          {data.latest && <span className="hp-muted hp-small">Latest attempt • {timeAgo(data.latest.created_at)}</span>}
-        </div>
-        <ContinuePractice
-          latest={data.latest}
-          recent={data.recent}
-          error={errors.latest ?? errors.recent}
-          onOpenAttempt={onOpenAttempt}
-          onNavigate={onNavigate}
-        />
-      </section>
+    if (page === 'songs') {
+      return (
+        <SubPage tip="home.working" title="Working On" onBack={back}>
+          <WorkingOnCards recent={data.recent} error={errors.recent} onOpenAttempt={onOpenAttempt} onOpenSessions={onOpenSessions} onNavigate={onNavigate} showAdd />
+        </SubPage>
+      )
+    }
+    if (page === 'activity') {
+      return (
+        <SubPage tip="home.activity" title="Recent Activity" onBack={back}>
+          {activity(null)}
+        </SubPage>
+      )
+    }
+    if (page === 'files') {
+      return (
+        <SubPage tip="home.files" title="My Files" onBack={back}>
+          <MyFilesSection onImportScore={onImportScore} onOpenFile={onOpenFile} userId={user.id} version={myFilesVersion} />
+        </SubPage>
+      )
+    }
 
-      <section aria-labelledby="hp-working">
-        <SectionHead id="hp-working" Icon={TargetIcon} title="Working On" pill onViewAll={() => setPage('songs')} />
-        <WorkingOnCards
-          recent={data.recent}
-          error={errors.recent}
-          limit={SONGS_SHOWN}
-          onOpenAttempt={onOpenAttempt}
-          onOpenSessions={onOpenSessions}
-          onNavigate={onNavigate}
-          showAdd
-        />
-      </section>
+    return (
+      <>
+        <section className="hp-card hp-card--glow" aria-labelledby="hp-continue">
+          <div className="hp-card__head">
+            <h2 id="hp-continue" className="hp-card__title">
+              <span className="hp-card__icon">
+                <PracticeIcon />
+              </span>
+              Continue Practice
+            </h2>
+            {data.latest && <span className="hp-muted hp-small">Latest attempt • {timeAgo(data.latest.created_at)}</span>}
+          </div>
+          <ContinuePractice
+            latest={data.latest}
+            recent={data.recent}
+            error={errors.latest ?? errors.recent}
+            onOpenAttempt={onOpenAttempt}
+            onNavigate={onNavigate}
+          />
+        </section>
+
+        <TipAnchor id="home.overview">
+        <section aria-labelledby="hp-working">
+          <SectionHead id="hp-working" Icon={TargetIcon} title="Working On" pill onViewAll={() => setPage('songs')} />
+          <WorkingOnCards
+            recent={data.recent}
+            error={errors.recent}
+            limit={SONGS_SHOWN}
+            onOpenAttempt={onOpenAttempt}
+            onOpenSessions={onOpenSessions}
+            onNavigate={onNavigate}
+            showAdd
+          />
+        </section>
+      </TipAnchor>
 
       <QuickPractice onNavigate={onNavigate} />
 
@@ -236,7 +242,7 @@ function SignedInHome({ user, onNavigate, onOpenAttempt, onOpenFile, onOpenSessi
 
         <section className="hp-card" aria-labelledby="hp-files">
           <SectionHead id="hp-files" Icon={FileIcon} title="My Files" onViewAll={() => setPage('files')} />
-          <FilesSummary onViewAll={() => setPage('files')} userId={user.id} version={myFilesVersion} />
+          <FilesSummary onImportScore={onImportScore} onViewAll={() => setPage('files')} userId={user.id} version={myFilesVersion} />
         </section>
       </div>
     </>
@@ -334,13 +340,14 @@ function SectionHead({ id, Icon, title, pill = false, onViewAll }) {
 }
 
 /** A "View all" page: back to Home, a title, the full list. */
-function SubPage({ title, onBack, children }) {
+function SubPage({ title, tip, onBack, children }) {
   return (
     <div className="hp-subpage">
       <button type="button" className="hp-back" onClick={onBack}>
         <BackIcon /> Home
       </button>
-      <h2 className="hp-subpage__title">{title}</h2>
+      <TipAnchor id={tip}><h2 className="hp-subpage__title">{title}</h2></TipAnchor>
+      <HelpControl />
       {children}
     </div>
   )

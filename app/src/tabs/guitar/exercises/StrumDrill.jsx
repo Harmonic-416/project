@@ -1,4 +1,5 @@
 import { finishGuitarPractice } from '../practice/guitarProgress.js'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { createClick } from '../../../audio/metronome/click.js'
@@ -124,7 +125,9 @@ function StrumDrill() {
     }
   }
 
+  const { startWithMicrophone } = usePracticeOnboarding()
   const begin = async (kind) => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     const generation = ++generationRef.current
     setStatus('starting')
     setMessage(null)
@@ -174,6 +177,7 @@ function StrumDrill() {
   }
 
   const busy = status === 'starting' || status === 'running' || status === 'calibrating'
+  useOnboardingBusy(busy)
   const nextStep = STRUM_STEPS[STRUM_STEPS.indexOf(step) + 1]
 
   return (

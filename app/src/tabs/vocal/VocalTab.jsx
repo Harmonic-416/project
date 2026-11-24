@@ -1,3 +1,5 @@
+import TipAnchor from '../../ui/onboarding/Tip.jsx'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../ui/onboarding/useOnboarding.js'
 import SongQuickAction from '../../ui/SongQuickAction.jsx'
 import { BookOpen, CalendarDays, Mic, Music, PenLine, Repeat, Search, Settings, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -88,8 +90,9 @@ const SECTIONS = [
 // moves when the person's files changed, so "My songs" reads them again.
 const renderSongMeta = (song) => <SongCardMeta song={song} />
 
-function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened, myFilesVersion = 0 }) {
-  const [section, setSection] = useState('songs') // songs | learn | compose (the capsule bar)
+function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, fileToOpenId, onFileOpened, sessionsToOpen, onSessionsOpened, myFilesVersion = 0, initialSection = 'songs', initialWarmUp = false }) {
+  const { markActive } = usePracticeOnboarding()
+  const [section, setSection] = useState(initialSection) // songs | learn | compose (the capsule bar)
   const [view, setView] = useState(sharedAttemptId ? 'shared' : 'library') // within Songs: library | search | shared | detail | sessions
   // The song the sessions view is for ({ songId, fingerprint, title }), or null for every song.
   const [sessionsFor, setSessionsFor] = useState(null)
@@ -100,6 +103,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   // Learn (its level id kept in `learnLevel`, so Learn reopens on it).
   const [returnTo, setReturnTo] = useState('library')
   const [learnLevel, setLearnLevel] = useState(null)
+  const [startOnWarmUp, setStartOnWarmUp] = useState(initialWarmUp)
   const [status, setStatus] = useState('idle') // idle | loading | ready | error
   const [error, setError] = useState(null)
   const [notation, setNotation] = useState(null) // { format, title, content, sourceBytes, fingerprint, catalogSongId, builtin }
@@ -513,6 +517,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
     rate: tempo / 100,
   })
 
+  useOnboardingBusy(['counting', 'playing'].includes(playback.state))
+
   const melody = useMemo(() => (scoreModel ? melodyLine(scoreModel.notes) : []), [scoreModel])
   // Practice scores are kept per song, part, accompaniment and mode (on the device, and on the account when signed in).
   const runsSetting = {
@@ -664,6 +670,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
   const shownSection = inLevelSong ? 'learn' : section
 
   const openSection = (next) => {
+    if (next !== section) setStartOnWarmUp(false)
     if (inLevelSong && next !== 'compose') {
       // Learn leads back to the level; Songs to the song list, not the level's song.
       if (next === 'songs') {
@@ -723,14 +730,16 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             instrument="voice"
             userId={userId}
             version={myFilesVersion}
-            onOpen={openMySong}
+            onOpen={(file) => { markActive?.(); openMySong(file) }}
             renderMeta={renderSongMeta}
             titleOf={titleFromFilename}
             emptyText="Songs you open from a file are kept here. Add your first with the box at the bottom of this page."
           />
 
           <h2 className="song-library-heading">Built-in songs</h2>
-          <SongLibrary songs={songLibrary} onSelectSong={handleSongSelected} renderMeta={renderSongMeta} />
+          <TipAnchor id="vocal.songs">
+            <SongLibrary songs={songLibrary} onSelectSong={(song) => { markActive?.(); handleSongSelected(song) }} renderMeta={renderSongMeta} />
+          </TipAnchor>
           <div className="song-upload">
             <span className="song-upload__plus" aria-hidden="true">
               ＋
@@ -739,7 +748,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
               Have your own sheet music? Open it here.{' '}
               {userId ? 'It’s kept under My songs, on your account, private to you.' : 'It’s kept under My songs on this device.'}
             </p>
-            <NotationUploader onFileSelected={handleFileSelected} disabled={false} />
+            <NotationUploader onFileSelected={(file) => { markActive?.(); handleFileSelected(file) }} disabled={false} />
           </div>
         </div>
       )
@@ -754,7 +763,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             </button>
             <span className="vocal-tab__song-title">Search songs</span>
           </div>
-          <OnlineSongs configured={auth.configured} supabase={supabase} onSelectSong={handleCloudSongSelected} />
+          <TipAnchor id="vocal.search"><OnlineSongs configured={auth.configured} supabase={supabase} onSelectSong={handleCloudSongSelected} /></TipAnchor>
         </div>
       )
     }
@@ -825,7 +834,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             <button type="button" className="vocal-tab__back" onClick={back}>
               {toSong ? `← ${notation.title}` : '← Songs'}
             </button>
-            <span className="vocal-tab__song-title">Practice sessions</span>
+            <TipAnchor id="vocal.sessions" visit={sessionsFor?.fingerprint}><span className="vocal-tab__song-title">Practice sessions</span></TipAnchor>
           </div>
           <PracticeSessions
             key={sessionsFor ? (sessionsFor.songId ?? sessionsFor.fingerprint ?? sessionsFor.title) : 'all'}
@@ -834,6 +843,8 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
             song={sessionsFor}
             instrument="voice"
             onPractise={practiseFromSessions}
+            onStartPractice={back}
+            practiceActionLabel={toSong ? 'Return to song' : 'Open song library'}
             onOpenAttempt={(id) => {
               // Your own past attempt, back on its score with the green and red notes and the pitch trace.
               setShared(null)
@@ -975,7 +986,11 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
 
         {notation && (
           <>
-            {!viewingShared && <ModeCards mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />}
+            {!viewingShared && (
+              <TipAnchor id="vocal.song.modes" visit={notation.fingerprint}>
+                <ModeCards mode={practiceMode} onChange={handleModeChange} disabled={!scoreModel} />
+              </TipAnchor>
+            )}
             {!viewingShared && scoreModel && (
               <KeySuggestion
                 songId={notation.fingerprint ?? notation.title}
@@ -1086,7 +1101,7 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
                   position={playback.position}
                   duration={playback.duration}
                   rate={playback.rate}
-                  onPlay={playback.play}
+                  onPlay={() => { markActive?.(); return playback.play() }}
                   onPause={playback.pause}
                   onStop={playback.stop}
                   onSeek={playback.seek}
@@ -1156,11 +1171,13 @@ function VocalTab({ auth, onNavigate, sharedAttemptId, onSharedAttemptDone, file
       <div className="vocal-frame__body" key={section}>
         {section === 'compose' ? (
           <div className="vocal-tab">
-            <ArrangePanel onArranged={handleArranged} auth={auth} supabase={supabase} />
+            <TipAnchor id="vocal.compose">
+              <ArrangePanel onArranged={handleArranged} auth={auth} supabase={supabase} />
+            </TipAnchor>
           </div>
         ) : section === 'learn' ? (
           <div className="vocal-tab">
-            <VocalLearn onOpenSong={openLevelSong} focusLevel={learnLevel} />
+            <VocalLearn onOpenSong={openLevelSong} focusLevel={learnLevel} initialWarmUp={startOnWarmUp} />
           </div>
         ) : (
           renderSongs()

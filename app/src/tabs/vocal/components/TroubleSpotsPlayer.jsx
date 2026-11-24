@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import './PracticeModes.css'
@@ -48,6 +49,8 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey
   const handleSample = useCallback((sample) => trackerRef.current?.addSample(sample), [])
   const mic = useMicPitch({ getTime: getTransportSeconds, onSample: handleSample })
   const listening = mic.status === 'listening'
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(listening || mic.status === 'requesting')
 
   const updateRun = useCallback((next) => {
     runRef.current = next
@@ -111,10 +114,11 @@ function TroubleSpotsPlayer({ melody, playback, sheetMusicRef, disabled, runsKey
   }, [sheetMusicRef, updateRun])
 
   const play = useCallback(async () => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     if (!(await mic.start())) return
     if (playback.state !== 'paused' || !trackerRef.current) startRun(getScoreSeconds())
     await playback.play()
-  }, [mic, playback, startRun])
+  }, [mic, playback, startRun, startWithMicrophone])
 
   const seek = useCallback(
     (time) => {

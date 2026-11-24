@@ -5,14 +5,27 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import PracticeScreen from '../src/tabs/guitar/practice/PracticeScreen.jsx'
 import StringStates from '../src/tabs/guitar/practice/StringStates.jsx'
 import { CHORDS } from '../src/tabs/guitar/practice/chords.js'
+import OnboardingProvider from '../src/ui/onboarding/OnboardingProvider.jsx'
 const mic = vi.hoisted(() => ({ start: vi.fn(async () => false), stop: vi.fn(), restart: vi.fn(), muteFor: vi.fn() }))
 vi.mock('../src/tabs/guitar/practice/useLessonListening.js', () => ({ useLessonListening: () => ({ ...mic, status: 'error', error: 'Microphone unavailable' }) }))
 const sound = vi.hoisted(() => ({strum:vi.fn(async()=>{}),arpeggiate:vi.fn(async()=>{}),stop:vi.fn()}))
 vi.mock('../src/tabs/guitar/practice/useChordPlayer.js', () => ({ useChordPlayer: () => sound }))
 vi.mock('../src/tabs/guitar/practice/useLessonCountIn.js', () => ({ useLessonCountIn: () => null }))
 vi.mock('../src/tabs/guitar/practice/ChangesRun.jsx', () => ({ default: () => null }))
-afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); vi.clearAllMocks() })
 describe('lesson controls and microphone fallback', () => {
+  it('closes onboarding without changing the chord or soft-gate controls', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 16, top: 16, right: 216, bottom: 64, width: 200, height: 48,
+    })
+    render(<OnboardingProvider><PracticeScreen initialMode="practice" /></OnboardingProvider>)
+    const chord = screen.getByText('E minor', { selector: '.practice__header strong' })
+    const controls = ['Hint', 'Skip', 'Retry'].map((name) => screen.getByRole('button', { name }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close tip' }))
+    expect(screen.getByText('E minor', { selector: '.practice__header strong' })).toBe(chord)
+    for (const control of controls) expect(control.isConnected).toBe(true)
+    expect(mic.start).not.toHaveBeenCalled()
+  })
   it('does not run the timed checkpoint after microphone denial; manual start remains available', async () => {
     render(<PracticeScreen initialMode="practice" />)
     for (const name of ['Hint', 'Skip', 'Retry']) expect(screen.getByRole('button', { name })).toBeTruthy()

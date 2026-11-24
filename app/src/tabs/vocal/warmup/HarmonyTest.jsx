@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { useMicPitch } from '../audio/useMicPitch.js'
@@ -59,7 +60,10 @@ export default function HarmonyTest({ harmony, part, onExit }) {
     [silence, stopMic],
   )
 
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(['listening', 'requesting'].includes(mic.status))
   const start = async () => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     silence()
     if (!(await mic.start())) return
     await Tone.start()

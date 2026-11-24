@@ -1,6 +1,7 @@
 import { finishGuitarPractice } from '../../practice/guitarProgress.js'
 import GuitarModeFeedback from './GuitarModeFeedback.jsx'
 import * as alphaTab from '@coderline/alphatab'
+import { usePracticeOnboarding } from '../../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PlaybackControls from './GuitarPlaybackControls.jsx'
 import ShareAttempt from '../../../vocal/components/ShareAttempt.jsx'
@@ -373,8 +374,10 @@ function GuitarTroubleMode({
     [api, overlay],
   )
 
+  const { startWithMicrophone } = usePracticeOnboarding()
   const play = async () => {
     if (finishTimer.current !== null) return
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     if (!(await listener.start())) return
     let tick = api.tickPosition
     if (timeline.startTick != null) {

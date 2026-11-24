@@ -1,6 +1,7 @@
 import { Flame, Volume2, VolumeX } from 'lucide-react'
 import { useSfxMuted } from '../vocal/feedback/useSfx.js'
 import './PracticeHeaderControls.css'
+import HelpControl from '../../ui/onboarding/HelpControl.jsx'
 
 export default function PracticeHeaderControls({ streak, practisedToday, startHint }) {
   const [muted, setMuted] = useSfxMuted()
@@ -30,6 +31,7 @@ export default function PracticeHeaderControls({ streak, practisedToday, startHi
       >
         <SoundIcon size="1.1em" aria-hidden="true" />
       </button>
+      <HelpControl />
     </>
   )
 }

@@ -1,3 +1,5 @@
+import HelpControl from '../../ui/onboarding/HelpControl.jsx'
+import TipAnchor from '../../ui/onboarding/Tip.jsx'
 import { useEffect, useRef, useState } from 'react'
 import '../home/HomeTab.css'
 import '../home/HomePage.css'
@@ -29,13 +31,16 @@ function SocialTab({ auth, onNavigate, inviteCode, onInviteDone }) {
   return (
     <div className="home-page social-page">
       <div className="home-tab social-tab">
-        <header className="hm-hero social-tab__header">
-          <span className="hm-hero__badge" aria-hidden="true"><PeopleIcon /></span>
-          <div>
-            <h1 className="hm-hero__title">Friends</h1>
-            <p className="hm-hero__subtitle">Send your attempts to friends and get feedback on them.</p>
-          </div>
-        </header>
+        <TipAnchor id="social.overview" ready={!inviteShown}>
+          <header className="hm-hero social-tab__header">
+            <span className="hm-hero__badge" aria-hidden="true"><PeopleIcon /></span>
+            <div>
+              <h1 className="hm-hero__title">Friends</h1>
+              <p className="hm-hero__subtitle">Send your attempts to friends and get feedback on them.</p>
+            </div>
+            <HelpControl />
+          </header>
+        </TipAnchor>
 
         {inviteShown && configured && (
           <InviteBanner
@@ -63,7 +68,7 @@ function SocialTab({ auth, onNavigate, inviteCode, onInviteDone }) {
               <PeopleIcon />
             </span>
             <h2>Practice is better with friends</h2>
-            <p>Sign in to add friends, send them your attempts and leave each other feedback.</p>
+            <p>People you add will appear here after you sign in.</p>
             <button type="button" className="social-button" onClick={() => onNavigate('home')}>
               Sign in on Home
             </button>

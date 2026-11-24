@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { Ear, Music2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
@@ -80,6 +81,8 @@ export default function WarmUp({ show = 'warmups', only = null }) {
   // null, or { direction, shifts, rep, phase: 'sing' | 'listen', done } while a
   // warm-up is under way or just finished
   const [run, setRun] = useState(null)
+  const { markActive } = usePracticeOnboarding()
+  useOnboardingBusy(Boolean(run && !run.done))
   const [tempo, setTempo] = useSongTempo(TEMPO_KEY)
   const rateRef = useRef(tempo / 100)
   useEffect(() => {
@@ -135,6 +138,7 @@ export default function WarmUp({ show = 'warmups', only = null }) {
   const start = async (direction) => {
     const part = voicePart(voice)
     if (!patterns || !part) return
+    markActive?.()
     silence()
     await Tone.start()
     const pattern = patterns[direction]

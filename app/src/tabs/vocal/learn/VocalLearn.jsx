@@ -1,3 +1,5 @@
+import TipAnchor from '../../../ui/onboarding/Tip.jsx'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { BookOpen, Mic } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import './VocalLearn.css'
@@ -35,9 +37,15 @@ function Stars({ count }) {
  * sung is marked "Up next" (levels.js). `focusLevel` is the level a singer
  * came back from, scrolled into view so they land where they left off.
  */
-export default function VocalLearn({ onOpenSong, focusLevel = null }) {
-  const [open, setOpen] = useState(null) // { level, activity } while a supporting activity is open
+export default function VocalLearn({ onOpenSong, focusLevel = null, initialWarmUp = false }) {
+  const { markActive } = usePracticeOnboarding()
+  const [open, setOpen] = useState(() => {
+    if (!initialWarmUp) return null
+    const level = LEVELS.find((item) => item.supports.some((activity) => activity.kind === 'warmup'))
+    return level ? { level, activity: level.supports.find((activity) => activity.kind === 'warmup') } : null
+  }) // { level, activity } while a supporting activity is open
   const playback = usePlayback()
+  useOnboardingBusy(Boolean(playback.owner))
   const progress = useVocalProgress()
   const states = levelStates(LEVELS, progress.stars)
   const doneCount = states.filter((s) => s === 'done').length
@@ -50,6 +58,7 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
   }, [open, focusLevel])
 
   const openActivity = (level, activity) => {
+    markActive?.()
     playback.stop()
     sfx.tap()
     setOpen({ level, activity })
@@ -64,6 +73,7 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
   }
 
   const sing = (level) => {
+    markActive?.()
     playback.stop()
     sfx.tap()
     onOpenSong(level.song, level.id)
@@ -71,20 +81,24 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
 
   if (open) {
     const { level, activity } = open
+    const activityTip = activity.kind === 'warmup' ? 'warmup'
+      : activity.kind === 'tests' ? activity.test : activity.lesson === 'rhythm' ? 'rhythm' : 'solfege'
     return (
       <div className="vocal-learn">
-        <div className="learn-lesson-bar">
-          <button type="button" className="vocal-tab__back" onClick={back}>
-            ← Learn
-          </button>
-          <span className="learn-lesson-bar__title">
-            <span aria-hidden="true"><activity.icon size="1.1em" aria-hidden="true" /></span> {activity.title}
-            <small className="learn-lesson-bar__for">Getting ready for {level.song.title}</small>
-          </span>
-          <button type="button" className="v-btn v-btn--sm" onClick={() => sing(level)}>
-            Sing {level.song.title} →
-          </button>
-        </div>
+        <TipAnchor id={`vocal.learn.${activityTip}`} visit={activity.id}>
+          <div className="learn-lesson-bar">
+            <button type="button" className="vocal-tab__back" onClick={back}>
+              ← Learn
+            </button>
+            <span className="learn-lesson-bar__title">
+              <span aria-hidden="true"><activity.icon size="1.1em" aria-hidden="true" /></span> {activity.title}
+              <small className="learn-lesson-bar__for">Getting ready for {level.song.title}</small>
+            </span>
+            <button type="button" className="v-btn v-btn--sm" onClick={() => sing(level)}>
+              Sing {level.song.title} →
+            </button>
+          </div>
+        </TipAnchor>
         {activity.kind === 'warmup' ? (
           <WarmUp show="warmups" />
         ) : activity.kind === 'tests' ? (
@@ -102,21 +116,23 @@ export default function VocalLearn({ onOpenSong, focusLevel = null }) {
 
   return (
     <div className="vocal-learn">
-      <header className="hm-hero">
-        <span className="hm-hero__badge" aria-hidden="true">
-          <BookOpen size="1.1em" aria-hidden="true" />
-        </span>
-        <div className="vlearn-hero__text">
-          <h1 className="hm-hero__title">Learn to sing, one song at a time</h1>
-          <p className="hm-hero__subtitle">
-            Every level is a song. The warm-ups and lessons beside it are there to help, so use the ones you need.
-          </p>
-          <ProgressBar value={doneCount} max={LEVELS.length} label="Songs sung" />
-          <span className="vlearn-hero__count">
-            {doneCount} of {LEVELS.length} songs sung
+      <TipAnchor id="vocal.learn">
+        <header className="hm-hero">
+          <span className="hm-hero__badge" aria-hidden="true">
+            <BookOpen size="1.1em" aria-hidden="true" />
           </span>
-        </div>
-      </header>
+          <div className="vlearn-hero__text">
+            <h1 className="hm-hero__title">Learn to sing, one song at a time</h1>
+            <p className="hm-hero__subtitle">
+              Every level is a song. The warm-ups and lessons beside it are there to help, so use the ones you need.
+            </p>
+            <ProgressBar value={doneCount} max={LEVELS.length} label="Songs sung" />
+            <span className="vlearn-hero__count">
+              {doneCount} of {LEVELS.length} songs sung
+            </span>
+          </div>
+        </header>
+      </TipAnchor>
 
       {/* On a fresh start the first level is right there; later, it saves a scroll. */}
       {next && nextIndex > 0 && (

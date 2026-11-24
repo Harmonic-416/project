@@ -1,4 +1,5 @@
 import { finishGuitarPractice } from '../practice/guitarProgress.js'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { createClick } from '../../../audio/metronome/click.js'
@@ -54,7 +55,10 @@ export default function RhythmStudio() {
     window.addEventListener('keydown',key)
     return ()=>window.removeEventListener('keydown',key)
   },[status,input,addStrike])
+  const { markActive, startWithMicrophone } = usePracticeOnboarding()
   const begin=async()=>{
+    if (input !== 'tap' && startWithMicrophone && !(await startWithMicrophone())) return
+    markActive?.()
     const version=++generation.current
     setStatus('starting');setError(null);setScore(null);setStrikes(0);setElapsed(-1)
     try {
@@ -91,6 +95,7 @@ export default function RhythmStudio() {
     }
   }
   const busy=status==='starting'||status==='running'
+  useOnboardingBusy(busy)
   const countIn=elapsed<COUNT_IN_BEATS*60000/bpm
   const slot=Math.max(0,Math.floor((elapsed-COUNT_IN_BEATS*60000/bpm)/(30000/bpm)))%8
   const bar=Math.min(RHYTHM_BARS,Math.max(1,Math.floor((elapsed-COUNT_IN_BEATS*60000/bpm)/(240000/bpm))+1))

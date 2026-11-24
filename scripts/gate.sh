@@ -7,8 +7,9 @@
 # RAN, that polish moved forward rather than back, or that a tolerance was not
 # quietly loosened to go green. This adds those assertions.
 #
-#   ./scripts/gate.sh          # everything
-#   ./scripts/gate.sh --fast   # skip the app build (use while iterating)
+#   bash scripts/gate.sh               # Guitar loop
+#   bash scripts/gate.sh --onboarding  # app-wide first-run onboarding
+# Add --fast to either mode to skip the app build while iterating.
 #
 # Exit 0 means a human can review the diff. It does not mean the change is good:
 # anything touching practice still needs a person with an instrument, per the
@@ -16,12 +17,20 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-FAST=${1:-}
+FAST=false
+SCOPE=guitar
+for flag in "$@"; do
+  case "$flag" in
+    --fast) FAST=true ;;
+    --onboarding) SCOPE=onboarding ;;
+    *) printf 'Usage: bash scripts/gate.sh [--fast] [--onboarding]\n' >&2; exit 2 ;;
+  esac
+done
 
 step() { printf '\n\033[1m── %s\033[0m\n' "$1"; }
 
 step '1. lint, typecheck, tests, build'
-if [ "$FAST" = '--fast' ]; then
+if [ "$FAST" = true ]; then
   npm run lint
   npm run typecheck
   npm test
@@ -43,8 +52,7 @@ step '3. frozen files — judged by ear, never by a loop'
 # scripts/frozen-files.txt for what is frozen and why.
 while read -r path; do
   case "$path" in ''|\#*) continue ;; esac
-  [ -e "$path" ] || continue
-  if ! git diff --quiet --exit-code -- "$path"; then
+  if ! git diff --quiet HEAD -- "$path" || [ -n "$(git ls-files --others --exclude-standard -- "$path")" ]; then
     echo "FAIL: $path is frozen but was modified."
     echo "      Its behaviour was tuned by ear against real playing. A loop"
     echo "      cannot tell whether a change made it better. Mark the item"
@@ -84,17 +92,21 @@ for path in supabase/migrations .github/workflows openspec/specs harmonic-design
   fi
 done
 
-step '5. scope — Guitar: Songs, Learn, Exercises only'
-# The loop's remit is the Guitar tab's Songs, Learn and Exercises (and
-# practice/, which IS Learn's implementation). Everything else — vocal, home,
-# social, fretboard, tuner, src/lib, the worker — is out of bounds for now, so
-# that guitar can become the reference the other tab is later brought up to.
-# Tests, the backlog and the loop's own log are always writable.
-OUT_OF_SCOPE=$(git diff --name-only HEAD -- app src worker tests \
-  | grep -vE '^app/tests/' \
-  | grep -vE '^app/src/tabs/guitar/(GuitarTab|song/|learn/|exercises/|practice/|notation/)' \
-  | grep -vE '^app/src/styles/tokens\.css$' \
-  || true)
+GUITAR_PATHS='^app/(tests/|src/(tabs/guitar/(GuitarTab\.(jsx|css)$|song/|learn/|exercises/|practice/|notation/)|styles/tokens\.css$))'
+SCOPE_PATHS="$GUITAR_PATHS"
+if [ "$SCOPE" = onboarding ]; then
+  step '5. scope — app-wide first-run onboarding'
+  # Allow integration surfaces and the shared guidance components. Audio
+  # engines, backend code and the worker stay outside this mode's remit.
+  ONBOARDING_PATHS='^app/src/(App\.(jsx|css)$|ui/onboarding/|tabs/(home/|social/|guitar/tuner/Tuner\.(jsx|css)$|shared/PracticeHeaderControls\.(jsx|css)$|vocal/(VocalTab\.(jsx|css)$|components/|learn/|warmup/)))'
+  SCOPE_PATHS="$GUITAR_PATHS|$ONBOARDING_PATHS"
+else
+  step '5. scope — Guitar: Songs, Learn, Exercises only'
+fi
+
+TRACKED_CHANGES=$(git diff --name-only HEAD -- app src worker tests)
+NEW_FILES=$(git ls-files --others --exclude-standard -- app src worker tests)
+OUT_OF_SCOPE=$(printf '%s\n%s\n' "$TRACKED_CHANGES" "$NEW_FILES" | grep -vE "$SCOPE_PATHS" || true)
 # Pre-existing dirt is not the loop's fault: the same allowlist that covers
 # untracked files in never-touch paths also covers files a human already had
 # modified when the loop started.
@@ -103,11 +115,11 @@ if [ -n "$OUT_OF_SCOPE" ] && [ -s scripts/gate-allowlist.txt ]; then
 fi
 OUT_OF_SCOPE=$(printf '%s' "$OUT_OF_SCOPE" | sed '/^$/d')
 if [ -n "$OUT_OF_SCOPE" ]; then
-  echo 'FAIL: changes outside the Guitar Songs/Learn/Exercises scope:'
+  echo "FAIL: changes outside the $SCOPE scope:"
   echo "$OUT_OF_SCOPE" | sed 's/^/        /'
-  echo '      This iteration is scoped to the Guitar tab. If the item genuinely'
-  echo '      needs a shared or vocal file, it is misclassified: mark it BLOCKED'
-  echo '      and escalate (PROMPT.md).'
+  if [ "$SCOPE" = guitar ]; then
+    echo '      For the app-wide first-run onboarding change, use --onboarding.'
+  fi
   exit 1
 fi
 

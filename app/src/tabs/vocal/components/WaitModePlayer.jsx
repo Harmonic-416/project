@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import './PracticeModes.css'
@@ -149,6 +150,8 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
 
   const mic = useMicPitch({ getTime: wallClock, onSample: handleSample })
   const listening = mic.status === 'listening'
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(listening || mic.status === 'requesting')
 
   // The note clock runs only while listening.
   useEffect(() => {
@@ -201,6 +204,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
   )
 
   const play = useCallback(async () => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     if (done) {
       sheetMusicRef.current?.clearMarks(SUNG_CLASS)
       newRun()
@@ -208,7 +212,7 @@ function WaitModePlayer({ melody, duration, sheetMusicRef, disabled, backingNote
     }
     if (backingNotes) await Tone.start() // audio must be unlocked inside the click
     await mic.start()
-  }, [backingNotes, done, goTo, mic, newRun, sheetMusicRef])
+  }, [backingNotes, done, goTo, mic, newRun, sheetMusicRef, startWithMicrophone])
 
   const stop = useCallback(() => {
     mic.stop()

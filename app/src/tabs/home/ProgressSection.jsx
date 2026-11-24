@@ -198,7 +198,7 @@ export function WorkingOnCards({ recent, error, limit = null, onOpenAttempt, onO
               <PlusIcon />
             </span>
             <strong>Add a song</strong>
-            <span className="hp-muted">Upload a file or choose from the library</span>
+            <span className="hp-muted">{songs.length === 0 ? 'Songs you practise will show up here.' : 'Upload a file or choose from the library'}</span>
             <div className="home-row hp-add__actions">
               <button type="button" className="hp-chip" onClick={() => onNavigate('guitar')}>
                 Guitar

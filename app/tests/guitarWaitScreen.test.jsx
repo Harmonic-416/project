@@ -3,18 +3,33 @@ import React from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GuitarWaitMode from '../src/tabs/guitar/song/follow/GuitarWaitMode.jsx'
-const rig = vi.hoisted(() => ({ onWindow: null, quiet: false }))
+import OnboardingProvider from '../src/ui/onboarding/OnboardingProvider.jsx'
+const rig = vi.hoisted(() => ({ onWindow: null, quiet: false, status: 'listening', start: vi.fn(async () => true) }))
 vi.mock('../src/tabs/guitar/song/follow/useGuitarListener.js', () => ({ useGuitarListener: ({ onWindow }) => {
   rig.onWindow = onWindow
-  return { status: 'listening', quiet: rig.quiet, live: null, start: async () => true, stop: vi.fn(async () => null), pause: vi.fn(), muteFor: vi.fn(), recordingSecondsAt: () => 0 }
+  return { status: rig.status, quiet: rig.quiet, live: null, start: rig.start, stop: vi.fn(async () => null), pause: vi.fn(), muteFor: vi.fn(), recordingSecondsAt: () => 0 }
 } }))
 vi.mock('../src/tabs/guitar/song/follow/waitListening.js', () => ({ createWaitAttempts: () => ({ reset: vi.fn(), consider: (window) => ({ actions: window.actions ?? [], log: {} }) }) }))
 vi.mock('../src/tabs/vocal/components/ShareAttempt.jsx', () => ({ default: () => null }))
 const entries = [0, 1].map((index) => ({ index, bar: 0, time: index, tick: index * 960, midi: 64 + index, kind: 'single', technique: 'pick', notes: [{ midi: 64 + index, string: 1, fret: index }] }))
 const props = () => ({ api: { stop: vi.fn(), scrollToCursor: vi.fn(), playBeat: vi.fn() }, timeline: { entries, duration: 2 }, overlay: { mark: vi.fn(), clear: vi.fn() }, ready: true })
-beforeEach(() => { rig.quiet = false })
-afterEach(cleanup)
+beforeEach(() => { rig.quiet = false; rig.status = 'listening'; rig.start.mockClear() })
+afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals() })
 describe('Wait for me controls and feedback', () => {
+  it('waits for the primer before starting the listener and keeps the same note if dismissed', async () => {
+    rig.status = 'idle'
+    vi.stubGlobal('navigator', { ...navigator, permissions: { query: async () => ({ state: 'prompt' }) } })
+    render(<OnboardingProvider><GuitarWaitMode {...props()} /></OnboardingProvider>)
+    const play = screen.getByRole('button', { name: 'Play', exact: true })
+    await act(async () => fireEvent.click(play))
+    expect(rig.start).not.toHaveBeenCalled()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Not now' })))
+    expect(rig.start).not.toHaveBeenCalled()
+    expect(screen.getByText(/Note 1 of 2/)).toBeTruthy()
+    await act(async () => fireEvent.click(play))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Allow microphone' })))
+    expect(rig.start).toHaveBeenCalledOnce()
+  })
   it('always offers Hint, Skip and Retry; wrong attempts never advance', () => {
     render(<GuitarWaitMode {...props()} />)
     for (const name of ['Hint', 'Skip', 'Retry']) expect(screen.getByRole('button', { name }).disabled).toBe(false)

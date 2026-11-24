@@ -1,3 +1,5 @@
+import TipAnchor from '../../../ui/onboarding/Tip.jsx'
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useState } from 'react'
 import './Tuner.css'
 import Fretboard from '../fretboard/Fretboard.jsx'
@@ -33,6 +35,11 @@ function Tuner() {
   const tuner = useTuner()
   const { reading, status } = tuner
   const listening = status === 'listening'
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(listening || status === 'requesting')
+  const start = async () => {
+    if (!startWithMicrophone || await startWithMicrophone()) tuner.start()
+  }
   const state = tone(reading)
   const clamped = reading ? Math.max(-RANGE_CENTS, Math.min(RANGE_CENTS, reading.cents)) : 0
   const angle = (clamped / RANGE_CENTS) * SWEEP_DEG
@@ -117,33 +124,35 @@ function Tuner() {
             <circle className="tuner__hub" cx="150" cy="150" r="7" />
           </svg>
 
-          <div className="tuner__readout">
-            {listening && reading && (
-              <>
-                <span className="tuner__hz">{Math.round(reading.frequency)} Hz</span>
-                <span className="tuner__advice">
-                  {advice(reading)}
-                  {!reading.inTune && (
-                    <span className="tuner__cents">
-                      {' '}
-                      · {reading.cents > 0 ? '+' : '−'}
-                      {Math.abs(Math.round(reading.cents))}¢
-                    </span>
-                  )}
-                </span>
-              </>
-            )}
-            {listening && !reading && <span className="tuner__hint">Play a string</span>}
-            {status === 'idle' && <span className="tuner__hint">Tap Start and allow the microphone</span>}
-            {status === 'requesting' && <span className="tuner__hint">Starting microphone…</span>}
-            {status === 'error' && <span className="tuner__error">{tuner.error}</span>}
-          </div>
+          <TipAnchor id="guitar.tuner">
+            <div className="tuner__readout">
+              {listening && reading && (
+                <>
+                  <span className="tuner__hz">{Math.round(reading.frequency)} Hz</span>
+                  <span className="tuner__advice">
+                    {advice(reading)}
+                    {!reading.inTune && (
+                      <span className="tuner__cents">
+                        {' '}
+                        · {reading.cents > 0 ? '+' : '−'}
+                        {Math.abs(Math.round(reading.cents))}¢
+                      </span>
+                    )}
+                  </span>
+                </>
+              )}
+              {listening && !reading && <span className="tuner__hint">Play a string</span>}
+              {status === 'idle' && <span className="tuner__hint">Tap Start and allow the microphone</span>}
+              {status === 'requesting' && <span className="tuner__hint">Starting microphone…</span>}
+              {status === 'error' && <span className="tuner__error">{tuner.error}</span>}
+            </div>
+          </TipAnchor>
           {listening ? (
             <button type="button" className="tuner__button tuner__button--stop" onClick={tuner.stop}>
               Stop
             </button>
           ) : (
-            <button type="button" className="tuner__button" disabled={status === 'requesting'} onClick={tuner.start}>
+            <button type="button" className="tuner__button" disabled={status === 'requesting'} onClick={start}>
               Start
             </button>
           )}
@@ -178,7 +187,7 @@ function FretboardDrawer() {
           ▾
         </span>
       </summary>
-      {open && <Fretboard />}
+      {open && <TipAnchor id="guitar.fretboard"><Fretboard /></TipAnchor>}
     </details>
   )
 }

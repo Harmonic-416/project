@@ -26,7 +26,7 @@ const INSTRUMENT = { guitar: 'Guitar', voice: 'Vocal' }
  * `instrument` ('voice' | 'guitar') lists only that tab's sessions, so
  * Practise opens the song where it was practised.
  */
-function PracticeSessions({ auth, supabase, song, instrument = null, onPractise = null, onOpenAttempt = null }) {
+function PracticeSessions({ auth, supabase, song, instrument = null, onPractise = null, onOpenAttempt = null, onStartPractice, practiceActionLabel }) {
   const [sessions, setSessions] = useState(null)
   const [storage, setStorage] = useState(null)
   const [error, setError] = useState(null)
@@ -69,13 +69,13 @@ function PracticeSessions({ auth, supabase, song, instrument = null, onPractise 
     return <p className="practice-sessions__hint">Practice sessions need the cloud, which isn’t configured on this copy of the app.</p>
   }
   if (!auth.ready) return <p className="practice-sessions__hint">Checking your sign-in…</p>
-  if (!auth.user) return <p className="practice-sessions__hint">Sign in on the Home tab to keep your practice sessions.</p>
+  if (!auth.user) return <p className="practice-sessions__hint">Your practice history, attempts, and notes appear here after you sign in on Home.</p>
 
   const songs = sessions ? groupSessionsBySong(sessions) : null
 
   return (
     <div className="practice-sessions">
-      <p className="practice-sessions__intro">
+      {songs?.length !== 0 && <p className="practice-sessions__intro">
         {song ? (
           <>
             Every sitting at <strong>{song.title}</strong>, newest first, with its attempts and your notes.
@@ -83,16 +83,22 @@ function PracticeSessions({ auth, supabase, song, instrument = null, onPractise 
         ) : (
           'Each song you’ve practised, with every sitting, its attempts and your notes.'
         )}
-      </p>
+      </p>}
       {error && <p className="practice-sessions__error">{error}</p>}
       {songs === null && !error && <p className="practice-sessions__hint">Loading…</p>}
       {songs?.length === 0 && (
-        <p className="practice-sessions__hint">
-          {song ? 'No sessions at this song yet.' : 'No sessions yet.'}{' '}
-          {instrument === 'guitar'
-            ? 'Open a song and finish a Wait for me or Trouble spots run; each sitting shows up here.'
-            : 'Open a song and record an attempt; each sitting shows up here.'}
-        </p>
+        <div>
+          <p className="practice-sessions__hint">
+            {instrument === 'guitar'
+              ? 'Your completed Wait for me and Trouble spots runs will appear here.'
+              : 'Your recorded attempts will appear here.'}
+          </p>
+          {onStartPractice && (
+            <button type="button" className="home-link-button" onClick={onStartPractice}>
+              {practiceActionLabel}
+            </button>
+          )}
+        </div>
       )}
       {songs?.length > 0 && (
         <ul className="practice-sessions__list">

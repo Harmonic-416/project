@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useEffect, useRef, useState } from 'react'
 import { guitarNoteTarget } from '../song/follow/guitarCoaching.js'
 import { CLIPPING_HELP } from '../song/follow/inputQuality.js'
@@ -11,6 +12,8 @@ export default function ChordStringCheck({ chord, onClose }) {
   const [result, setResult] = useState(null)
   const listener = useLessonListening({ chord, stringIndex, onVerdict: setResult })
   const { status, error, start, stop } = listener
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(true)
   const target = lessonEntry(chord, stringIndex).notes[0]
   const message = result?.verdict === 'silent'
     ? 'No clear sound yet. Move closer to the microphone and pick again.'
@@ -38,7 +41,8 @@ export default function ChordStringCheck({ chord, onClose }) {
       <p>Target: {guitarNoteTarget(target)}</p>
       <p role="status">{listener.clipping ? CLIPPING_HELP : message || 'The microphone checks the pitch. Use the diagram for finger placement.'}</p>
       {error && <p role="alert">{error}</p>}
-      <button type="button" className="practice__listen" disabled={status === 'requesting'} onClick={() => {
+      <button type="button" className="practice__listen" disabled={status === 'requesting'} onClick={async () => {
+        if (status !== 'listening' && startWithMicrophone && !(await startWithMicrophone())) return
         setResult(null)
         if (status === 'listening') stop()
         else start()

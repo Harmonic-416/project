@@ -1,3 +1,4 @@
+import { useOnboardingBusy, usePracticeOnboarding } from '../../../ui/onboarding/useOnboarding.js'
 import { useCallback, useRef, useState } from 'react'
 import { useMicPitch } from '../audio/useMicPitch.js'
 import { createNoteCatcher } from '../warmup/pitchTestLogic.js'
@@ -27,7 +28,10 @@ export default function RangeCapture({ onSave, onCancel }) {
   const enough = range && range.high - range.low >= MIN_MEASURED_SPAN
   const listening = mic.status === 'listening'
 
+  const { startWithMicrophone } = usePracticeOnboarding()
+  useOnboardingBusy(listening || mic.status === 'requesting')
   const start = async () => {
+    if (startWithMicrophone && !(await startWithMicrophone())) return
     setCaught([])
     catcherRef.current.reset()
     await mic.start()
