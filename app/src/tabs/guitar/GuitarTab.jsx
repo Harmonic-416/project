@@ -1,5 +1,6 @@
 import GuitarFeedback from './practice/GuitarFeedback.jsx'
 import { lazy, Suspense, useCallback, useState, useSyncExternalStore } from 'react'
+import { BookOpen, Gauge, Music, Zap } from 'lucide-react'
 import './GuitarTab.css'
 import PracticeHeaderControls from '../shared/PracticeHeaderControls.jsx'
 import { guitarProgress } from './practice/guitarProgress.js'
@@ -14,11 +15,13 @@ import { TuningReportContext } from './tuner/tuningReport.js'
 // alphaTab is ~1 MB: only download it when the song view is opened.
 const GuitarSong = lazy(() => import('./song/GuitarSong.jsx'))
 
+// Line icons drawn in the section's own colour, the same set the Vocal tab's
+// sections use (VocalTab SECTIONS), so the two instruments' headers match.
 const VIEWS = [
-  { id: 'song', label: 'Songs', icon: '🎵' },
-  { id: 'learn', label: 'Learn', icon: '📖' }, // chord lessons, strum on the beat (F18); progress on the account
-  { id: 'exercises', label: 'Exercises', icon: '⚡' }, // ear training (F41)
-  { id: 'tuner', label: 'Tuner', icon: '♮' }, // also opens the fretboard map (every note on the neck)
+  { id: 'song', label: 'Songs', icon: Music },
+  { id: 'learn', label: 'Learn', icon: BookOpen }, // chord lessons, strum on the beat (F18); progress on the account
+  { id: 'exercises', label: 'Exercises', icon: Zap }, // ear training (F41)
+  { id: 'tuner', label: 'Tuner', icon: Gauge }, // also opens the fretboard map (every note on the neck)
 ]
 
 /**
@@ -93,7 +96,7 @@ function GuitarTab({
               aria-pressed={view === item.id}
               onClick={() => open(item.id)}
             >
-              <span className="guitar-tab__view-icon" aria-hidden="true">{item.icon}</span>
+              <span className="guitar-tab__view-icon" aria-hidden="true"><item.icon size="1.1em" aria-hidden="true" /></span>
               {item.label}
             </button>
           ))}

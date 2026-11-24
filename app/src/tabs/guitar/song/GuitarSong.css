@@ -252,8 +252,11 @@
 .song-workspace__main .playback-controls__button { min-width: 64px; min-height: var(--gs-control-height); padding: var(--gs-space-2) var(--gs-space-3); border-radius: var(--gs-radius-control); font-size: .85rem; }
 .song-workspace__main .playback-controls__seek { min-width: 0; flex: 1; }
 .song-workspace__main .playback-controls__time { font-size: .75rem; white-space: nowrap; }
-.song-workspace__side { display: flex; flex-direction: column; gap: var(--gs-space-2); min-width: 0; min-height: 0; }
-.song-workspace__sidebar { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; padding: var(--gs-space-4); display: flex; flex-direction: column; align-items: stretch; gap: var(--gs-space-4); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); background: var(--gs-surface); }
+/* The run's results and the practice options scroll as one column: with two
+   scroll areas, a long result card took the height and left the options to
+   scroll in a sliver beneath it. */
+.song-workspace__side { display: flex; flex-direction: column; gap: var(--gs-space-2); min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.song-workspace__sidebar { flex: 1 0 auto; min-width: 0; overflow-y: auto; padding: var(--gs-space-4); display: flex; flex-direction: column; align-items: stretch; gap: var(--gs-space-4); border: 1px solid var(--gs-border); border-radius: var(--gs-radius-control); background: var(--gs-surface); }
 .song-workspace__sidebar > * { flex-shrink: 0; min-width: 0; }
 .song-workspace__sidebar-heading { display: flex; justify-content: space-between; align-items: center; }
 .song-workspace__sidebar-heading h2 { margin: 0; font-size: .9rem; }
@@ -268,7 +271,7 @@
 .song-workspace__sidebar .practice-status { padding: var(--gs-space-3); font-size: .8rem; line-height: 1.5; }
 .song-workspace__info:empty { display: none; }
 .song-workspace__info .guitar-song__notice { padding: var(--gs-space-3); font-size: .75rem; line-height: 1.5; }
-.song-workspace__feedback { flex: 0 1 auto; min-height: 0; overflow-y: auto; display: grid; gap: var(--gs-space-2); }
+.song-workspace__feedback { flex: none; overflow-y: auto; display: grid; gap: var(--gs-space-2); }
 .song-workspace__feedback:empty { display: none; }
 .song-workspace__feedback .practice-status { margin: 0; padding: var(--gs-space-2); gap: var(--gs-space-1); font-size: .8rem; line-height: 1.4; border-radius: var(--gs-radius-control); }
 .song-workspace__feedback .practice-status > :is(span, strong) { flex-basis: 100%; }

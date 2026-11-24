@@ -299,8 +299,13 @@
   .practice--focused .chord-picker__trigger { padding: 0 var(--gs-space-4); }
   :is(.practice--loop, .practice--switches) .practice__header { grid-column: 1 / -1; border-radius: var(--gs-radius-card) var(--gs-radius-card) 0 0; }
   .practice--loop .strumming-loop { grid-column: 1 / -1; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gs-space-2); container: strumming / size; }
-  .practice--loop .strumming-loop__intro { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
-  .practice--loop .strumming-loop__shapes .chord-diagram { flex: 1; min-height: 0; height: 0; }
+  /* The chord shapes take the full height of the loop with Start beside them, and
+     the diagrams grow into it, so they scale with the screen instead of sitting
+     small in a wide empty card. */
+  .practice--loop .strumming-loop__intro { min-height: 0; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--gs-space-4); }
+  .practice--loop .strumming-loop__invitation { padding: 0; flex-direction: column; justify-content: center; align-items: flex-start; flex-wrap: nowrap; }
+  .practice--loop .strumming-loop__invitation p { flex: none; }
+  .practice--loop .strumming-loop__shapes .chord-diagram { flex: 1; min-height: 0; height: 0; max-width: none; }
   .practice--loop .strumming-loop__target .chord-diagram { flex: 1; min-height: 0; height: 0; max-width: none; }
   .practice--loop .strumming-loop__sequence { padding-top: var(--gs-space-2); }
   .practice--loop .strumming-loop__heading p { margin: 0; }
@@ -323,10 +328,8 @@
   .practice--loop .strumming-loop__heading small { display: none; }
   .practice--loop .strumming-loop__heading h2 { font-size: 1.2rem; margin: 0; }
   .practice--loop .strumming-loop__heading p { font-size: .75rem; line-height: 1.25; }
-  .practice--loop .strumming-loop__intro { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--gs-space-4); }
   .practice--loop .strumming-loop__shapes > div { padding: var(--gs-space-2); gap: var(--gs-space-1); }
-  .practice--loop .strumming-loop__invitation { padding: 0; flex-direction: column; justify-content: center; align-items: flex-start; flex-wrap: nowrap; }
-  .practice--loop .strumming-loop__invitation p { flex: none; font-size: .75rem; line-height: 1.4; }
+  .practice--loop .strumming-loop__invitation p { font-size: .75rem; line-height: 1.4; }
   .practice--loop .strumming-loop__rhythm { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gs-space-1) var(--gs-space-2); align-items: center; }
   .practice--loop .strumming-loop__rhythm h3 { font-size: .85rem; margin: 0; }
   .practice--loop .strumming-loop__beats { grid-column: 1 / -1; margin: 0; }
